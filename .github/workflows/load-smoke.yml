@@ -3,18 +3,21 @@ name: Load test
 # Run by hand only. A run builds the self-host stack from the dispatched commit, fills it with
 # spans through the real ingestion pipeline and drives it with k6 at the thresholds in
 # docs/performance.md. The result tables are on the run's summary page and the raw k6 summaries are
-# an artifact. `smoke` is a small run that checks the setup; `full` is the measured run and takes
-# several hours, almost all of it seeding.
+# an artifact. `realistic` (the default) is a run at the size of a small production team, about
+# 1 million spans. `smoke` is a small run that checks the setup. `full` is the stress run with 10
+# million spans and takes several hours, almost all of it seeding. The profile's settings are in
+# the "Set the profile" step.
 on:
   workflow_dispatch:
     inputs:
       profile:
-        description: "smoke: 100 000 spans, 30 s per scenario. full: 10 000 000 spans, 2 to 3 min per scenario."
+        description: "realistic: 1 000 000 spans, 1 min per scenario. smoke: 100 000 spans, 30 s per scenario. full: 10 000 000 spans, 2 to 3 min per scenario."
         type: choice
         options:
+          - realistic
           - smoke
           - full
-        default: smoke
+        default: realistic
 
 # One load run at a time. A run that is started while another is going waits; it is not cancelled.
 concurrency:
@@ -28,15 +31,10 @@ jobs:
   load:
     runs-on: ubuntu-latest
     # The full run is mostly seeding 10 million spans. The runner's own limit is 360 minutes.
-    timeout-minutes: ${{ inputs.profile == 'full' && 330 || 30 }}
+    # realistic: 90, smoke: 30, full: 330.
+    timeout-minutes: ${{ inputs.profile == 'full' && 330 || inputs.profile == 'realistic' && 90 || 30 }}
     env:
       PROFILE: ${{ inputs.profile }}
-      SEED_SPANS: ${{ inputs.profile == 'full' && '10000000' || '100000' }}
-      # The seeder stops early when the seed is projected to take longer. What is left of the job
-      # limit after it has to cover the build, the rollups, VACUUM and the three scenarios.
-      SEED_MAX_MINUTES: ${{ inputs.profile == 'full' && '240' || '15' }}
-      READ_DURATION: ${{ inputs.profile == 'full' && '2m' || '30s' }}
-      INGEST_DURATION: ${{ inputs.profile == 'full' && '3m' || '30s' }}
       # An exact release, so a run can be repeated with the same tool.
       K6_IMAGE: grafana/k6:2.3.0
       WEB_PORT: "8080"
@@ -50,13 +48,34 @@ jobs:
           enable-cache: true
 
       # Seeding ten million spans needs the disk: the table, its indexes and the write-ahead log
-      # come to tens of gigabytes. These toolchains are not used here.
+      # come to tens of gigabytes. These toolchains are not used here. Only `full` needs this: the
+      # `realistic` seed (1 million spans) comes to about 1.5 GB, which fits in what the runner
+      # has free, and the cleanup itself takes a minute or two.
       - name: Free disk space
         if: inputs.profile == 'full'
         run: |
           df -h
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h
+
+      # The one place that says what each profile means. SEED_MAX_MINUTES: the seeder stops early
+      # when the seed is projected to take longer; what is left of the job limit after it has to
+      # cover the build, the rollups, VACUUM and the three scenarios. The thresholds do not depend
+      # on the profile: they are in the k6 scripts and are the same for all three.
+      - name: Set the profile
+        run: |
+          case "$PROFILE" in
+            realistic) spans=1000000;  max_minutes=45;  read=1m;  ingest=1m ;;
+            smoke)     spans=100000;   max_minutes=15;  read=30s; ingest=30s ;;
+            full)      spans=10000000; max_minutes=240; read=2m;  ingest=3m ;;
+            *) echo "::error::unknown profile '$PROFILE'"; exit 1 ;;
+          esac
+          {
+            echo "SEED_SPANS=$spans"
+            echo "SEED_MAX_MINUTES=$max_minutes"
+            echo "READ_DURATION=$read"
+            echo "INGEST_DURATION=$ingest"
+          } >> "$GITHUB_ENV"
 
       # The same throwaway secrets as the compose-smoke job in ci.yml: random, masked in the log
       # and gone with the runner.

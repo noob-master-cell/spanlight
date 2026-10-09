@@ -7,8 +7,8 @@ How fast Spanlight ingests and serves traces, how that is measured, and how to r
 | Path | Load | Target |
 |---|---|---|
 | Ingestion | `POST /v1/traces`: 500 spans a second, as 5 requests a second of 100 spans | p95 below 200 ms |
-| Dashboard overview | `GET /api/v1/projects/{id}/metrics/overview`: 20 requests a second over four time windows, with 10 million spans stored | p95 below 300 ms |
-| Trace list | `GET /api/v1/projects/{id}/traces`: 20 requests a second, with 10 million spans stored | p95 below 300 ms |
+| Dashboard overview | `GET /api/v1/projects/{id}/metrics/overview`: 20 requests a second over four time windows, with 1 million spans stored (`realistic`; the `full` stress run stores 10 million) | p95 below 300 ms |
+| Trace list | `GET /api/v1/projects/{id}/traces`: 20 requests a second, with 1 million spans stored (`realistic`; `full`: 10 million) | p95 below 300 ms |
 
 These are the same figures as the service level objectives in the [SLO runbook](runbooks/slo.md). Beside the latency each scenario has to meet three more conditions:
 
@@ -43,17 +43,17 @@ A script that misses any of them exits non-zero.
 
 ## Node
 
-Both profiles run on a GitHub-hosted standard `ubuntu-latest` runner: 4 vCPU and 16 GB of memory. The stack and the load generator share those four cores, so the load generator takes some of the CPU the stack could have used. The runner is shared hardware, so repeated runs differ a little; compare runs of the same profile on the same kind of runner.
+All three profiles run on a GitHub-hosted standard `ubuntu-latest` runner: 4 vCPU and 16 GB of memory. The stack and the load generator share those four cores, so the load generator takes some of the CPU the stack could have used. The runner is shared hardware, so repeated runs differ a little; compare runs of the same profile on the same kind of runner.
 
 ## Run it
 
-**On GitHub.** Open the Actions tab, choose **Load test** ([`load-smoke.yml`](../.github/workflows/load-smoke.yml)) and **Run workflow**. The profile `smoke` seeds 100 000 spans and runs every scenario for 30 seconds, to check the setup. The profile `full` seeds 10 million spans and runs each scenario for 2 minutes (ingestion for 3), and takes several hours, almost all of it seeding; the seeder prints its rate and stops early if it projects the seeding to overrun its time budget. The run's summary page shows the environment (date, runner, versions, number of spans seeded) and a table for each script, the raw k6 summaries are attached as an artifact, and the job is red if any threshold was missed.
+**On GitHub.** Open the Actions tab, choose **Load test** ([`load-smoke.yml`](../.github/workflows/load-smoke.yml)) and **Run workflow**. The profile `realistic` (the default) seeds 1 million spans, about 33 000 LLM calls a day for 30 days, which is a small production team, and runs every scenario for 1 minute. The profile `smoke` seeds 100 000 spans and runs every scenario for 30 seconds, to check the setup. The profile `full` is the stress run: it seeds 10 million spans and runs each scenario for 2 minutes (ingestion for 3), and takes several hours, almost all of it seeding; the seeder prints its rate and stops early if it projects the seeding to overrun its time budget. The run's summary page shows the environment (date, runner, versions, number of spans seeded) and a table for each script, the raw k6 summaries are attached as an artifact, and the job is red if any threshold was missed.
 
 **On your machine.** See [`backend/load/README.md`](../backend/load/README.md): start the stack with the override file, seed it, and run the scripts with k6.
 
 ## Results
 
-No run is recorded here yet. This section will hold the date, the node, the versions and the p95 of each scenario for a `full` run once one has completed, copied from its summary page. Until then this page has no figures, and the targets above are goals, not measurements.
+No run is recorded here yet. This section will hold the date, the node, the versions and the p95 of each scenario for a `realistic` run once one has completed, copied from its summary page. Until then this page has no figures, and the targets above are goals, not measurements.
 
 ## Known slower paths
 

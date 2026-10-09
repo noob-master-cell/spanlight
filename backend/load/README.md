@@ -21,10 +21,11 @@ Every script also has three more thresholds: `http_req_failed` below 1 % (a `429
 
 Open the repository's Actions tab, choose **Load test** and **Run workflow**.
 
-- `smoke` (the default) seeds 100 000 spans and runs each scenario for 30 seconds. It checks that the setup works and has a limit of 30 minutes.
-- `full` seeds 10 million spans and runs each scenario for 2 minutes (ingestion 3 minutes). It takes several hours, almost all of it seeding.
+- `realistic` (the default) seeds 1 million spans, about 33 000 LLM calls a day for 30 days, which is a small production team. Each scenario runs for 1 minute. The job has a limit of 90 minutes.
+- `smoke` seeds 100 000 spans and runs each scenario for 30 seconds. It checks that the setup works and has a limit of 30 minutes.
+- `full` is the stress run: it seeds 10 million spans and runs each scenario for 2 minutes (ingestion 3 minutes). It takes several hours, almost all of it seeding.
 
-Both run on a GitHub-hosted `ubuntu-latest` runner. The run's summary page shows the run's environment and one table per script; the raw k6 summaries are attached as the artifact `load-results-<profile>`. The job is red when any threshold is missed, and all three scripts run either way.
+All three use the same thresholds and run on a GitHub-hosted `ubuntu-latest` runner. The run's summary page shows the run's environment and one table per script; the raw k6 summaries are attached as the artifact `load-results-<profile>`. The job is red when any threshold is missed, and all three scripts run either way.
 
 ## On your machine
 
@@ -47,7 +48,7 @@ You need Docker with the Compose plugin, [uv](https://docs.astral.sh/uv/) and, t
    cd ..
    ```
 
-   `--spans` is how many spans to store (use at least 100 000: with fewer, a window or a filter of the scripts can have nothing to return) and `--seed` repeats a data shape. The seeder prints its rate and the time left with every million spans, and stops early when the seed is projected to take longer than `--max-minutes` (default 240). The workflow passes 15 for `smoke` and 240 for `full`, which is what is left of the job's limit once the build, the rollups and the scenarios are counted.
+   `--spans` is how many spans to store (use at least 100 000: with fewer, a window or a filter of the scripts can have nothing to return) and `--seed` repeats a data shape. The seeder prints its rate and the time left with every million spans, and stops early when the seed is projected to take longer than `--max-minutes` (default 240). The workflow passes 15 for `smoke`, 45 for `realistic` and 240 for `full`, which is what is left of the job's limit once the build, the rollups and the scenarios are counted.
 
    The keys are in the credentials file (mode 600, in the git-ignored `.local/`) and are never printed. It also holds `data_end`, the instant the seeded data ends at. The overview and trace list scripts ask for windows that end there, not at the wall clock, so a seed that takes hours does not leave the newest windows empty.
 
