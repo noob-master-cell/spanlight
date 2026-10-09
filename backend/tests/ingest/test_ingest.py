@@ -1,5 +1,6 @@
 """Native ingestion: idempotency, rollups, per-span rejections, limits, redaction, cost."""
 
+import asyncio
 import gzip
 import json
 from datetime import UTC, datetime, timedelta
@@ -10,7 +11,6 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.ratelimit import TokenBucketLimiter
 from app.core.security import PAT_PREFIX, generate_key
 from app.db.models import Span, Trace
 from app.db.rls import bypass_rls
@@ -263,20 +263,24 @@ async def test_missing_or_malformed_key_is_401(client: httpx.AsyncClient) -> Non
 
 
 async def test_rate_limit_returns_429_with_retry_after(
-    app: Any, client: httpx.AsyncClient, workspace: Workspace
+    client: httpx.AsyncClient, workspace: Workspace
 ) -> None:
-    frozen_time = 1000.0
-    app.state.ingest_limiter = TokenBucketLimiter(rate=50, burst=100, clock=lambda: frozen_time)
-
-    statuses = [(await _ingest(client, workspace, [])).status_code for _ in range(101)]
+    # The bucket refills on the real database clock while the requests run, so the 429 can come a
+    # little after the 101st request; send until the first one.
+    limited: httpx.Response | None = None
+    statuses: list[int] = []
+    for _ in range(1000):
+        response = await _ingest(client, workspace, [])
+        statuses.append(response.status_code)
+        if response.status_code == 429:
+            limited = response
+            break
+    assert limited is not None, "ingest was never rate limited"
     assert statuses[:100] == [200] * 100  # the full burst is allowed
-    assert statuses[100] == 429
-
-    limited = await _ingest(client, workspace, [])
     assert limited.json()["code"] == "RATE_LIMITED"
     assert int(limited.headers["retry-after"]) >= 1
 
-    frozen_time += 1.0  # one second refills 50 tokens
+    await asyncio.sleep(0.05)  # one token refills every 1/50 s
     assert (await _ingest(client, workspace, [])).status_code == 200
 
 
