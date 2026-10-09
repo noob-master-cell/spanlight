@@ -145,7 +145,6 @@ export function handleSummary(data) {
     description:
       `${REQUESTS_PER_SECOND} requests a second of ${SPANS_PER_REQUEST} spans for ${DURATION}.`,
     data,
-    options,
     resultsDir: RESULTS_DIR,
   });
 }

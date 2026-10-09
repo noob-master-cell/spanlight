@@ -15,7 +15,7 @@ import http from 'k6/http';
 import exec from 'k6/execution';
 import { check } from 'k6';
 import { Trend } from 'k6/metrics';
-import { TREND_STATS, UNKNOWN, formatValue, summarize } from './summary.js';
+import { TREND_STATS, formatValue, summarize } from './summary.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const DURATION = __ENV.DURATION || '30s';
@@ -101,7 +101,8 @@ export default function () {
 function windowRows(data) {
   return WINDOWS.map((timeWindow) => {
     const metric = data.metrics[`overview_duration_${timeWindow.name}`];
-    const cell = (stat) => (metric ? formatValue(metric.values[stat], metric.contains) : UNKNOWN);
+    const values = metric && metric.values ? metric.values : {};
+    const cell = (stat) => formatValue(values[stat], metric && metric.contains);
     const source = timeWindow.rollup ? 'hourly rollups' : 'raw spans';
     return `| ${timeWindow.name} | ${source} | ${cell('med')} | ${cell('p(95)')} | ${cell('max')} |`;
   });
@@ -114,7 +115,6 @@ export function handleSummary(data) {
     description:
       `${REQUESTS_PER_SECOND} requests a second for ${DURATION}, rotating through the windows below.`,
     data,
-    options,
     resultsDir: RESULTS_DIR,
     extraLines: [
       '| Window | Read from | Median | p95 | Max |',

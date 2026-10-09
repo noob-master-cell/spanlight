@@ -90,6 +90,7 @@ You need Docker with the Compose plugin, [uv](https://docs.astral.sh/uv/) and, t
 
 ## Reading a failed run
 
+- **A script wrote no `.json` or `.md`.** When `handleSummary` throws, k6 prints its default summary and still exits 0, so its exit status does not show it. Look for a `handleSummary` or `summarize` error in the script's log. The workflow checks that every script wrote both files and fails the job, with an error naming the missing file, when one did not.
 - **Many `429` responses.** The read scripts use ten keys so no key gets near its limit of 20 requests a second. If you changed the rate or the number of keys, check that each key still stays below it.
 - **Dropped iterations.** k6 had no free virtual user, so it did not start requests at the target rate. The server was too slow to keep up, and the latency figures understate it.
 - **The check "the window has traces" fails.** The overview of a window came back empty. The seeded data covers all four windows, so for 7 and 30 days this is what missing rollups look like (the seeder stops when its backfill writes no rows): run `spanlight rollups backfill` for the project, or seed again. For 1 and 24 hours it means the data is older than the windows, or too few spans were seeded.

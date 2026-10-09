@@ -154,7 +154,9 @@ jobs:
           EOF
 
       # Every script runs even when an earlier one misses its thresholds, so one run records all
-      # three. The step, and with it the job, still ends red if any of them did.
+      # three. The step, and with it the job, still ends red if any of them did, or if a script
+      # did not write its results: when handleSummary throws, k6 prints its default summary and
+      # exits 0, so the exit status alone cannot tell.
       - name: Run the k6 scenarios
         run: |
           status=0
@@ -171,18 +173,35 @@ jobs:
               -v "$RESULTS_DIR:/results" \
               "$K6_IMAGE" run "/load/$script.js" || status=1
             echo "::endgroup::"
+            for extension in json md; do
+              if [ ! -s "$RESULTS_DIR/$script.$extension" ]; then
+                echo "::error::k6 $script wrote no $script.$extension; see the handleSummary error in its log"
+                status=1
+              fi
+            done
           done
           exit "$status"
 
+      # Appends what exists, then fails if anything expected is missing: a run without its tables
+      # must not look green.
       - name: Publish the results
         if: always()
         run: |
+          status=0
           for name in environment overview traces ingest; do
-            if [ -f "$RESULTS_DIR/$name.md" ]; then
+            if [ -s "$RESULTS_DIR/$name.md" ]; then
               cat "$RESULTS_DIR/$name.md" >> "$GITHUB_STEP_SUMMARY"
               echo >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::no $name.md in the results"
+              status=1
+            fi
+            if [ ! -s "$RESULTS_DIR/$name.json" ]; then
+              echo "::error::no $name.json in the results"
+              status=1
             fi
           done
+          exit "$status"
 
       - name: Upload the k6 summaries
         if: always()
@@ -190,7 +209,7 @@ jobs:
         with:
           name: load-results-${{ inputs.profile }}
           path: ${{ runner.temp }}/load-results/*.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90
 
       - name: Show the service logs

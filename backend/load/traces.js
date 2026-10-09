@@ -98,7 +98,6 @@ export function handleSummary(data) {
       `${REQUESTS_PER_SECOND} requests a second for ${DURATION}: the first page, and the first ` +
       'page filtered by model or to failed traces.',
     data,
-    options,
     resultsDir: RESULTS_DIR,
   });
 }
