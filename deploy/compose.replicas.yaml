@@ -1,0 +1,16 @@
+# Runs two api replicas behind the web proxy, to check that they share their rate limits.
+#   docker compose -f deploy/compose.yaml -f deploy/compose.replicas.yaml --env-file deploy/.env up -d --build
+# Both replicas draw from the same Postgres-backed token buckets, so a client that sends one
+# burst through the proxy is limited once, however its requests are spread between them.
+
+services:
+  api:
+    deploy:
+      replicas: 2
+
+  # Caddy resolves a single hostname once per connection and would keep sending a client's
+  # requests to the same replica. Naming both containers makes it balance between them.
+  # Container names are <project>-<service>-<index>; the project is "spanlight" (compose.yaml).
+  web:
+    environment:
+      API_UPSTREAM: spanlight-api-1:8000 spanlight-api-2:8000

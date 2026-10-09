@@ -1,0 +1,122 @@
+# Self-host Spanlight with one command:
+#   cp deploy/.env.example deploy/.env   # then fill in the secrets
+#   docker compose -f deploy/compose.yaml --env-file deploy/.env up -d --build
+# The dashboard is served on http://localhost:${WEB_PORT:-8080}.
+
+name: spanlight
+
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+    target: backend
+  image: spanlight:local
+  restart: unless-stopped
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://spanlight_app:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@postgres:5432/spanlight
+    APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+    SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+    METRICS_TOKEN: ${METRICS_TOKEN:-}
+    CREDENTIALS_KEYS: ${CREDENTIALS_KEYS:-}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    DEMO_MONTHLY_BUDGET_USD: ${DEMO_MONTHLY_BUDGET_USD:-1.00}
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-}
+    EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+    EMAIL_FROM: ${EMAIL_FROM:-}
+    RESEND_API_KEY: ${RESEND_API_KEY:-}
+    SMTP_HOST: ${SMTP_HOST:-}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_USERNAME: ${SMTP_USERNAME:-}
+    SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    EMAIL_CONSOLE_FILE: ${EMAIL_CONSOLE_FILE:-}
+    OAUTH_GITHUB_CLIENT_ID: ${OAUTH_GITHUB_CLIENT_ID:-}
+    OAUTH_GITHUB_CLIENT_SECRET: ${OAUTH_GITHUB_CLIENT_SECRET:-}
+    OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
+    OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
+    S3_ENDPOINT: ${S3_ENDPOINT:-}
+    S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+    S3_BUCKET: ${S3_BUCKET:-}
+    S3_REGION: ${S3_REGION:-}
+    S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+    S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+    S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-}
+    WORKER_REQUIRED: ${WORKER_REQUIRED:-}
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+    DEMO_ENABLED: ${DEMO_ENABLED:-}
+    IDEMPOTENCY_POOL_SIZE: ${IDEMPOTENCY_POOL_SIZE:-}
+    IDEMPOTENCY_POOL_TIMEOUT_SECONDS: ${IDEMPOTENCY_POOL_TIMEOUT_SECONDS:-}
+    RATE_LIMIT_POOL_SIZE: ${RATE_LIMIT_POOL_SIZE:-}
+    RATE_LIMIT_POOL_TIMEOUT_SECONDS: ${RATE_LIMIT_POOL_TIMEOUT_SECONDS:-}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    LOG_JSON: ${LOG_JSON:-true}
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: spanlight
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spanlight"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Migrations run as the database owner, then provision the non-superuser role
+  # the app connects as, so Postgres row-level security is actually enforced.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["sh", "-c", "spanlight migrate && spanlight ensure-app-role --role spanlight_app"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@postgres:5432/spanlight
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.jobs.worker"]
+    environment:
+      <<: *backend-env
+      # Serves the worker's /metrics (jobs, outbox, notifications, rollups) on the compose network
+      # only; the port is not published. Same METRICS_TOKEN as the api.
+      WORKER_METRICS_PORT: "9100"
+      # Nightly backups run only here. BACKUP_DATABASE_URL is a role that bypasses row-level
+      # security, so it stays out of the api, which faces the network.
+      BACKUPS_ENABLED: ${BACKUPS_ENABLED:-}
+      BACKUP_DATABASE_URL: ${BACKUP_DATABASE_URL:-}
+    healthcheck:
+      disable: true
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: api:8000
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

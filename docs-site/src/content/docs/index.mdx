@@ -1,0 +1,37 @@
+---
+title: Spanlight documentation
+description: Open-source observability for LLM applications. Send traces from your app and see prompts, completions, latency, tokens, cost and errors.
+template: splash
+hero:
+  tagline: Open-source observability for LLM applications. Every call, with its prompt, completion, latency, tokens, cost and errors, grouped into traces and sessions.
+  actions:
+    - text: Quickstart
+      link: /docs/quickstart/
+      icon: right-arrow
+    - text: Self-hosting
+      link: /docs/self-hosting/
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Send your first trace" icon="rocket">
+    Start the stack with one `docker compose up`, add three lines to your Python app, and watch the trace arrive. [Quickstart](/docs/quickstart/)
+  </Card>
+  <Card title="Python SDK" icon="seti:python">
+    `@observe`, spans and wrappers for the OpenAI and Anthropic clients. Spans are batched in the background and never break your app. [Python SDK](/docs/python-sdk/)
+  </Card>
+  <Card title="OpenTelemetry" icon="puzzle">
+    Point any OpenTelemetry GenAI exporter at the OTLP endpoint, in JSON or protobuf. [OTLP](/docs/otlp/)
+  </Card>
+  <Card title="Run it yourself" icon="setting">
+    One image, three roles and Postgres as the only datastore. Compose or Railway. [Self-hosting](/docs/self-hosting/) and [configuration](/docs/configuration/)
+  </Card>
+  <Card title="HTTP API" icon="open-book">
+    Every endpoint and schema, generated from the OpenAPI document. [API reference](/docs/api/)
+  </Card>
+  <Card title="Operate it" icon="warning">
+    Runbooks for deploying, rolling back, restoring, rotating secrets and scaling, and the [security](/docs/security/) documentation.
+  </Card>
+</CardGrid>

@@ -1,0 +1,30 @@
+"""What a task handler receives."""
+
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.config import Settings
+from app.jobs.outcome import JobOutcome
+from app.jobs.queue import ClaimedJob, extend_lease
+
+
+@dataclass(frozen=True)
+class TaskContext:
+    job: ClaimedJob
+    settings: Settings
+    session_factory: async_sessionmaker[AsyncSession]
+
+    async def heartbeat(self) -> None:
+        """Extend the lease; raises LeaseLostError if another worker took the job over.
+
+        Tasks call this before irreversible side effects (e.g. paid API calls).
+        """
+        async with self.session_factory() as db:
+            await extend_lease(db, self.job)
+
+
+# A handler returns the outcome it wants recorded; returning nothing means `JobOutcome.OK`.
+TaskHandler = Callable[[TaskContext, dict[str, Any]], Awaitable[JobOutcome | None]]

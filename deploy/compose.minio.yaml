@@ -1,0 +1,70 @@
+# Adds a local MinIO object store and points the api and worker at it. For local use and
+# trying things out only: the default credentials below are public. In production, point the
+# S3_* variables at a real S3-compatible bucket instead of using this file.
+#   docker compose -f deploy/compose.yaml -f deploy/compose.minio.yaml --env-file deploy/.env up -d --build
+# The upstream MinIO project no longer publishes community images, so the images are pgsty's
+# maintained builds of the same server and client (pinned to a release tag).
+# Override MINIO_ROOT_USER / MINIO_ROOT_PASSWORD in deploy/.env if the port is reachable by
+# anyone else.
+
+x-s3-env: &s3-env
+  S3_ENDPOINT: http://minio:9000
+  # Download links are signed for the address a browser on this machine reaches MinIO at.
+  S3_PUBLIC_ENDPOINT: http://localhost:${MINIO_API_PORT:-9000}
+  S3_BUCKET: ${S3_BUCKET:-spanlight}
+  S3_REGION: us-east-1
+  S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spanlight-minio}
+  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-spanlight-minio-secret}
+  S3_FORCE_PATH_STYLE: "true"
+
+services:
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spanlight-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-spanlight-minio-secret}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # One-shot: creates the bucket (a no-op if it already exists), then exits.
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spanlight-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-spanlight-minio-secret}
+      S3_BUCKET: ${S3_BUCKET:-spanlight}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+
+  api:
+    environment: *s3-env
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+  worker:
+    environment: *s3-env
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+volumes:
+  miniodata:

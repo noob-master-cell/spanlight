@@ -1,0 +1,67 @@
+import type { ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
+
+import { ResponsiveCopy, type Copy } from "./responsive-copy";
+
+interface FeatureTileProps {
+  overline: string;
+  title: string;
+  description: Copy;
+  illustration: ReactNode;
+  /** `ink` is the dark hero tile (Trace explorer); `surface` the white tiles. */
+  tone?: "surface" | "ink";
+  /** `split` puts copy and illustration side by side on wide screens (Private by design). */
+  layout?: "stacked" | "split";
+  className?: string;
+}
+
+/**
+ * Bento feature tile (Figma "Landing/Feature tile"): overline, title and description on top,
+ * the illustration pinned to the bottom. Illustrations are decorative markup, hidden from
+ * assistive tech; the description carries the meaning.
+ */
+export function FeatureTile({
+  overline,
+  title,
+  description,
+  illustration,
+  tone = "surface",
+  layout = "stacked",
+  className,
+}: FeatureTileProps) {
+  const ink = tone === "ink";
+  return (
+    <article
+      className={cn(
+        "flex flex-col gap-[22px] overflow-hidden rounded-card px-[22px] py-6 shadow-card md:gap-6 md:p-7",
+        ink
+          ? "bg-hero-card text-hero-card-foreground dark:border dark:border-border"
+          : "border border-border bg-surface",
+        layout === "split" && "xl:flex-row xl:items-center xl:gap-12",
+        className,
+      )}
+    >
+      <div
+        className={cn("flex flex-col gap-2.5", layout === "split" && "xl:w-[400px] xl:shrink-0")}
+      >
+        <p className={cn("text-overline uppercase", ink ? "text-lime" : "text-accent")}>
+          {overline}
+        </p>
+        <h3 className={cn("text-h2", ink ? "text-rail-foreground" : "text-foreground")}>{title}</h3>
+        <p className={cn("text-sm", ink ? "text-rail-muted-foreground" : "text-muted-foreground")}>
+          <ResponsiveCopy copy={description} />
+        </p>
+      </div>
+      <div
+        aria-hidden
+        className={cn(
+          "flex min-w-0 flex-1 flex-col justify-end",
+          layout === "split" && "xl:justify-center",
+        )}
+      >
+        {illustration}
+      </div>
+    </article>
+  );
+}

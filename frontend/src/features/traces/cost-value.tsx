@@ -1,0 +1,47 @@
+import { CircleDashed } from "lucide-react";
+
+import { UnknownValue } from "@/components/unknown-value";
+import { Tooltip } from "@/components/ui/tooltip";
+import { formatCost } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+export const NO_PRICE_REASON = "No price for this model";
+export const LOWER_BOUND_REASON = "Some spans have no price; total is a lower bound";
+
+interface CostValueProps {
+  cost: string | number | null;
+  /** Some contributing spans had no price, so a known total is only a lower bound. */
+  hasUnpriced?: boolean;
+  /** Tooltip shown when the whole cost is unknown. */
+  unknownReason?: string;
+  className?: string;
+}
+
+export function CostValue({
+  cost,
+  hasUnpriced = false,
+  unknownReason = NO_PRICE_REASON,
+  className,
+}: CostValueProps) {
+  const formatted = formatCost(cost);
+  if (formatted === null) {
+    return <UnknownValue reason={unknownReason} className={className} />;
+  }
+  return (
+    <span className={cn("inline-flex items-center gap-1 tabular", className)}>
+      {formatted}
+      {hasUnpriced ? (
+        <Tooltip content={LOWER_BOUND_REASON}>
+          <span
+            role="img"
+            tabIndex={0}
+            aria-label={LOWER_BOUND_REASON}
+            className="inline-flex cursor-help rounded-sm text-warning"
+          >
+            <CircleDashed aria-hidden className="size-3" />
+          </span>
+        </Tooltip>
+      ) : null}
+    </span>
+  );
+}

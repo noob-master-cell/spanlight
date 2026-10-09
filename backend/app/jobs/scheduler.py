@@ -1,0 +1,76 @@
+"""Periodic job scheduling via dedupe keys.
+
+Each period gets a deterministic key (e.g. `retention:2026-10-07T13:00`), so any
+number of workers can call `schedule_periodic` and each period's job is
+enqueued exactly once.
+"""
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import Settings
+from app.jobs.queue import enqueue
+
+
+@dataclass(frozen=True)
+class PeriodicJob:
+    kind: str
+    every: timedelta
+    max_attempts: int = 5
+    # How long after its period starts the job becomes runnable (zero: at once).
+    run_after_offset: timedelta = timedelta(0)
+
+
+RETENTION = PeriodicJob("retention", timedelta(hours=1))
+CLEANUP_SESSIONS = PeriodicJob("cleanup_sessions", timedelta(hours=1))
+# Sends every due notification; the outbox does its own per-row retries.
+DELIVER_NOTIFICATIONS = PeriodicJob("deliver_notifications", timedelta(seconds=30))
+# Rebuilds the last 48 hours of rollups; a run that fails is simply replaced by the next one.
+ROLLUP_HOURLY = PeriodicJob("rollup_hourly", timedelta(minutes=5))
+# A single attempt: retrying would spend real money on a failed run.
+DEMO_TRAFFIC = PeriodicJob("demo_traffic", timedelta(minutes=30), max_attempts=1)
+# One per UTC day, runnable from 03:00 UTC. A worker that starts later in the day still enqueues
+# that day's job, which then runs at once. Always scheduled: with backups off it ends `done` /
+# `skipped_not_configured`, which keeps the skip visible in the job table.
+BACKUP_DATABASE = PeriodicJob(
+    "backup_database", timedelta(days=1), max_attempts=3, run_after_offset=timedelta(hours=3)
+)
+
+
+def period_start(job: PeriodicJob, now: datetime) -> datetime:
+    seconds = int(job.every.total_seconds())
+    return datetime.fromtimestamp(int(now.timestamp()) // seconds * seconds, tz=now.tzinfo)
+
+
+def period_key(job: PeriodicJob, now: datetime) -> str:
+    started = period_start(job, now)
+    # Minute precision would give a job that runs more often than once a minute one key per
+    # minute. Longer periods keep the minute format, so no existing key changes on deploy.
+    time_format = "%Y-%m-%dT%H:%M:%S" if job.every < timedelta(minutes=1) else "%Y-%m-%dT%H:%M"
+    return f"{job.kind}:{started.strftime(time_format)}"
+
+
+def periodic_jobs(settings: Settings) -> list[PeriodicJob]:
+    jobs = [RETENTION, CLEANUP_SESSIONS, DELIVER_NOTIFICATIONS, ROLLUP_HOURLY, BACKUP_DATABASE]
+    if settings.is_demo_enabled:
+        jobs.append(DEMO_TRAFFIC)
+    return jobs
+
+
+async def schedule_periodic(db: AsyncSession, settings: Settings, now: datetime) -> list[str]:
+    """Enqueue this period's jobs if not already queued. Returns new job kinds. Commits."""
+    created = []
+    for job in periodic_jobs(settings):
+        run_after = period_start(job, now) + job.run_after_offset if job.run_after_offset else None
+        if await enqueue(
+            db,
+            job.kind,
+            run_after=run_after,
+            dedupe_key=period_key(job, now),
+            max_attempts=job.max_attempts,
+        ):
+            created.append(job.kind)
+    await db.commit()
+    return created

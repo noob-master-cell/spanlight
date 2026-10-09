@@ -1,0 +1,18 @@
+/* Brand accent: the dashboard's violet, with enough contrast for text in both themes. */
+:root {
+  --sl-color-accent-low: #f1eaff;
+  --sl-color-accent: #7c3aed;
+  --sl-color-accent-high: #5b21b6;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #2a2340;
+  --sl-color-accent: #7c3aed;
+  --sl-color-accent-high: #c4b5fd;
+}
+
+/* Wide reference tables (settings, API schemas) scroll inside the content column, not the page. */
+.sl-markdown-content table {
+  display: block;
+  overflow-x: auto;
+}

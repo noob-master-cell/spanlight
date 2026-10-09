@@ -1,0 +1,229 @@
+name: Release
+
+# Two independent release trains, each started only by its own tag pattern:
+#   v1.2.3             -> server images on GHCR + a GitHub Release (job: server)
+#   sdk-python-v1.2.3  -> Python SDK on PyPI                       (job: sdk-python)
+# The job-level `if:` guards below are what keep the trains apart; scripts/check-release-workflow.py
+# pins them, so edit both together.
+# Every action is pinned to a commit SHA, not a tag, because these jobs can publish images and
+# packages: a moved tag would run new code with those rights. The `# vX.Y.Z` comment names the
+# release; the same script checks both. Dependabot raises the SHA and the comment together.
+on:
+  push:
+    tags:
+      - "v*"
+      - "sdk-python-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write # create the GitHub Release and upload its assets
+      packages: write # push images to GHCR
+      id-token: write # cosign keyless signing (OIDC identity of this workflow)
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false # no step pushes, so keep the token out of .git/config
+
+      - name: Resolve version and registry
+        id: meta
+        run: |
+          if ! [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '${GITHUB_REF_NAME}' is not v<semver>"
+            exit 1
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          {
+            # GHCR repository names must be lowercase; the owner login may not be.
+            echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+            echo "version=${version}"
+            # A pre-release (1.2.3-rc.1) must not move `latest`.
+            echo "prerelease=$([[ "${version}" == *-* ]] && echo true || echo false)"
+          } >> "${GITHUB_OUTPUT}"
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Both images are built into the local Docker daemon (load) so they can be scanned
+      # before anything reaches GHCR.
+      - name: Build backend image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: deploy/Dockerfile
+          target: backend
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.registry }}/spanlight:${{ steps.meta.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=release-backend
+          cache-to: type=gha,mode=max,scope=release-backend
+
+      - name: Build web image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: deploy/Dockerfile
+          target: web
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.registry }}/spanlight-web:${{ steps.meta.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=release-web
+          cache-to: type=gha,mode=max,scope=release-web
+
+      # Scan first, push second: a failing scan leaves nothing in GHCR to take back. Trivy runs
+      # from its container pinned by digest (its GitHub Action publishes no major tag to pin to).
+      # --ignore-unfixed keeps base-image CVEs with no available fix from blocking every release.
+      - name: Scan images with Trivy (fail on CRITICAL/HIGH)
+        env:
+          REGISTRY: ${{ steps.meta.outputs.registry }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          trivy="aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
+          for image in spanlight spanlight-web; do
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "${HOME}/.cache/trivy:/root/.cache/" \
+              "${trivy}" image --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed \
+              "${REGISTRY}/${image}:${VERSION}"
+          done
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Pushes the exact images that were scanned, under their version tag only, then records
+      # their digests: signing and the SBOMs refer to the digest, not to a tag that could later
+      # move. The moving `latest` tag waits until the signatures exist (see "Move latest").
+      - name: Push images
+        id: push
+        env:
+          REGISTRY: ${{ steps.meta.outputs.registry }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          for pair in backend:spanlight web:spanlight-web; do
+            output="${pair%%:*}"
+            ref="${REGISTRY}/${pair#*:}"
+            docker push "${ref}:${VERSION}"
+            digest_ref="$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${ref}:${VERSION}" | grep -F "${ref}@" | head -n 1)"
+            if [[ -z "${digest_ref}" ]]; then
+              echo "::error::No digest recorded for ${ref}:${VERSION} after push"
+              exit 1
+            fi
+            echo "${output}=${digest_ref}" >> "${GITHUB_OUTPUT}"
+          done
+
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
+
+      - name: Sign images (keyless)
+        env:
+          BACKEND: ${{ steps.push.outputs.backend }}
+          WEB: ${{ steps.push.outputs.web }}
+        run: cosign sign --yes "${BACKEND}" "${WEB}"
+
+      # Same image, same digest, so `latest` carries the signature made above. A failed scan,
+      # push or signature never gets this far, and a pre-release (1.2.3-rc.1) never moves it.
+      - name: Move latest (stable releases only)
+        if: steps.meta.outputs.prerelease == 'false'
+        env:
+          REGISTRY: ${{ steps.meta.outputs.registry }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          for name in spanlight spanlight-web; do
+            docker tag "${REGISTRY}/${name}:${VERSION}" "${REGISTRY}/${name}:latest"
+            docker push "${REGISTRY}/${name}:latest"
+          done
+
+      - name: SBOM for the backend image
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ steps.push.outputs.backend }}
+          format: cyclonedx-json
+          output-file: sbom-spanlight.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: SBOM for the web image
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ steps.push.outputs.web }}
+          format: cyclonedx-json
+          output-file: sbom-spanlight-web.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      # Each SBOM gets a Sigstore bundle so downstream users can run `cosign verify-blob`.
+      - name: Sign SBOMs (keyless)
+        run: |
+          for sbom in sbom-*.cdx.json; do
+            cosign sign-blob --yes --bundle "${sbom}.sigstore.json" "${sbom}"
+          done
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          generate_release_notes: true
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+          files: |
+            sbom-*.cdx.json
+            sbom-*.cdx.json.sigstore.json
+
+  sdk-python:
+    if: startsWith(github.ref, 'refs/tags/sdk-python-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The `pypi` environment is the one registered with PyPI's trusted publisher for `spanlight`;
+    # no API token secret exists anywhere.
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # PyPI trusted publishing (OIDC)
+    defaults:
+      run:
+        working-directory: sdks/python
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false # no step pushes, so keep the token out of .git/config
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+
+      # The version lives in pyproject.toml and again in src/spanlight/_version.py (sent in the
+      # User-Agent header). Refuse a tag that disagrees with either, so the wrong number can
+      # never reach PyPI (uploads there are permanent).
+      - name: Check the tag matches pyproject.toml and _version.py
+        run: |
+          version="$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          module_version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/spanlight/_version.py)"
+          if [[ "${GITHUB_REF_NAME}" != "sdk-python-v${version}" ]]; then
+            echo "::error::Tag '${GITHUB_REF_NAME}' does not match pyproject.toml version '${version}'"
+            exit 1
+          fi
+          if [[ "${module_version}" != "${version}" ]]; then
+            echo "::error::src/spanlight/_version.py says '${module_version}' but pyproject.toml says '${version}'"
+            exit 1
+          fi
+
+      # The SDK suite, as CI runs it, on the tagged commit: a PyPI upload cannot be taken back, so
+      # run it before building anything.
+      - run: uv sync --frozen --all-extras
+      - run: uv run pytest -q
+
+      - run: uv build
+
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: sdks/python/dist/

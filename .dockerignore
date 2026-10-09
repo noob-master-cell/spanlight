@@ -1,0 +1,26 @@
+.git
+.github
+.claude
+.local
+.env
+**/.env
+**/.env.*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+sdks
+# Only the documents the docs site publishes (docs-site/scripts/sync-docs.mjs) enter the build.
+docs/*
+!docs/runbooks
+!docs/security
+!docs/deploy
+!docs/api-deviations.md
+docs-site/dist
+docs-site/.build
+docs-site/.astro

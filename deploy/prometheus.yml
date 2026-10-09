@@ -1,0 +1,59 @@
+# Example Prometheus configuration for scraping Spanlight.
+#
+# /metrics is served by the api on api:8000 and by the worker on worker:9100. The web proxy does
+# not expose either. Each answers 404 until METRICS_TOKEN is set, and 401 without a matching
+# bearer token.
+#
+# Prometheus does not expand environment variables in its configuration, so the token is read
+# from a file. Create that file from the same METRICS_TOKEN the api runs with (Prometheus strips
+# surrounding whitespace, so a trailing newline is fine):
+#
+#   mkdir -p deploy/prometheus
+#   printf '%s' "$METRICS_TOKEN" > deploy/prometheus/metrics_token
+#   chmod 644 deploy/prometheus/metrics_token
+#
+# The prom/prometheus image runs as the user "nobody" (65534), and a bind-mounted file keeps the
+# host's owner, so mode 600 makes the token unreadable on Linux. Either use 644 as above, or keep
+# 600 and run `sudo chown 65534 deploy/prometheus/metrics_token`.
+#
+# The api and worker ports are not published to the host, so run Prometheus on the Compose network and mount
+# this file and the token, for example:
+#
+#   docker run -d --name spanlight-prometheus --network spanlight_default -p 9090:9090 \
+#     -v "$PWD/deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+#     -v "$PWD/deploy/prometheus/metrics_token:/etc/prometheus/metrics_token:ro" \
+#     prom/prometheus
+#
+# Then import deploy/grafana/spanlight-dashboard.json into Grafana and pick this Prometheus as
+# the data source. Outside Compose, replace the target with wherever the api is reachable.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: spanlight-api
+    metrics_path: /metrics
+    scheme: http
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token
+    static_configs:
+      - targets: ["api:8000"]
+
+  # The worker records the job, outbox, notification and rollup metrics and serves them on
+  # WORKER_METRICS_PORT (9100 in compose.yaml) with the same bearer token. Without that variable
+  # the worker has no endpoint and this target stays down.
+  # This static target suits one worker. With more (`--scale worker=2`), Docker's DNS answers
+  # `worker` with a different replica on each scrape under the same `instance` label, so counters
+  # jump and `increase()` and the job alerts go wrong. Then replace static_configs with
+  #   dns_sd_configs: [{names: ["worker"], type: A, port: 9100}]
+  # which gives each replica a target of its own.
+  - job_name: spanlight-worker
+    metrics_path: /metrics
+    scheme: http
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token
+    static_configs:
+      - targets: ["worker:9100"]

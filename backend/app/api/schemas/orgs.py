@@ -1,0 +1,127 @@
+"""Organizations, members, invites and the audit log."""
+
+import uuid
+from datetime import datetime
+from typing import Annotated, Any
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
+
+from app.api.schemas.common import ApiModel, Confirmation, Name, UserOut
+from app.db.models import MembershipRole
+
+
+class OrgOut(ApiModel):
+    id: uuid.UUID
+    name: str
+    slug: str
+    is_demo: bool
+    # Whether members must have two-factor authentication to use the org.
+    require_2fa: bool
+
+
+class OrgWithRoleOut(OrgOut):
+    role: MembershipRole
+
+
+class OrgCreateIn(BaseModel):
+    name: Name
+
+
+class OrgUpdateIn(BaseModel):
+    """A change to the organization: any of its fields, and at least one.
+
+    A field that is left out is left alone; `null` is not a way to say that, so it is refused.
+    Strict about unknown fields, so a client that sends one this route does not handle is told
+    instead of being answered 200 with nothing changed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name | None = None
+    require_2fa: bool | None = None
+
+    @field_validator("name", "require_2fa")
+    @classmethod
+    def _reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("may be left out but not null")
+        return value
+
+    @model_validator(mode="after")
+    def _require_a_change(self) -> "OrgUpdateIn":
+        if not self.model_fields_set:
+            raise ValueError("send at least one of: name, require_2fa")
+        return self
+
+
+class OrgDeleteIn(BaseModel):
+    # The org's slug, typed out as it is shown. The route compares it; see `Confirmation`.
+    confirm: Confirmation
+
+
+class MemberOut(BaseModel):
+    user: UserOut
+    role: MembershipRole
+    created_at: datetime
+
+
+class MemberUpdateIn(BaseModel):
+    role: MembershipRole
+
+
+class InviteCreateIn(BaseModel):
+    role: MembershipRole
+    # Where to mail the link. Without it, the caller shares the returned `url` by hand.
+    email: EmailStr | None = None
+
+
+class InviteCreatedOut(BaseModel):
+    id: uuid.UUID
+    role: MembershipRole
+    email: str | None
+    url: str
+    expires_at: datetime
+
+
+class InviteOut(ApiModel):
+    id: uuid.UUID
+    role: MembershipRole
+    email: str | None
+    created_at: datetime
+    expires_at: datetime
+
+
+class InviteAcceptIn(BaseModel):
+    token: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+
+class InviteOrgOut(ApiModel):
+    id: uuid.UUID
+    name: str
+    slug: str
+
+
+class InvitePreviewOut(BaseModel):
+    """What an invite grants, shown to the signed-in invitee before they accept."""
+
+    org: InviteOrgOut
+    role: MembershipRole
+    expires_at: datetime
+
+
+class AuditEventOut(BaseModel):
+    id: uuid.UUID
+    action: str
+    actor: UserOut | None
+    target_type: str
+    target_id: str
+    metadata: dict[str, Any]
+    ip: str | None
+    created_at: datetime

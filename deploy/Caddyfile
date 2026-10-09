@@ -1,0 +1,79 @@
+{
+	admin off
+	auto_https off
+	servers {
+		# Whose client-IP header to believe. The default trusts no one, so a client
+		# cannot pick its own address. Behind a proxy that always sets X-Real-IP
+		# (Railway's edge does), set TRUSTED_PROXIES to that proxy's ranges.
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+		client_ip_headers X-Real-IP
+	}
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Three Content-Security-Policy variants; every response gets exactly one of them.
+	# FastAPI's Swagger UI loads its bundle from jsDelivr and boots with an inline script, so
+	# /api/docs gets its own policy.
+	@apiDocs path /api/docs
+	header @apiDocs Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	# The documentation site under /docs/ is static, with a few inline scripts (theme switch, copy
+	# buttons, search). Its policy is the strict one plus those scripts by SHA-256 hash and
+	# 'wasm-unsafe-eval' for the search index. The snippet is generated from the built pages
+	# (docs-site/scripts/csp.mjs) when the image is built, so the hashes cannot go stale.
+	@docsSite path /docs /docs/*
+	import /etc/caddy/docs-csp.caddy
+	# Everything else, the dashboard included, gets the strict policy.
+	@notApiDocs not path /api/docs /docs /docs/*
+	header @notApiDocs Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+	# /metrics stays internal: scrape it on the api service directly (api:8000/metrics).
+	@backend path /api/* /v1/* /health/*
+	handle @backend {
+		reverse_proxy {$API_UPSTREAM:api:8000} {
+			# The API's rate limits and session records key on this address.
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+
+	# Hashed build assets never change, so they cache forever. A missing one is a 404, never
+	# index.html: a stale tab requesting a chunk from an older deploy must not cache HTML as JS.
+	handle /assets/* {
+		root * /srv
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# The documentation site is built into /srv/docs. Hashed assets cache forever; pages and the
+	# search index revalidate. A directory without its trailing slash redirects to it.
+	handle /docs/_astro/* {
+		root * /srv
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+	handle @docsSite {
+		root * /srv
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	# Everything else is the SPA. index.html must revalidate so new deploys reach open tabs.
+	handle {
+		root * /srv
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,178 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Only a superseded pull request run is worth cancelling; every push to main keeps its result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spanlight_test
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:55432/spanlight_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run mypy app
+      - run: uv run pytest -q
+
+  sdk-python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/python
+    strategy:
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-extras --python ${{ matrix.python }}
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run mypy src
+      - run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  # The documentation site (served at /docs/ by the web image). The build copies the runbooks,
+  # security pages, changelog and API snapshot into the site, renders the API reference, fails on
+  # any broken internal link or heading anchor, and checks that the pages load nothing from another
+  # origin (the Content-Security-Policy of /docs/ depends on it). The configuration table is
+  # generated from the application's settings, so a setting without a docs entry fails here.
+  docs-site:
+    runs-on: ubuntu-latest
+    env:
+      ASTRO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+      - run: npm ci
+        working-directory: docs-site
+      - run: npm run build
+        working-directory: docs-site
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: uv run python scripts/gen_config_table.py --check
+        working-directory: backend
+
+  # The release workflow cannot be run before a tag, so its tag routing, permissions and publish
+  # order are checked on every change instead. The same job checks that the community and
+  # security files exist and that their YAML parses.
+  workflows:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --no-project --with pyyaml python scripts/check-release-workflow.py
+      - run: uv run --no-project --with pyyaml bash scripts/check-repo-files.sh
+      - run: scripts/check-links.sh ./*.md backend/README.md frontend/README.md sdks/python/README.md docs/api-deviations.md docs/decisions/*.md docs/deploy/railway.md
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          target: backend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          target: web
+          push: false
+          cache-from: type=gha
+
+  # Starts the self-host stack from deploy/compose.yaml on empty volumes and drives it end to
+  # end: security headers, signup, API key, a span from the Python SDK, then teardown. Its env
+  # file holds random secrets generated for this run only.
+  compose-smoke:
+    runs-on: ubuntu-latest
+    needs: docker
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - name: Write a throwaway env file
+        run: |
+          env_file="$RUNNER_TEMP/compose-smoke.env"
+          add_secret() {
+            value=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+            echo "::add-mask::$value"
+            echo "$1=$value" >> "$env_file"
+          }
+          : > "$env_file"
+          add_secret POSTGRES_PASSWORD
+          add_secret APP_DB_PASSWORD
+          add_secret SECRET_KEY
+          add_secret METRICS_TOKEN
+          echo "APP_BASE_URL=http://localhost:8080" >> "$env_file"
+          echo "WEB_PORT=8080" >> "$env_file"
+          echo "SMOKE_ENV_FILE=$env_file" >> "$GITHUB_ENV"
+      - name: Run the compose smoke test
+        run: deploy/smoke.sh

@@ -1,0 +1,86 @@
+# Weekly dependency updates. Minor and patch updates are batched into one pull request per
+# ecosystem; a major update gets its own pull request so it can be reviewed on its own.
+#
+# backend/ and sdks/python/ lock with uv.lock, which Dependabot's `pip` ecosystem does not
+# update, so they use the `uv` ecosystem. `docker` tracks the base images in deploy/Dockerfile.
+version: 2
+
+updates:
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      backend-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: uv
+    directory: /sdks/python
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      sdk-python-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      frontend-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /docs-site
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      docs-site-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      docker-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    # CI and the lockfiles are tied to these runtimes, so an image must not move to a version
+    # they never ran on. Raise the runtime, CI and image together, by hand.
+    ignore:
+      - dependency-name: python # 3.13, as in backend/.python-version
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: node # 24, as in the CI frontend job
+        update-types: ["version-update:semver-major"]

@@ -1,0 +1,57 @@
+# Secrets and local state
+.env
+**/.env
+.env.*
+!**/.env.example
+.local/
+deploy/prometheus/metrics_token
+# Editor and agent tooling (local only)
+.claude/
+.superpowers/
+
+# Internal planning and progress docs. The public repository keeps only what visitors
+# use: README, contributing and security policies, ADRs, the API reference, deploy guide.
+HANDOFF.md
+/CLAUDE.md
+docs/ROADMAP.md
+docs/architecture.md
+docs/plans/
+docs/specs/
+docs/design/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Docs site: dependencies, build output, and the pages generated from other documents by
+# docs-site/scripts/sync-docs.mjs (the originals live in docs/, SECURITY.md, CHANGELOG.md and
+# backend/openapi.json)
+docs-site/node_modules/
+docs-site/dist/
+docs-site/.astro/
+docs-site/.build/
+docs-site/public/openapi.json
+docs-site/src/content/docs/api/
+docs-site/src/content/docs/deploy/
+docs-site/src/content/docs/runbooks/
+docs-site/src/content/docs/security/
+docs-site/src/content/docs/changelog.md
+
+# archify skill output (generated diagrams; keep the ones worth it under docs/design/diagrams)
+.archify/

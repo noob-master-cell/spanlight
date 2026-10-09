@@ -1,0 +1,477 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+/*
+ * Design tokens: "Daylight Bento" (Figma file 7vduAdBR2dAcC9rKHXZPnq, collection "Color").
+ *
+ * Components reference semantic tokens (bg-surface, text-muted-foreground, bg-ink, ...) and
+ * never raw hex values. Light values live on :root, dark values on .dark.
+ *
+ * Contrast (WCAG 2.1 AA, checked for both themes):
+ * - foreground / muted-foreground / subtle-foreground ≥ 4.5:1 on background, surface and
+ *   surface-muted. subtle-foreground is NOT for text on the canvas (4.3:1); use muted there.
+ * - accent ≥ 4.5:1 as text on surface and background; white on accent 5.7:1.
+ * - danger-text (not danger) for text on danger-subtle; danger is for fills, icons and borders.
+ * - lime is a background with lime-foreground text; never lime text on a light surface.
+ * - rail-* text tokens are for the always-dark rail, hero cards, tooltips and code blocks.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Surfaces */
+  --canvas: #ecebe6;
+  --background: #fbfaf8;
+  --surface: #ffffff;
+  --surface-muted: #f5f4f0;
+  --surface-hover: #efeee9;
+  --surface-selected: #f3efff;
+  --overlay: rgb(22 21 29 / 0.35);
+
+  /* Text */
+  --foreground: #16151d;
+  --muted-foreground: #5f5d6b;
+  --subtle-foreground: #6e6c7a;
+
+  /* Lines */
+  --border: #e8e6e1;
+  --border-strong: #d6d3cb;
+  --input: #d6d3cb;
+
+  /* Brand: ink (primary actions), lime (highlight), violet (accent), fuchsia */
+  --ink: #16151d;
+  --ink-foreground: #ffffff;
+  --lime: #d4ff3a;
+  --lime-foreground: #16151d;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-foreground: #ffffff;
+  --accent-subtle: #f1eaff;
+  --accent-subtle-foreground: #5b21b6;
+  --fuchsia: #d946ef;
+
+  /* Accent card gradient (Tokens card, success card). White text ≥ 4.5:1 on both stops. */
+  --accent-card-from: #7c3aed;
+  --accent-card-to: #c026d3;
+  --accent-card-foreground: #ffffff;
+
+  /* Dark rail and dark "hero" cards. The rail-* text tokens work on both. */
+  --rail: #16151d;
+  --rail-foreground: #ffffff;
+  --rail-muted-foreground: rgb(255 255 255 / 0.62);
+  --rail-subtle-foreground: rgb(255 255 255 / 0.5);
+  --rail-tile: rgb(255 255 255 / 0.07);
+  --rail-tile-hover: rgb(255 255 255 / 0.1);
+  --rail-danger: #fda4af;
+  --hero-card: #16151d;
+  --hero-card-foreground: #ffffff;
+
+  /* Default avatar gradient (rail user tile) */
+  --avatar-from: #fcba73;
+  --avatar-to: #f54073;
+
+  /* Status */
+  --success: #047857;
+  --success-subtle: #e7f7ef;
+  --warning: #a15c00;
+  --warning-subtle: #fdf3dc;
+  --danger: #e11d48;
+  --danger-hover: #be123c;
+  --danger-text: #be123c;
+  --danger-subtle: #fff0f3;
+  --danger-foreground: #ffffff;
+
+  /* Span kinds (waterfall bars, kind icons) */
+  --kind-llm: #7c3aed;
+  --kind-tool: #ea580c;
+  --kind-retrieval: #0d9488;
+  --kind-chain: #2563eb;
+  --kind-http: #57534e;
+  --kind-other: #78716c;
+
+  /* Chart series: calls, errors, latency, cost */
+  --chart-1: #7c3aed;
+  --chart-2: #f43f5e;
+  --chart-3: #0d9488;
+  --chart-4: #f59e0b;
+  --chart-grid: #eeece7;
+
+  /* Hero mesh gradient */
+  --mesh-1: #e9d5ff;
+  --mesh-2: #fde68a;
+  --mesh-3: #bae6fd;
+  --mesh-opacity: 0.85;
+
+  /* Code: JSON strings on light surfaces, and the always-dark code block */
+  --syntax-string: #0f766e;
+  --code-keyword: #d946ef;
+  --code-string: #d4ff3a;
+  --code-comment: rgb(255 255 255 / 0.5);
+
+  --ring: #7c3aed;
+
+  /* Elevation */
+  --elevation-xs: 0 1px 2px rgb(17 17 26 / 0.04);
+  --elevation-card: 0 1px 2px rgb(17 17 26 / 0.04), 0 12px 32px -12px rgb(17 17 26 / 0.1);
+  --elevation-lg: 0 2px 6px rgb(17 17 26 / 0.05), 0 24px 48px -16px rgb(17 17 26 / 0.22);
+}
+
+.dark {
+  --canvas: #07070a;
+  --background: #111016;
+  --surface: #18171f;
+  --surface-muted: #1f1e27;
+  --surface-hover: #26252f;
+  --surface-selected: #2a2340;
+  --overlay: rgb(0 0 0 / 0.6);
+
+  --foreground: #f4f3f7;
+  --muted-foreground: #a8a6b5;
+  --subtle-foreground: #9896a6;
+
+  --border: #2a2933;
+  --border-strong: #3a3944;
+  --input: #3a3944;
+
+  /* Primary actions turn lime in the dark theme. */
+  --ink: #d4ff3a;
+  --ink-foreground: #16151d;
+  --lime: #d4ff3a;
+  --lime-foreground: #16151d;
+  --accent: #a78bfa;
+  --accent-hover: #c4b5fd;
+  --accent-foreground: #16151d;
+  --accent-subtle: #2a2340;
+  --accent-subtle-foreground: #c4b5fd;
+  --fuchsia: #e879f9;
+
+  --accent-card-from: #7c3aed;
+  --accent-card-to: #c026d3;
+  --accent-card-foreground: #ffffff;
+
+  --rail: #050507;
+  --rail-foreground: #ffffff;
+  --rail-muted-foreground: rgb(255 255 255 / 0.62);
+  --rail-subtle-foreground: rgb(255 255 255 / 0.5);
+  --rail-tile: rgb(255 255 255 / 0.07);
+  --rail-tile-hover: rgb(255 255 255 / 0.1);
+  --rail-danger: #fda4af;
+  /* A black card on a black panel disappears: hero cards lift to a violet-tinted surface. */
+  --hero-card: #1d1b27;
+  --hero-card-foreground: #ffffff;
+
+  --success: #4ade80;
+  --success-subtle: #10261b;
+  --warning: #fbbf24;
+  --warning-subtle: #2a2210;
+  --danger: #fb7185;
+  --danger-hover: #fda4af;
+  --danger-text: #fda4af;
+  --danger-subtle: #2c1418;
+  --danger-foreground: #16151d;
+
+  --kind-llm: #a78bfa;
+  --kind-tool: #fb923c;
+  --kind-retrieval: #2dd4bf;
+  --kind-chain: #60a5fa;
+  --kind-http: #a8a29e;
+  --kind-other: #9896a6;
+
+  --chart-1: #a78bfa;
+  --chart-2: #fb7185;
+  --chart-3: #2dd4bf;
+  --chart-4: #fbbf24;
+  --chart-grid: #26252f;
+
+  --mesh-1: #4c1d95;
+  --mesh-2: #713f12;
+  --mesh-3: #0c4a6e;
+  --mesh-opacity: 0.35;
+
+  --syntax-string: #5eead4;
+
+  --ring: #a78bfa;
+
+  /* Dark surfaces rely on borders, not shadows. */
+  --elevation-xs: none;
+  --elevation-card: none;
+  --elevation-lg: 0 24px 48px -12px rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-overlay: var(--overlay);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-lime: var(--lime);
+  --color-lime-foreground: var(--lime-foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-subtle-foreground: var(--accent-subtle-foreground);
+  --color-fuchsia: var(--fuchsia);
+  --color-accent-card-from: var(--accent-card-from);
+  --color-accent-card-to: var(--accent-card-to);
+  --color-accent-card-foreground: var(--accent-card-foreground);
+  --color-rail: var(--rail);
+  --color-rail-foreground: var(--rail-foreground);
+  --color-rail-muted-foreground: var(--rail-muted-foreground);
+  --color-rail-subtle-foreground: var(--rail-subtle-foreground);
+  --color-rail-tile: var(--rail-tile);
+  --color-rail-tile-hover: var(--rail-tile-hover);
+  --color-rail-danger: var(--rail-danger);
+  --color-hero-card: var(--hero-card);
+  --color-hero-card-foreground: var(--hero-card-foreground);
+  --color-avatar-from: var(--avatar-from);
+  --color-avatar-to: var(--avatar-to);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-text: var(--danger-text);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-kind-llm: var(--kind-llm);
+  --color-kind-tool: var(--kind-tool);
+  --color-kind-retrieval: var(--kind-retrieval);
+  --color-kind-chain: var(--kind-chain);
+  --color-kind-http: var(--kind-http);
+  --color-kind-other: var(--kind-other);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-grid: var(--chart-grid);
+  --color-mesh-1: var(--mesh-1);
+  --color-mesh-2: var(--mesh-2);
+  --color-mesh-3: var(--mesh-3);
+  --color-syntax-string: var(--syntax-string);
+  --color-code-keyword: var(--code-keyword);
+  --color-code-string: var(--code-string);
+  --color-code-comment: var(--code-comment);
+  --color-ring: var(--ring);
+
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /*
+   * Type scale (Figma text styles). Sizes carry their own line height, tracking and weight,
+   * so `text-display` alone renders the "Display/Page" style.
+   */
+  --text-2xs: 0.6875rem; /* 11 */
+  --text-2xs--line-height: 1.3;
+  --text-overline: 0.6875rem; /* Caption/Overline: pair with `uppercase` */
+  --text-overline--line-height: 1.3;
+  --text-overline--letter-spacing: 0.08em;
+  --text-overline--font-weight: 600;
+  --text-xs: 0.75rem; /* 12, Caption */
+  --text-xs--line-height: 1.4;
+  --text-label: 0.8125rem; /* 13, form labels, mono cells */
+  --text-label--line-height: 1.5;
+  --text-sm: 0.875rem; /* 14, Body (the default) */
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem; /* 16 */
+  --text-base--line-height: 1.5;
+  --text-card: 1rem; /* Heading/Card */
+  --text-card--line-height: 1.4;
+  --text-card--letter-spacing: -0.01em;
+  --text-card--font-weight: 700;
+  --text-lg: 1.0625rem; /* 17, Body/Large */
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.25rem; /* 20 */
+  --text-xl--line-height: 1.4;
+  --text-h2: 1.375rem; /* 22, Heading/H2 */
+  --text-h2--line-height: 1.25;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 700;
+  --text-h1: 1.875rem; /* 30, Heading/H1 */
+  --text-h1--line-height: 1.2;
+  --text-h1--letter-spacing: -0.03em;
+  --text-h1--font-weight: 700;
+  --text-metric: 2.25rem; /* 36, Metric/L */
+  --text-metric--line-height: 1.1;
+  --text-metric--letter-spacing: -0.03em;
+  --text-metric--font-weight: 800;
+  --text-display: 2.75rem; /* 44, Display/Page */
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.04em;
+  --text-display--font-weight: 800;
+  --text-serif: 3.125rem; /* 50, Accent/Serif Page */
+  --text-serif--line-height: 1;
+  --text-display-hero: 3.5rem; /* 56, Display/Hero */
+  --text-display-hero--line-height: 1.04;
+  --text-display-hero--letter-spacing: -0.04em;
+  --text-display-hero--font-weight: 800;
+  --text-metric-xl: 3.75rem; /* 60, Metric/XL */
+  --text-metric-xl--line-height: 1;
+  --text-metric-xl--letter-spacing: -0.04em;
+  --text-metric-xl--font-weight: 800;
+  --text-serif-hero: 4rem; /* 64, Accent/Serif Hero */
+  --text-serif-hero--line-height: 1;
+  --text-code: 0.875rem; /* Mono/Code */
+  --text-code--line-height: 1.7;
+
+  /* Shape: pills are rounded-full; cards 28, dialogs 24, tiles 18, inputs 14 */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+  --radius-input: 0.875rem;
+  --radius-tile: 1.125rem;
+  --radius-popover: 1.125rem;
+  --radius-dialog: 1.5rem;
+  --radius-card: 1.75rem;
+
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-card);
+  --shadow-card: var(--elevation-card);
+  --shadow-lg: var(--elevation-lg);
+  /* Field focus: accent border plus a soft 3px glow. */
+  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  --shadow-focus-danger: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  --animate-fade-in: fade-in 160ms var(--ease-out-quart);
+  --animate-fade-up: fade-up 220ms var(--ease-out-quart) both;
+  --animate-scale-in: scale-in 160ms var(--ease-out-quart);
+  --animate-slide-in-left: slide-in-left 220ms var(--ease-out-quart);
+  --animate-slide-in-right: slide-in-right 220ms var(--ease-out-quart);
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-live-pulse: live-pulse 1.8s ease-out infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
+  }
+  @keyframes live-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 8px transparent;
+    }
+  }
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light;
+    scrollbar-gutter: stable;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-subtle);
+    color: var(--color-accent-subtle-foreground);
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    /* Show code exactly as typed: "->" stays two characters. */
+    font-variant-ligatures: none;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Instrument Serif italic: one emphasised word or phrase in a page hero. Never body text. */
+@utility font-serif-accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,46 @@
+"""Spanlight: observability for LLM applications.
+
+Quickstart::
+
+    import spanlight
+    from openai import OpenAI
+
+    spanlight.init()  # reads SPANLIGHT_API_KEY / SPANLIGHT_HOST from the environment
+    client = spanlight.wrap_openai(OpenAI())
+
+    @spanlight.observe
+    def answer(question: str) -> str:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": question}],
+        )
+        return response.choices[0].message.content or ""
+"""
+
+from ._client import SpanContext, Spanlight, update_trace
+from ._context import get_current_span, get_current_trace_id
+from ._globals import flush, get_client, init, observe, shutdown, span
+from ._span import Span, SpanKind, SpanStatus
+from ._version import __version__
+from .integrations.anthropic import wrap_anthropic
+from .integrations.openai import wrap_openai
+
+__all__ = [
+    "Span",
+    "SpanContext",
+    "SpanKind",
+    "SpanStatus",
+    "Spanlight",
+    "__version__",
+    "flush",
+    "get_client",
+    "get_current_span",
+    "get_current_trace_id",
+    "init",
+    "observe",
+    "shutdown",
+    "span",
+    "update_trace",
+    "wrap_anthropic",
+    "wrap_openai",
+]

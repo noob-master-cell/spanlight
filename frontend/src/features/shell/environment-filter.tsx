@@ -1,0 +1,54 @@
+import { useNavigate } from "@tanstack/react-router";
+
+import { StatusDot } from "@/components/status-dot";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { useFilterOptionsQuery, useProjectFilters } from "./project-context";
+
+const ALL = "__all__";
+
+/** The environment pill (Figma "Environment pill"): filters project data by environment. */
+export function EnvironmentFilter() {
+  const navigate = useNavigate();
+  const { environment } = useProjectFilters();
+  const optionsQuery = useFilterOptionsQuery();
+  const environments = optionsQuery.data?.environments ?? [];
+  const options =
+    environment && !environments.includes(environment)
+      ? [environment, ...environments]
+      : environments;
+
+  return (
+    <Select
+      value={environment ?? ALL}
+      onValueChange={(value) => {
+        void navigate({
+          to: ".",
+          search: (prev) => ({ ...prev, env: value === ALL ? undefined : value }),
+        });
+      }}
+    >
+      <SelectTrigger
+        className="h-[43px] w-auto max-w-48 min-w-0 gap-2 rounded-full border-border pr-3 pl-3.5 font-medium shadow-card"
+        aria-label="Environment"
+      >
+        <StatusDot state={environment ? "ok" : "unset"} />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align="end">
+        <SelectItem value={ALL}>All environments</SelectItem>
+        {options.map((name) => (
+          <SelectItem key={name} value={name}>
+            {name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}

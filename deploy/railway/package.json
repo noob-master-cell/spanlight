@@ -1,0 +1,9 @@
+{
+  "name": "spanlight-railway",
+  "private": true,
+  "description": "Railway IaC SDK for deploy/railway/railway.ts. Install with: npm install --prefix deploy/railway",
+  "type": "module",
+  "devDependencies": {
+    "railway": "3.13.0"
+  }
+}
