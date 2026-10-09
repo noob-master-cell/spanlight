@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Button } from "@/components/ui/button";
-import { useMe } from "@/features/auth/queries";
-import { usePermission } from "@/features/shell/project-context";
+import { useMe } from "@/features/auth";
+import { usePermission } from "@/features/shell";
 
 import { ApiKeyList } from "./api-key-list";
 import { useApiKeysQuery } from "./api-key-queries";
@@ -28,7 +28,7 @@ export function ApiKeysPage() {
   return (
     <SettingsSection
       title="API keys"
-      description="Keys let an application send traces to this project. A secret is shown once, when the key is created."
+      description="Keys let an application send traces to this project or read them through the API. The secret is shown once."
       actions={<CreateKeyButton canCreate={canCreate} />}
       className="gap-3"
     >
@@ -82,8 +82,8 @@ function ApiKeysContent({ query, ability, emptyAction }: ApiKeysContentProps) {
       <p className="flex items-start gap-2 px-1 pt-1.5 text-xs font-medium text-subtle-foreground">
         <KeyRound aria-hidden className="mt-px size-3.5 shrink-0" />
         <span>
-          Revoked keys stop working immediately and stay listed for the audit trail. The SDK reads
-          the key from <code className="font-mono">SPANLIGHT_API_KEY</code>.
+          Expired and revoked keys stop working immediately and stay listed for the audit trail. The
+          SDK reads the key from <code className="font-mono">SPANLIGHT_API_KEY</code>.
         </span>
       </p>
     </>

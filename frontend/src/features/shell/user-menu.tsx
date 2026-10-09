@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMe } from "@/features/auth/queries";
+import { useMe } from "@/features/auth";
 import { ROLE_LABELS } from "@/lib/permissions";
 
 import { useCurrentOrg, useCurrentRole, useProjectParams } from "./project-context";

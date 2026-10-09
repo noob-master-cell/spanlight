@@ -4,16 +4,24 @@ import type { ApiKey, User } from "@/lib/api";
 
 import { envLine, formatKeyPrefix, revokeDecision, sortApiKeys } from "./api-key-utils";
 
-const alice: User = { id: "u1", email: "alice@example.com", name: "Alice", created_at: "" };
+const alice: User = {
+  id: "u1",
+  email: "alice@example.com",
+  name: "Alice",
+  created_at: "",
+  email_verified: true,
+};
 
 function makeKey(overrides: Partial<ApiKey>): ApiKey {
   return {
     id: "k",
     name: "Key",
     prefix: "ABCDEFGHIJKL",
+    scopes: ["ingest:write"],
     created_by: alice,
     created_at: "2026-10-01T00:00:00Z",
     last_used_at: null,
+    expires_at: null,
     revoked_at: null,
     ...overrides,
   };

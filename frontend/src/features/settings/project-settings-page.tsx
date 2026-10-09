@@ -1,18 +1,21 @@
 import { ErrorState } from "@/components/error-state";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePermission, useProjectQuery } from "@/features/shell/project-context";
+import { useCurrentOrg, usePermission, useProjectQuery } from "@/features/shell";
 
+import { ProjectDangerZone } from "./project-danger-zone";
 import { ProjectSettingsForm } from "./project-settings-form";
 import { ReadOnlyNote } from "./read-only-note";
 
 /**
- * General and Data settings. The design's "Danger zone" (delete project) is left out: the
- * API has no endpoint for deleting a project, and a button that can't work would mislead.
+ * General and Data settings, then the "Danger zone". Deleting a project needs `project:delete`
+ * (admins and owners), and the public demo's project can't be deleted, so neither sees the card.
  */
 export function ProjectSettingsPage() {
   const projectQuery = useProjectQuery();
+  const org = useCurrentOrg();
   const canEdit = usePermission("project:write");
+  const canDelete = usePermission("project:delete") && org !== null && !org.is_demo;
 
   if (projectQuery.isPending) {
     return <ProjectSettingsSkeleton />;
@@ -43,6 +46,7 @@ export function ProjectSettingsPage() {
         project={projectQuery.data}
         canEdit={canEdit}
       />
+      {canDelete ? <ProjectDangerZone project={projectQuery.data} /> : null}
     </div>
   );
 }

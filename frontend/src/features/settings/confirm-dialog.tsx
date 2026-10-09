@@ -1,4 +1,6 @@
-import { useState, type ReactElement, type ReactNode } from "react";
+import { X } from "lucide-react";
+import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
+import { useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import {
   AlertDialog,
@@ -6,37 +8,40 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
-  /** The element that opens the dialog, usually a button. */
+  /** The element that opens the dialog: the row's action button. */
   trigger: ReactElement;
   title: string;
   description: ReactNode;
   confirmLabel: string;
-  destructive?: boolean;
   /**
-   * Runs the action. The dialog stays open (with a spinner) until it settles and
-   * closes only on success; the caller reports errors, e.g. with a toast.
+   * Runs the action. The dialog stays open with a spinner until this settles and closes only on
+   * success; the caller reports a failure, e.g. with a toast.
    */
   onConfirm: () => Promise<unknown>;
 }
 
-/** An AlertDialog confirmation that waits for its async action to finish. */
+/**
+ * Figma "Revoke token" and "Revoke key": one question, one danger button, for every row action
+ * that removes something (revoke, remove). It waits for its async action, and when the row goes
+ * away with it, moves focus to the card the row sat in.
+ */
 export function ConfirmDialog({
   trigger,
   title,
   description,
   confirmLabel,
-  destructive = true,
   onConfirm,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  // What had focus when the dialog opened (the row's action) and the card the row sits in.
+  const opener = useRef<{ button: HTMLElement; card: HTMLElement | null } | null>(null);
 
   async function handleConfirm() {
     setPending(true);
@@ -44,7 +49,7 @@ export function ConfirmDialog({
       await onConfirm();
       setOpen(false);
     } catch {
-      // The caller's mutation already announced the error; keep the dialog open to retry.
+      // The caller already announced the error; stay open so the person can try again.
     } finally {
       setPending(false);
     }
@@ -60,15 +65,48 @@ export function ConfirmDialog({
       }}
     >
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
+      <AlertDialogContent
+        className="max-w-[440px] gap-5 rounded-card p-6 sm:p-7"
+        onOpenAutoFocus={() => {
+          const button = document.activeElement;
+          opener.current =
+            button instanceof HTMLElement
+              ? { button, card: button.closest<HTMLElement>('[role="region"]') }
+              : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          // A removed row leaves the list, and its button with it, so focus would fall to the
+          // page. Move it to the card that held the row instead (WCAG 2.4.3).
+          const { button, card } = opener.current ?? {};
+          if (button && !button.isConnected && card?.isConnected) {
+            event.preventDefault();
+            card.tabIndex = -1;
+            card.focus();
+          }
+        }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <AlertDialogTitle className="[overflow-wrap:anywhere]">{title}</AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </div>
+          {/* The shared AlertDialogCancel is a styled button; this one is the round close mark. */}
+          <AlertDialogPrimitive.Cancel asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Close"
+              disabled={pending}
+              className="bg-surface-muted"
+            >
+              <X aria-hidden />
+            </Button>
+          </AlertDialogPrimitive.Cancel>
+        </div>
+        <AlertDialogFooter className="flex-row justify-end gap-2.5">
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <Button
-            variant={destructive ? "danger" : "primary"}
+            variant="danger"
             loading={pending}
             onClick={() => {
               void handleConfirm();

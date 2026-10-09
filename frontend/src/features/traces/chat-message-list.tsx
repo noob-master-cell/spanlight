@@ -27,7 +27,7 @@ const BUBBLE_STYLES: Record<ChatRole, { row: string; bubble: string; label: stri
   system: {
     row: "justify-center",
     bubble:
-      "w-full max-w-[88%] items-center rounded-tile border border-dashed border-border-strong py-2.5 text-center",
+      "w-full max-w-[88%] items-center rounded-tile border border-dashed border-border py-2.5 text-center",
     label: "text-muted-foreground",
   },
   user: {

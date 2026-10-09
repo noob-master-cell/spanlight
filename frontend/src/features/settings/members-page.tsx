@@ -3,8 +3,8 @@ import { Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Badge } from "@/components/ui/badge";
-import { useMe } from "@/features/auth/queries";
-import { useCurrentOrg, usePermission } from "@/features/shell/project-context";
+import { useMe } from "@/features/auth";
+import { useCurrentOrg, usePermission } from "@/features/shell";
 
 import { InviteSection } from "./invite-section";
 import { MemberList } from "./member-list";

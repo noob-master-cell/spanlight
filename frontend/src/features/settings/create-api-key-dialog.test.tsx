@@ -19,9 +19,11 @@ const createdKey: CreatedApiKey = {
   id: "key_1",
   name: "production-api",
   prefix: "spl_live_abcdefghijkl",
+  scopes: ["ingest:write"],
   created_by: null,
   created_at: "2026-10-07T00:00:00Z",
   last_used_at: null,
+  expires_at: null,
   revoked_at: null,
   secret: SECRET,
 };

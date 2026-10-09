@@ -22,3 +22,17 @@ export function useRevokeAuthSession() {
     },
   });
 }
+
+/** Sign out everywhere else: ends every session except the one making the call. */
+export function useRevokeOtherAuthSessions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: authApi.revokeOtherSessions,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.authSessions });
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error));
+    },
+  });
+}

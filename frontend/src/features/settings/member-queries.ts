@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { useProjectParams } from "@/features/shell/project-context";
+import { useProjectParams } from "@/features/shell";
 import { errorMessage, orgsApi, queryKeys, type Role } from "@/lib/api";
 
 import { memberErrorMessage } from "./member-utils";

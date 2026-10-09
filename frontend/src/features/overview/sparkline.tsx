@@ -69,7 +69,7 @@ export function EmptySparkline({ className }: { className?: string }) {
     >
       <path
         d={`M3 ${height / 2}H${width - 3}`}
-        stroke="var(--border-strong)"
+        stroke="var(--border)"
         strokeWidth={2}
         strokeLinecap="round"
         strokeDasharray="3 5"

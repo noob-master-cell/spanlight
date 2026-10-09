@@ -1,0 +1,70 @@
+import type { ComponentType, SVGProps } from "react";
+
+import { Button } from "@/components/ui/button";
+import { oauthStartUrl, type OAuthProvider } from "@/lib/api";
+
+import { rememberOAuthProvider } from "./oauth-provider-hint";
+import { useOAuthProviders } from "./oauth-queries";
+import { GithubMark, GoogleMark } from "./provider-icons";
+import { safeNextPath } from "./search";
+
+const PROVIDERS: Record<
+  OAuthProvider,
+  { label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }
+> = {
+  github: { label: "GitHub", Icon: GithubMark },
+  google: { label: "Google", Icon: GoogleMark },
+};
+
+interface OAuthButtonsProps {
+  /** The page to land on after signing in, as it came in the URL. */
+  next: string | undefined;
+  /** What the divider under the buttons says, e.g. "or sign in with email". */
+  dividerLabel: string;
+}
+
+/**
+ * "Continue with GitHub / Google", for the providers this server has set up, then the divider that
+ * leads into the email form. Until the list arrives, when it is empty, and when it fails to load,
+ * it renders nothing at all: the password form is the primary way in and never waits on this.
+ */
+export function OAuthButtons({ next, dividerLabel }: OAuthButtonsProps) {
+  const providers = useOAuthProviders();
+  // Ignore a provider this build has no button for rather than break the whole sign-in screen.
+  const available = (providers.data ?? []).filter(({ provider }) => provider in PROVIDERS);
+  if (available.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-2.5">
+        {available.map(({ provider }) => {
+          const { label, Icon } = PROVIDERS[provider];
+          return (
+            <Button key={provider} asChild size="lg" className="w-full">
+              {/* A full-page navigation: the server answers with a redirect to the provider. */}
+              <a
+                href={oauthStartUrl(provider, { next: safeNextPath(next) ?? undefined })}
+                onClick={() => {
+                  rememberOAuthProvider(provider);
+                }}
+              >
+                <Icon className="size-[18px]" />
+                Continue with {label}
+              </a>
+            </Button>
+          );
+        })}
+      </div>
+      <div
+        className="flex items-center gap-3 text-xs font-medium text-muted-foreground"
+        aria-hidden
+      >
+        <span className="h-px flex-1 bg-border" />
+        {dividerLabel}
+        <span className="h-px flex-1 bg-border" />
+      </div>
+    </>
+  );
+}

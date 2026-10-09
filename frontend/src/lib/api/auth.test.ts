@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { authApi } from "./auth";
 import { api, setUnauthorizedHandler } from "./client";
-import { ApiError, TwoFactorRequiredError, errorMessage } from "./errors";
+import { ApiError } from "./errors";
 import type { User } from "./types";
 
 const USER: User = {
@@ -10,6 +10,7 @@ const USER: User = {
   email: "ada@example.com",
   name: "Ada",
   created_at: "2026-10-08T12:00:00Z",
+  email_verified: true,
 };
 const CREDENTIALS = { email: "ada@example.com", password: "correct horse battery" };
 
@@ -44,30 +45,6 @@ describe("authApi.login", () => {
     expect(url).toBe("/api/v1/auth/login");
     expect(init?.method).toBe("POST");
     expect(init?.body).toBe(JSON.stringify(CREDENTIALS));
-  });
-
-  it("rejects with the challenge when the account needs a second factor", async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse({
-        status: "totp_required",
-        challenge: "payload.signature",
-        expires_at: "2026-10-08T12:05:00Z",
-      }),
-    );
-
-    const error = await authApi.login(CREDENTIALS).catch((caught: unknown) => caught);
-
-    expect(error).toBeInstanceOf(TwoFactorRequiredError);
-    const required = error as TwoFactorRequiredError;
-    expect(required.challenge).toBe("payload.signature");
-    expect(required.expiresAt).toBe("2026-10-08T12:05:00Z");
-  });
-
-  it("shows the second-factor case as a readable message", () => {
-    const message = errorMessage(new TwoFactorRequiredError("c", "2026-10-08T12:05:00Z"));
-
-    expect(message).toMatch(/two-factor authentication/i);
-    expect(message).not.toMatch(/something went wrong/i);
   });
 
   it("keeps rejecting a wrong password with the server's problem", async () => {

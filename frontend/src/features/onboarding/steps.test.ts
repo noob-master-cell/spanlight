@@ -5,7 +5,7 @@ import type { Membership, Project } from "@/lib/api";
 import { resolveOnboardingState, stepIndex, stepStatus } from "./steps";
 
 const membership: Membership = {
-  org: { id: "org_1", name: "Acme", slug: "acme", is_demo: false },
+  org: { id: "org_1", name: "Acme", slug: "acme", is_demo: false, require_2fa: false },
   role: "owner",
 };
 

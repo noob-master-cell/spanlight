@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMe } from "@/features/auth/queries";
+import { useMe } from "@/features/auth";
 import { orgsApi, queryKeys } from "@/lib/api";
 import { cn } from "@/lib/utils";
 

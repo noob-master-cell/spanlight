@@ -1,9 +1,11 @@
-import { API_PREFIX, api } from "./client";
+import { api } from "./client";
+import { projectPath } from "./paths";
 import type {
   ApiKey,
   Bucket,
   CreatedApiKey,
   FilterOptions,
+  KeyScope,
   ModelMetrics,
   OnboardingStatus,
   OverviewMetrics,
@@ -16,10 +18,6 @@ import type {
   TraceStatusFilter,
   TraceSummary,
 } from "./types";
-
-function projectPath(projectId: string): string {
-  return `${API_PREFIX}/projects/${encodeURIComponent(projectId)}`;
-}
 
 /** Time window shared by every metrics/list query. ISO-8601 UTC strings. */
 export interface TimeWindow {
@@ -49,15 +47,30 @@ export interface SessionListQuery extends TimeWindow {
   cursor?: string | null;
 }
 
+export interface CreateApiKeyInput {
+  name: string;
+  /** At least one. The server's default is `ingest:write` only. */
+  scopes?: KeyScope[];
+  /** An ISO time in the future, or null for a key that never expires. */
+  expires_at?: string | null;
+}
+
 export const projectsApi = {
   get: (projectId: string): Promise<Project> => api.get<Project>(projectPath(projectId)),
   update: (projectId: string, update: ProjectUpdate): Promise<Project> =>
     api.patch<Project>(projectPath(projectId), update),
+  /**
+   * Admin or owner. `confirm` is the project's slug exactly as typed; a wrong one is `422
+   * CONFIRMATION_MISMATCH`. Deletes its traces, spans, API keys and export files.
+   */
+  delete: (projectId: string, confirm: string): Promise<void> =>
+    api.delete(projectPath(projectId), { confirm }),
 
   keys: (projectId: string): Promise<ApiKey[]> =>
     api.get<ApiKey[]>(`${projectPath(projectId)}/keys`),
-  createKey: (projectId: string, name: string): Promise<CreatedApiKey> =>
-    api.post<CreatedApiKey>(`${projectPath(projectId)}/keys`, { name }),
+  /** The answer carries the key's secret, once. */
+  createKey: (projectId: string, input: CreateApiKeyInput): Promise<CreatedApiKey> =>
+    api.post<CreatedApiKey>(`${projectPath(projectId)}/keys`, input),
   revokeKey: (projectId: string, keyId: string): Promise<void> =>
     api.delete(`${projectPath(projectId)}/keys/${encodeURIComponent(keyId)}`),
 

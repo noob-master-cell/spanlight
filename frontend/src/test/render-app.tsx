@@ -10,8 +10,16 @@ import { ApiError, authApi, orgsApi, projectsApi, type Me, type Project } from "
 export const ORG_ID = "org_1";
 
 const me: Me = {
-  user: { id: "u1", email: "me@example.com", name: "Me", created_at: "" },
-  memberships: [{ org: { id: ORG_ID, name: "Acme", slug: "acme", is_demo: false }, role: "owner" }],
+  user: { id: "u1", email: "me@example.com", name: "Me", created_at: "", email_verified: true },
+  memberships: [
+    {
+      org: { id: ORG_ID, name: "Acme", slug: "acme", is_demo: false, require_2fa: false },
+      role: "owner",
+    },
+  ],
+  has_password: true,
+  totp_enabled: false,
+  email_verification_required: false,
 };
 
 export function makeProject(id: string, name: string): Project {

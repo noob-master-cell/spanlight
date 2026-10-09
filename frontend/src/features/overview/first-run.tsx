@@ -24,7 +24,7 @@ import { buildSnippets, DEFAULT_ENVIRONMENT, type Snippet } from "@/features/onb
 import { useCurrentOrg, useProjectParams } from "@/features/shell/project-context";
 import type { CodeTokenKind } from "@/lib/highlight";
 
-import { EmptyKpiCards } from "./kpi-cards";
+import { EmptyKpiCards } from "./kpi-card-placeholders";
 import { snippetLines } from "./snippet-lines";
 
 /** The snippet tabs shown here; plain curl stays in the full onboarding flow. */

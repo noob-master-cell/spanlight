@@ -22,29 +22,45 @@ interface AuthLayoutProps {
   /** The serif-italic accent that follows it, e.g. "back." */
   accent?: string;
   description?: ReactNode;
+  /** A status tile above the headline (see `AuthStatusTile`). Phones then get a smaller headline. */
+  status?: ReactNode;
   children: ReactNode;
-  footer?: ReactNode;
 }
 
 /**
- * Sign in / sign up (Figma "Sign in — Desktop"): the form column on the mesh canvas, and on
- * desktop the ink showcase panel listing real product capabilities. Phones get the form only.
+ * Sign in, sign up and the account flows around them (Figma "Sign in" and "Account flows"): the
+ * form column on the mesh canvas, and on desktop the ink showcase panel listing real product
+ * capabilities. Phones get the form only.
  */
-export function AuthLayout({ title, accent, description, children, footer }: AuthLayoutProps) {
+export function AuthLayout({ title, accent, description, status, children }: AuthLayoutProps) {
   return (
     <div className="relative flex min-h-dvh overflow-clip bg-canvas lg:p-3">
       <MeshBackdrop className="-top-[190px] right-auto -left-[300px] sm:-top-[170px] sm:-left-[220px]" />
 
       <div className="relative flex min-w-0 flex-1 flex-col px-6 pt-5 pb-10 lg:px-9 lg:pt-6">
         <AuthHeader />
-        <main className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center gap-7 pt-14 lg:py-10">
+        <main className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center gap-6 pt-14 lg:py-10">
+          {status}
           <div className="flex flex-col gap-3">
-            <h1 className="text-display text-foreground">
+            <h1
+              className={cn(
+                "text-display text-foreground",
+                status &&
+                  "text-[2rem] leading-[1.04] font-extrabold tracking-[-0.04em] sm:text-display",
+              )}
+            >
               {title}
               {accent ? (
                 <>
                   {" "}
-                  <span className="font-serif-accent text-serif text-accent">{accent}</span>
+                  <span
+                    className={cn(
+                      "font-serif-accent text-serif text-accent",
+                      status && "text-[2.25rem] leading-none sm:text-serif",
+                    )}
+                  >
+                    {accent}
+                  </span>
                 </>
               ) : null}
             </h1>
@@ -53,11 +69,6 @@ export function AuthLayout({ title, accent, description, children, footer }: Aut
             ) : null}
           </div>
           {children}
-          {footer ? (
-            <p className="flex flex-wrap items-center justify-center gap-1 text-sm text-muted-foreground">
-              {footer}
-            </p>
-          ) : null}
         </main>
       </div>
 

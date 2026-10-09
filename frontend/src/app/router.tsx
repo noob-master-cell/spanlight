@@ -14,9 +14,12 @@ import { LoginPage } from "@/features/auth/login-page";
 import { ensureMe } from "@/features/auth/queries";
 import { authSearchSchema, safeNextPath } from "@/features/auth/search";
 import { SignupPage } from "@/features/auth/signup-page";
+import { TwoFactorPage } from "@/features/auth/two-factor-page";
 import { onboardingSearchSchema } from "@/features/onboarding/search";
 import { AppShell } from "@/features/shell/app-shell";
 import { resolveHomeDestination } from "@/features/shell/home-redirect";
+import { auditSearchSchema } from "@/features/settings/audit-search";
+import { securitySearchSchema } from "@/features/settings/security/search";
 import { traceDetailSearchSchema, traceFiltersSchema } from "@/features/traces/search";
 import { projectSearchSchema } from "@/lib/time-range";
 
@@ -95,6 +98,56 @@ const signupRoute = createRoute({
   component: SignupPage,
 });
 
+/** The second step of signing in. The challenge is never in this URL; see `login-challenge.ts`. */
+const twoFactorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login/two-factor",
+  validateSearch: authSearchSchema,
+  beforeLoad: async ({ context, search }) => {
+    const me = await ensureMe(context.queryClient);
+    if (me) {
+      throw redirect({ href: safeNextPath(search.next) ?? "/" });
+    }
+  },
+  head: () => pageTitle("Two-factor sign-in"),
+  component: TwoFactorPage,
+});
+
+/*
+ * The three account-recovery pages are open to everyone, signed in or not: a forgotten password,
+ * a reset link and a verification link are all opened by people who may have no session. Their
+ * secrets arrive in the URL fragment (see `fragment-token.ts`).
+ */
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  head: () => pageTitle("Reset your password"),
+  component: lazyRouteComponent(
+    () => import("@/features/auth/forgot-password-page"),
+    "ForgotPasswordPage",
+  ),
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  head: () => pageTitle("Choose a new password"),
+  component: lazyRouteComponent(
+    () => import("@/features/auth/reset-password-page"),
+    "ResetPasswordPage",
+  ),
+});
+
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/verify-email",
+  head: () => pageTitle("Verify your email"),
+  component: lazyRouteComponent(
+    () => import("@/features/auth/verify-email-page"),
+    "VerifyEmailPage",
+  ),
+});
+
 const inviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/invite/$token",
@@ -126,6 +179,22 @@ const onboardingRoute = createRoute({
   component: lazyRouteComponent(
     () => import("@/features/onboarding/onboarding-page"),
     "OnboardingPage",
+  ),
+});
+
+/**
+ * The Security page with no project around it. Where an organization requires two-factor
+ * authentication and the person has none, every project answers 403, so this is the one page that
+ * always opens, and the place home sends them (see `resolveHomeDestination`).
+ */
+const accountSecurityRoute = createRoute({
+  getParentRoute: () => authedRoute,
+  path: "/account/security",
+  validateSearch: securitySearchSchema,
+  head: () => pageTitle("Security"),
+  component: lazyRouteComponent(
+    () => import("@/features/settings/security/account-security-page"),
+    "AccountSecurityPage",
   ),
 });
 
@@ -224,6 +293,23 @@ const apiKeysRoute = createRoute({
   component: lazyRouteComponent(() => import("@/features/settings/api-keys-page"), "ApiKeysPage"),
 });
 
+const exportsRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/exports",
+  head: () => pageTitle("Exports"),
+  component: lazyRouteComponent(() => import("@/features/settings/exports-page"), "ExportsPage"),
+});
+
+const organizationRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/organization",
+  head: () => pageTitle("Organization settings"),
+  component: lazyRouteComponent(
+    () => import("@/features/settings/organization/organization-page"),
+    "OrganizationPage",
+  ),
+});
+
 const membersRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/members",
@@ -234,6 +320,7 @@ const membersRoute = createRoute({
 const auditRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/audit",
+  validateSearch: auditSearchSchema,
   head: () => pageTitle("Audit log"),
   component: lazyRouteComponent(() => import("@/features/settings/audit-log-page"), "AuditLogPage"),
 });
@@ -245,13 +332,39 @@ const accountRoute = createRoute({
   component: lazyRouteComponent(() => import("@/features/settings/account-page"), "AccountPage"),
 });
 
+const securityRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/security",
+  validateSearch: securitySearchSchema,
+  head: () => pageTitle("Security"),
+  component: lazyRouteComponent(
+    () => import("@/features/settings/security/security-page"),
+    "SecurityPage",
+  ),
+});
+
+const tokensRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/tokens",
+  head: () => pageTitle("Tokens"),
+  component: lazyRouteComponent(
+    () => import("@/features/settings/tokens/tokens-page"),
+    "TokensPage",
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   loginRoute,
+  twoFactorRoute,
   signupRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  verifyEmailRoute,
   inviteRoute,
   authedRoute.addChildren([
     onboardingRoute,
+    accountSecurityRoute,
     projectRoute.addChildren([
       projectIndexRoute,
       overviewRoute,
@@ -263,9 +376,13 @@ const routeTree = rootRoute.addChildren([
         settingsIndexRoute,
         projectSettingsRoute,
         apiKeysRoute,
+        exportsRoute,
+        organizationRoute,
         membersRoute,
         auditRoute,
         accountRoute,
+        securityRoute,
+        tokensRoute,
       ]),
     ]),
   ]),

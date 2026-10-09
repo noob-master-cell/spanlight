@@ -34,8 +34,8 @@ export function CostIllustration() {
         </div>
       ))}
 
-      <div className="flex items-center gap-2.5 rounded-input border border-dashed border-border-strong bg-surface px-3.5 py-3">
-        <span className="size-2 shrink-0 rounded-full bg-border-strong" />
+      <div className="flex items-center gap-2.5 rounded-input border border-dashed border-border bg-surface px-3.5 py-3">
+        <span className="size-2 shrink-0 rounded-full bg-border" />
         <span className="min-w-0 flex-1 truncate font-mono text-label text-foreground">
           llama-3.1-8b-instruct
         </span>

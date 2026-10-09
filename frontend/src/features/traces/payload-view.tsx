@@ -60,7 +60,7 @@ export function PayloadView({ label, value, spanTruncated }: PayloadViewProps) {
 function NoPayloadNote({ label }: { label: string }) {
   const { orgId, projectId } = useProjectParams();
   return (
-    <div className="rounded-tile border border-dashed border-border-strong px-3.5 py-3 text-xs text-muted-foreground">
+    <div className="rounded-tile border border-dashed border-border px-3.5 py-3 text-xs text-muted-foreground">
       <p className="font-medium text-foreground">No {label.toLowerCase()} captured</p>
       <p className="mt-0.5">
         The SDK didn&apos;t send one, or payload capture is off in{" "}

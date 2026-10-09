@@ -63,7 +63,7 @@ export const BAR_RADIUS: [number, number, number, number] = [8, 8, 0, 0];
 
 /** The latest or peak bar is lime; on ink hero cards the other bars are translucent white. */
 export const HIGHLIGHT_BAR_COLOR = "var(--lime)";
-export const INK_BAR_COLOR = "var(--rail-tile-hover)";
+export const INK_BAR_COLOR = "var(--chart-bar-muted-on-ink)";
 export const INK_AXIS_TICK = { fill: "var(--rail-subtle-foreground)", fontSize: 12 } as const;
 
 /** A surface-coloured hairline separates stacked segments (the "surface gap"). */
@@ -74,4 +74,4 @@ export const SURFACE_GAP_PROPS = {
 
 /** Tooltip cursors: a soft column behind bars, a dashed rule for lines. */
 export const BAR_CURSOR = { fill: "var(--surface-muted)" } as const;
-export const LINE_CURSOR = { stroke: "var(--border-strong)", strokeDasharray: "4 4" } as const;
+export const LINE_CURSOR = { stroke: "var(--border)", strokeDasharray: "4 4" } as const;

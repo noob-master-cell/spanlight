@@ -1,43 +1,16 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CircleAlert, Key, KeyRound, Lock, TriangleAlert } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
+import { Key, Lock, TriangleAlert } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/copy-button";
 import { MeshBackdrop } from "@/components/mesh-backdrop";
-import { Notice } from "@/components/notice";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { errorMessage, projectsApi, queryKeys, type CreatedApiKey, type Role } from "@/lib/api";
-import { applyServerFieldErrors } from "@/lib/form-errors";
+import type { CreatedApiKey, Role } from "@/lib/api";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
-const KEY_NAME_MAX_LENGTH = 100;
-
-const keySchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Enter a key name.")
-    .max(KEY_NAME_MAX_LENGTH, `Use ${KEY_NAME_MAX_LENGTH} characters or fewer.`),
-});
-
-type KeyValues = z.infer<typeof keySchema>;
-
-/** Lime focus ring for controls on the ink card, where the violet ring would be too faint. */
-const INK_FOCUS = "focus-visible:outline-lime";
-
-/**
- * The translucent pill that holds the key name input or the revealed secret, with its action
- * on the right. On phones the action drops below at full width.
- */
-const KEY_FIELD_CLASSES =
-  "flex flex-col gap-2 rounded-[1.75rem] bg-rail-tile p-2 sm:min-h-14 sm:flex-row sm:items-center sm:gap-3 sm:rounded-full sm:py-2 sm:pr-2 sm:pl-5";
+import { INK_FOCUS, KEY_FIELD_CLASSES } from "./api-key-styles";
+import { CreateKeyForm } from "./create-key-form";
 
 interface ApiKeyCardProps {
   projectId: string;
@@ -102,102 +75,6 @@ export function ApiKeyCard({
 
       <div className="relative">{body}</div>
     </Card>
-  );
-}
-
-function CreateKeyForm({
-  projectId,
-  onCreated,
-}: {
-  projectId: string;
-  onCreated: (key: CreatedApiKey) => void;
-}) {
-  const id = useId();
-  const inputId = `${id}-name`;
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
-  const form = useForm<KeyValues>({
-    resolver: zodResolver(keySchema),
-    defaultValues: { name: "Onboarding key" },
-  });
-
-  const createKey = useMutation({
-    mutationFn: (name: string) => projectsApi.createKey(projectId, name),
-    onSuccess: (key) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.project(projectId).keys });
-      toast.success("API key created");
-      onCreated(key);
-    },
-    onError: (error) => {
-      if (!applyServerFieldErrors(error, form.setError, ["name"])) {
-        setFormError(errorMessage(error));
-      }
-    },
-  });
-
-  const onSubmit = form.handleSubmit(({ name }) => {
-    setFormError(null);
-    createKey.mutate(name);
-  });
-
-  const fieldError = form.formState.errors.name?.message;
-
-  return (
-    <form
-      noValidate
-      className="flex flex-col gap-2"
-      onSubmit={(event) => {
-        void onSubmit(event);
-      }}
-    >
-      <label htmlFor={inputId} className="text-label font-semibold text-rail-foreground">
-        Key name
-      </label>
-      {/* The shared Input is drawn for light surfaces; here the pill is the field and owns the ring. */}
-      <div
-        className={cn(
-          KEY_FIELD_CLASSES,
-          "has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-lime",
-          fieldError && "ring-[1.5px] ring-rail-danger",
-        )}
-      >
-        <input
-          id={inputId}
-          autoComplete="off"
-          maxLength={KEY_NAME_MAX_LENGTH}
-          aria-invalid={fieldError ? true : undefined}
-          aria-describedby={fieldError ? errorId : hintId}
-          className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm text-rail-foreground placeholder:text-rail-subtle-foreground focus-visible:outline-none sm:px-0"
-          {...form.register("name")}
-        />
-        <Button
-          type="submit"
-          variant="highlight"
-          loading={createKey.isPending}
-          className={cn("w-full sm:w-auto", INK_FOCUS)}
-        >
-          {createKey.isPending ? null : <KeyRound aria-hidden />}
-          Create API key
-        </Button>
-      </div>
-      {fieldError ? (
-        <p id={errorId} className="flex items-start gap-1.5 text-xs font-medium text-rail-danger">
-          <CircleAlert aria-hidden className="mt-px size-3.5 shrink-0" strokeWidth={2.25} />
-          {fieldError}
-        </p>
-      ) : (
-        <p id={hintId} className="text-sm text-rail-muted-foreground">
-          Shown in Settings → API keys so you can revoke it later.
-        </p>
-      )}
-      {formError ? (
-        <Notice tone="danger" role="alert" className="mt-1">
-          {formError}
-        </Notice>
-      ) : null}
-    </form>
   );
 }
 

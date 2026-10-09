@@ -67,9 +67,9 @@ function BrowserFrame() {
     <div className="flex flex-col gap-1.5 rounded-[20px] border border-surface bg-surface p-1.5 shadow-lg backdrop-blur-[10px] lg:gap-2 lg:rounded-[32px] lg:border-[1.5px] lg:p-2.5 dark:border-border">
       <div className="flex h-5 items-center justify-between px-1.5 lg:h-9 lg:px-2.5">
         <span className="flex w-[60px] gap-1 lg:w-[120px] lg:gap-[7px]">
-          <span className="size-[7px] rounded-full bg-border-strong lg:size-[11px]" />
-          <span className="size-[7px] rounded-full bg-border-strong lg:size-[11px]" />
-          <span className="size-[7px] rounded-full bg-border-strong lg:size-[11px]" />
+          <span className="size-[7px] rounded-full bg-border lg:size-[11px]" />
+          <span className="size-[7px] rounded-full bg-border lg:size-[11px]" />
+          <span className="size-[7px] rounded-full bg-border lg:size-[11px]" />
         </span>
         <span className="flex items-center gap-1 rounded-full bg-background px-2.5 py-[3px] font-mono text-[9px] text-muted-foreground lg:gap-2 lg:border lg:border-border lg:px-4 lg:py-1.5 lg:text-xs">
           <Lock className="size-2 text-subtle-foreground lg:size-3" />

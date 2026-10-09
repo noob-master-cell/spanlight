@@ -1,6 +1,6 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryCache, QueryClient, type Query } from "@tanstack/react-query";
 
-import { isApiError } from "@/lib/api";
+import { isApiError, isTwoFactorRequired, queryKeys } from "@/lib/api";
 
 /** Don't retry errors that won't fix themselves (4xx); retry transient ones twice. */
 function shouldRetry(failureCount: number, error: unknown): boolean {
@@ -10,8 +10,37 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
+/** `["project", id, "detail"]`: the query the app shell reads to decide whether a project opens. */
+function isProjectDetail(query: Query): boolean {
+  return query.queryKey[0] === "project" && query.queryKey[2] === "detail";
+}
+
+/** `me.totp_enabled`, or null when the cached value is not a signed-in user (signed out). */
+function totpEnabledOf(me: unknown): boolean | null {
+  if (me !== null && typeof me === "object" && "totp_enabled" in me) {
+    return typeof me.totp_enabled === "boolean" ? me.totp_enabled : null;
+  }
+  return null;
+}
+
+function isTwoFactorBlocked(query: Query): boolean {
+  return query.state.status === "error" && isTwoFactorRequired(query.state.error);
+}
+
 export function createQueryClient(): QueryClient {
-  return new QueryClient({
+  const client: QueryClient = new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error) => {
+        // The organization started requiring two-factor authentication after this page loaded. The
+        // shell shows its "turn it on" card from the project query, so make that one look again;
+        // one that already failed this way is left alone, which keeps this from looping.
+        if (isTwoFactorRequired(error)) {
+          void client.invalidateQueries({
+            predicate: (query) => isProjectDetail(query) && !isTwoFactorBlocked(query),
+          });
+        }
+      },
+    }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,
@@ -20,7 +49,32 @@ export function createQueryClient(): QueryClient {
       },
       mutations: {
         retry: false,
+        // A mutation's variables and answer can be a password, a code, a token or a new secret
+        // (sign-in, reset, verify, a created key). Keep them only while a screen is showing the
+        // result, not for the default five minutes after it is gone.
+        gcTime: 0,
       },
     },
   });
+
+  // Once the signed-in person turns two-factor authentication on, whatever was locked out by the
+  // organization's requirement can load again: look at every query that failed with it, not only the
+  // project the shell watches.
+  let totpEnabled: boolean | null = null;
+  client.getQueryCache().subscribe((event) => {
+    if (event.type !== "updated" || event.action.type !== "success") {
+      return;
+    }
+    const query = event.query as Query;
+    if (query.queryKey.length !== 1 || query.queryKey[0] !== queryKeys.me[0]) {
+      return;
+    }
+    const now = totpEnabledOf(query.state.data);
+    if (totpEnabled === false && now === true) {
+      void client.invalidateQueries({ predicate: isTwoFactorBlocked });
+    }
+    totpEnabled = now;
+  });
+
+  return client;
 }

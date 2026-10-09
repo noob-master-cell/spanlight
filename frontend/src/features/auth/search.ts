@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const authSearchSchema = z.object({
   next: z.string().optional().catch(undefined),
+  /** An OAuth error code, put here by the callback redirect. Only `/login` reads it. */
+  error: z.string().optional().catch(undefined),
 });
 
 export type AuthSearch = z.infer<typeof authSearchSchema>;

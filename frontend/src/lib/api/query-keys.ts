@@ -1,4 +1,5 @@
-import type { MetricsQuery, SessionListQuery, TraceListQuery } from "./projects";
+import type { AuditFilters } from "./orgs";
+import type { MetricsQuery, SessionListQuery, TimeWindow, TraceListQuery } from "./projects";
 import type { Bucket } from "./types";
 
 /**
@@ -8,17 +9,25 @@ import type { Bucket } from "./types";
 export const queryKeys = {
   me: ["me"] as const,
   authSessions: ["auth", "sessions"] as const,
+  authTokens: ["auth", "tokens"] as const,
+  totp: ["auth", "totp"] as const,
+  oauthProviders: ["auth", "oauth", "providers"] as const,
+  oauthIdentities: ["auth", "oauth", "identities"] as const,
+  prices: ["prices"] as const,
   invitePreview: (token: string) => ["invite", "preview", token] as const,
 
   org: (orgId: string) => {
     const all = ["org", orgId] as const;
+    const audit = [...all, "audit"] as const;
     return {
       all,
       detail: [...all, "detail"] as const,
       projects: [...all, "projects"] as const,
       members: [...all, "members"] as const,
       invites: [...all, "invites"] as const,
-      audit: [...all, "audit"] as const,
+      /** Every audit query of the org: invalidate with this, read one with `auditEvents`. */
+      audit,
+      auditEvents: (filters: AuditFilters) => [...audit, filters] as const,
     };
   },
 
@@ -28,6 +37,9 @@ export const queryKeys = {
       all,
       detail: [...all, "detail"] as const,
       keys: [...all, "keys"] as const,
+      exports: [...all, "exports"] as const,
+      export: (exportId: string) => [...all, "export", exportId] as const,
+      unpricedModels: (window: TimeWindow) => [...all, "unpriced-models", window] as const,
       onboarding: [...all, "onboarding"] as const,
       filters: [...all, "filters"] as const,
       traces: (query: Omit<TraceListQuery, "cursor">) => [...all, "traces", query] as const,

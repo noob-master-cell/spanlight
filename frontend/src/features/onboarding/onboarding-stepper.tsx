@@ -74,7 +74,7 @@ export function OnboardingStepper({ progress, className }: OnboardingStepperProp
                   aria-hidden
                   className={cn(
                     "h-0.5 w-4 shrink-0 rounded-full sm:w-7",
-                    status === "done" ? "bg-foreground" : "bg-border-strong",
+                    status === "done" ? "bg-foreground" : "bg-border",
                   )}
                 />
               )}

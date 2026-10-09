@@ -36,6 +36,16 @@ export interface KpiCardModel {
   unknownReason: string;
   /** The line under the value, e.g. "p50 640 ms" or "203 of 48.2K calls". */
   detail: string | null;
+  /**
+   * The p50 that `detail` reports on the p95 card ("640 ms"), kept apart so the card can put
+   * the "≈" in front of the number. Null on the other cards and when the p50 is unknown.
+   */
+  p50: string | null;
+  /**
+   * True when this card's percentiles (value and `p50`) are estimates from hourly rollups.
+   * Always false for counts, rates and tokens, which are exact.
+   */
+  approximate: boolean;
   /** Change versus the previous window, or null when there is nothing to compare. */
   delta: KpiDelta | null;
 }
@@ -112,9 +122,10 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
 }
 
 /** The four KPI cards next to the calls chart, in display order. */
-export function buildKpiCards({ current, previous }: OverviewMetrics): KpiCardModel[] {
+export function buildKpiCards({ current, previous, approximate }: OverviewMetrics): KpiCardModel[] {
   const errors = errorCountFrom(current.error_rate, current.llm_calls);
   const callsLabel = formatCompact(current.llm_calls) ?? "0";
+  const p50 = formatDuration(current.p50_ms);
 
   return [
     {
@@ -122,7 +133,9 @@ export function buildKpiCards({ current, previous }: OverviewMetrics): KpiCardMo
       label: "p95 latency",
       value: formatDuration(current.p95_ms),
       unknownReason: NO_LLM_CALLS,
-      detail: current.p50_ms === null ? null : `p50 ${formatDuration(current.p50_ms) ?? ""}`,
+      detail: p50 === null ? null : `p50 ${p50}`,
+      p50,
+      approximate,
       delta: delta(msDelta(current.p95_ms, previous.p95_ms), "ms", false),
     },
     {
@@ -134,6 +147,8 @@ export function buildKpiCards({ current, previous }: OverviewMetrics): KpiCardMo
         errors === null
           ? null
           : `${formatInteger(errors) ?? "0"} of ${callsLabel} ${plural(current.llm_calls, "call")}`,
+      p50: null,
+      approximate: false,
       delta: delta(pointsDelta(current.error_rate, previous.error_rate), "points", false),
     },
     {
@@ -142,6 +157,8 @@ export function buildKpiCards({ current, previous }: OverviewMetrics): KpiCardMo
       value: formatCompact(current.llm_calls),
       unknownReason: "Not reported for this period",
       detail: `across ${formatCompact(current.traces) ?? "0"} ${plural(current.traces, "trace")}`,
+      p50: null,
+      approximate: false,
       delta: delta(percentDelta(current.llm_calls, previous.llm_calls), "percent", null),
     },
     {
@@ -152,6 +169,8 @@ export function buildKpiCards({ current, previous }: OverviewMetrics): KpiCardMo
       detail: `${formatCompact(current.input_tokens) ?? "0"} in · ${
         formatCompact(current.output_tokens) ?? "0"
       } out`,
+      p50: null,
+      approximate: false,
       delta: delta(percentDelta(totalTokens(current), totalTokens(previous)), "percent", null),
     },
   ];

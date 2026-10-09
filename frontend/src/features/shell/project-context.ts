@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 
-import { useMe } from "@/features/auth/queries";
+import { useMe } from "@/features/auth";
 import { orgsApi, projectsApi, queryKeys, type Role } from "@/lib/api";
 import { can, type Permission } from "@/lib/permissions";
 import { resolveRange, type ResolvedRange } from "@/lib/time-range";

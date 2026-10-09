@@ -1,4 +1,4 @@
-import { useMe } from "@/features/auth/queries";
+import { useMe } from "@/features/auth";
 import { formatDate } from "@/lib/format";
 
 import { InitialAvatar } from "./initial-avatar";

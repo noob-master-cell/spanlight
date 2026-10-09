@@ -11,17 +11,31 @@ vi.mock("@/features/shell/project-context", () => ({
   useProjectParams: () => ({ orgId: "org_1", projectId: "proj_1" }),
 }));
 
-const me: User = { id: "u1", email: "me@example.com", name: "Me", created_at: "" };
-const colleague: User = { id: "u2", email: "priya@example.com", name: "Priya", created_at: "" };
+const me: User = {
+  id: "u1",
+  email: "me@example.com",
+  name: "Me",
+  created_at: "",
+  email_verified: true,
+};
+const colleague: User = {
+  id: "u2",
+  email: "priya@example.com",
+  name: "Priya",
+  created_at: "",
+  email_verified: true,
+};
 
 function makeKey(overrides: Partial<ApiKey>): ApiKey {
   return {
     id: "k",
     name: "key",
     prefix: "ABCDEFGHIJKL",
+    scopes: ["ingest:write"],
     created_by: me,
     created_at: "2026-10-01T00:00:00Z",
     last_used_at: null,
+    expires_at: null,
     revoked_at: null,
     ...overrides,
   };

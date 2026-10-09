@@ -11,7 +11,7 @@ export function SettingsLayout() {
         title="Settings"
         description="Manage this project, your organization's members and your account."
       />
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
         <SettingsNav />
         <div className="min-w-0 flex-1">
           <Outlet />

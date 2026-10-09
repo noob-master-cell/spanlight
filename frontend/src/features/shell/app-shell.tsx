@@ -14,13 +14,16 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { isApiError } from "@/lib/api";
+import { VerifyEmailBanner } from "@/features/auth";
+import { isApiError, isTwoFactorRequired } from "@/lib/api";
 import { writeLastProject } from "@/lib/last-project";
 
 import { CommandPalette } from "./command-palette";
 import { useProjectParams, useProjectQuery } from "./project-context";
 import { Sidebar } from "./sidebar";
 import { MobileAppBar, MobileDataFilters, Topbar } from "./topbar";
+import { TwoFactorRequired } from "./two-factor-required";
+import { useOnAccountSettingsPath, useOnSecurityPath, useTwoFactorGate } from "./two-factor-gate";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 
 /** Pages that show time-windowed data get the range and environment controls. */
@@ -51,7 +54,14 @@ export function AppShell() {
   const projectQuery = useProjectQuery();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const showsDataFilters = useShowsDataFilters();
+  const twoFactorBlocked = useTwoFactorGate(projectQuery);
+  // Account settings call only `/auth/*`: a failed project query must not replace them, which
+  // would also unmount a setup wizard that is holding recovery codes.
+  const onAccountSettings = useOnAccountSettingsPath();
+  // The Security page's 2FA card carries the same "verify your email" prompt, so it has no banner.
+  const onSecurityPage = useOnSecurityPath();
+  // Data controls are for pages that can show data, and there are none while the org is locked.
+  const showsDataFilters = useShowsDataFilters() && !twoFactorBlocked;
 
   const togglePalette = useCallback(() => {
     setPaletteOpen((current) => !current);
@@ -144,7 +154,12 @@ export function AppShell() {
           tabIndex={-1}
           className="relative mx-auto flex w-full max-w-[1440px] min-w-0 flex-1 flex-col px-4 pt-6 pb-12 outline-none lg:px-10 lg:pt-8"
         >
-          {projectQuery.isError ? (
+          {onSecurityPage ? null : <VerifyEmailBanner />}
+          {twoFactorBlocked ? (
+            <TwoFactorRequired />
+          ) : projectQuery.isError &&
+            !isTwoFactorRequired(projectQuery.error) &&
+            !onAccountSettings ? (
             <ErrorState
               error={projectQuery.error}
               onRetry={() => {

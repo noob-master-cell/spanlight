@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusDot } from "@/components/status-dot";
@@ -12,8 +13,9 @@ interface OverviewHeroProps {
   /**
    * The date line: `full` on wider screens ("Thursday, 8 October · production · Last 24 hours"),
    * `compact` on phones, where the filters sit right above the page ("… · Last 24h").
+   * `trailing` follows it on the same line, e.g. the "Estimated · hourly rollups" chip.
    */
-  eyebrow: { full: string; compact: string };
+  eyebrow: { full: string; compact: string; trailing?: ReactNode };
   /** "Good afternoon, Dheeraj." */
   greeting: string;
   /** The status sentence, or null while it is unknown (loading) or unavailable (error). */
@@ -40,7 +42,7 @@ export function OverviewHero({
     <PageHeader
       size="hero"
       eyebrow={
-        <span className="mb-1.5 flex items-center gap-2">
+        <span className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
           {firstRun ? null : (
             <StatusDot
               state="live"
@@ -50,6 +52,7 @@ export function OverviewHero({
           )}
           <span className="sm:hidden">{eyebrow.compact}</span>
           <span className="max-sm:hidden">{eyebrow.full}</span>
+          {eyebrow.trailing}
         </span>
       }
       title={

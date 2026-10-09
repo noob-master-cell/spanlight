@@ -17,7 +17,7 @@ export function UnknownValue({ reason, className }: UnknownValueProps) {
         tabIndex={0}
         aria-label={`Unknown: ${reason}`}
         className={cn(
-          "cursor-help rounded-sm text-subtle-foreground underline decoration-border-strong decoration-dotted underline-offset-4",
+          "cursor-help rounded-sm text-subtle-foreground underline decoration-border decoration-dotted underline-offset-4",
           className,
         )}
       >

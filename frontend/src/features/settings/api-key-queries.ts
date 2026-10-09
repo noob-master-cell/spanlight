@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { useProjectParams } from "@/features/shell/project-context";
-import { errorMessage, projectsApi, queryKeys } from "@/lib/api";
+import { useProjectParams } from "@/features/shell";
+import { errorMessage, projectsApi, queryKeys, type CreateApiKeyInput } from "@/lib/api";
+import { useUncachedAction } from "@/lib/use-uncached-action";
 
 export function useApiKeysQuery() {
   const { projectId } = useProjectParams();
@@ -12,17 +13,18 @@ export function useApiKeysQuery() {
   });
 }
 
-/** Creating a key returns its secret exactly once; the caller holds it in component state. */
+/**
+ * Creating a key returns its secret once. It goes through `useUncachedAction`, not a mutation,
+ * because a mutation keeps its result in the query client's cache; the dialog keeps the result in
+ * its own state and drops it when it closes.
+ */
 export function useCreateApiKey() {
   const { projectId } = useProjectParams();
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (name: string) => projectsApi.createKey(projectId, name),
-    // The response carries the secret. Drop it from the mutation cache as soon as it settles.
-    gcTime: 0,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.project(projectId).keys });
-    },
+  return useUncachedAction(async (input: CreateApiKeyInput) => {
+    const created = await projectsApi.createKey(projectId, input);
+    void queryClient.invalidateQueries({ queryKey: queryKeys.project(projectId).keys });
+    return created;
   });
 }
 

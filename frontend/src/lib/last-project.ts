@@ -35,3 +35,24 @@ export function writeLastProject(value: LastProject): void {
     // Not persisting the last project is harmless.
   }
 }
+
+/**
+ * Forgets the remembered project when it was deleted, or lives in a deleted organization. A
+ * remembered project that is something else is left alone.
+ */
+export function clearLastProject(deleted: { orgId?: string; projectId?: string }): void {
+  const last = readLastProject();
+  if (!last) {
+    return;
+  }
+  const inDeletedProject = deleted.projectId !== undefined && last.projectId === deleted.projectId;
+  const inDeletedOrg = deleted.orgId !== undefined && last.orgId === deleted.orgId;
+  if (!inDeletedProject && !inDeletedOrg) {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Unavailable storage holds nothing to forget.
+  }
+}

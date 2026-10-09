@@ -1,5 +1,7 @@
 import type { ApiKey } from "@/lib/api";
 
+import { expiryState } from "./tokens/expiry";
+
 const KEY_PREFIX = "spl_live_";
 
 /**
@@ -19,13 +21,37 @@ function newestFirst(a: string, b: string): number {
   return new Date(b).getTime() - new Date(a).getTime();
 }
 
-/** Active keys first (newest first), then revoked keys (most recently revoked first). */
+export type KeyStatus = "active" | "expiring" | "expired" | "revoked";
+
+/** `expiring` is a key still in use that ends within a week (Figma "Settings/Key row v2"). */
+export function keyStatus(key: ApiKey, now: Date = new Date()): KeyStatus {
+  if (isRevoked(key)) {
+    return "revoked";
+  }
+  const state = expiryState(key.expires_at, now);
+  if (state === "expired") {
+    return "expired";
+  }
+  return state === "soon" ? "expiring" : "active";
+}
+
+/**
+ * Keys in use first (newest first), then expired keys (newest first), then revoked keys (most
+ * recently revoked first): the order a person cares about, with the ones that no longer work last.
+ */
 export function sortApiKeys(keys: readonly ApiKey[]): ApiKey[] {
-  const active = keys.filter((key) => !isRevoked(key));
-  const revoked = keys.filter(isRevoked);
-  active.sort((a, b) => newestFirst(a.created_at, b.created_at));
+  const now = new Date();
+  const inUse: ApiKey[] = [];
+  const expired: ApiKey[] = [];
+  const revoked: ApiKey[] = [];
+  for (const key of keys) {
+    const status = keyStatus(key, now);
+    (status === "revoked" ? revoked : status === "expired" ? expired : inUse).push(key);
+  }
+  inUse.sort((a, b) => newestFirst(a.created_at, b.created_at));
+  expired.sort((a, b) => newestFirst(a.created_at, b.created_at));
   revoked.sort((a, b) => newestFirst(a.revoked_at ?? a.created_at, b.revoked_at ?? b.created_at));
-  return [...active, ...revoked];
+  return [...inUse, ...expired, ...revoked];
 }
 
 export interface RevokeAbility {

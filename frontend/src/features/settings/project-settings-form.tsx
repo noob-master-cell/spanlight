@@ -1,17 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lock } from "lucide-react";
-import { useId } from "react";
-import { Controller, useForm, type Control } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { CopyButton } from "@/components/copy-button";
 import { FormField } from "@/components/form-field";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { errorMessage, type Project } from "@/lib/api";
-import { formatDate } from "@/lib/format";
 import { applyServerFieldErrors } from "@/lib/form-errors";
 
 import {
@@ -24,6 +17,9 @@ import {
   RETENTION_MIN_DAYS,
   type ProjectSettingsValues,
 } from "./project-settings-schema";
+import { CapturePayloadsField, ProjectIdentifiers } from "./project-settings-parts";
+import { ReadOnlySlugField } from "./read-only-slug-field";
+import { SettingsSaveBar } from "./settings-save-bar";
 import { SettingsSection } from "./settings-section";
 import { useUpdateProject } from "./use-update-project";
 
@@ -90,21 +86,10 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
               {...form.register("name")}
             />
           </FormField>
-          <FormField
-            label="Slug"
-            hint={
-              <span className="inline-flex items-center gap-1.5">
-                <Lock aria-hidden className="size-3 shrink-0" />
-                Read-only. Used in API URLs and can&apos;t be changed.
-              </span>
-            }
-          >
-            <Input
-              readOnly
-              value={project.slug}
-              className="border-border bg-surface-muted font-mono text-label text-muted-foreground focus-visible:border-border"
-            />
-          </FormField>
+          <ReadOnlySlugField
+            slug={project.slug}
+            hint="Read-only. Used in API URLs and can't be changed."
+          />
         </div>
         <ProjectIdentifiers project={project} />
       </SettingsSection>
@@ -145,81 +130,12 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
       </SettingsSection>
 
       {canEdit ? (
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-medium text-muted-foreground">
-            Payload capture changes apply to spans ingested after you save.
-          </p>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!isDirty}
-            loading={updateProject.isPending}
-            className="self-end sm:self-auto"
-          >
-            Save changes
-          </Button>
-        </div>
+        <SettingsSaveBar
+          hint="Payload capture changes apply to spans ingested after you save."
+          dirty={isDirty}
+          saving={updateProject.isPending}
+        />
       ) : null}
     </form>
-  );
-}
-
-interface CapturePayloadsFieldProps {
-  control: Control<ProjectSettingsValues>;
-  canEdit: boolean;
-}
-
-function CapturePayloadsField({ control, canEdit }: CapturePayloadsFieldProps) {
-  const switchId = useId();
-  const descriptionId = useId();
-
-  return (
-    <div className="flex items-start gap-4 rounded-tile bg-surface-muted p-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <Label htmlFor={switchId} className="text-sm">
-          Capture prompts &amp; completions
-        </Label>
-        <p id={descriptionId} className="text-sm text-muted-foreground">
-          Secrets such as API keys are redacted before storage. Turn off to keep metadata only:
-          tokens, cost, latency and model. Existing traces are unaffected.
-        </p>
-      </div>
-      <Controller
-        control={control}
-        name="capture_payloads"
-        render={({ field }) => (
-          <Switch
-            id={switchId}
-            aria-describedby={descriptionId}
-            checked={field.value}
-            onCheckedChange={field.onChange}
-            onBlur={field.onBlur}
-            ref={field.ref}
-            disabled={!canEdit}
-          />
-        )}
-      />
-    </div>
-  );
-}
-
-/** The project ID for API calls and support requests, and when the project was created. */
-function ProjectIdentifiers({ project }: { project: Project }) {
-  return (
-    <dl className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-border pt-4 text-xs font-medium text-muted-foreground">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <dt>Project ID</dt>
-        <dd className="flex min-w-0 items-center gap-0.5">
-          <code className="truncate font-mono text-label text-foreground">{project.id}</code>
-          <CopyButton value={project.id} label="Copy project ID" className="size-7" />
-        </dd>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <dt>Created</dt>
-        <dd className="text-foreground">
-          <time dateTime={project.created_at}>{formatDate(project.created_at)}</time>
-        </dd>
-      </div>
-    </dl>
   );
 }

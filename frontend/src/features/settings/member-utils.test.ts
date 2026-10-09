@@ -14,7 +14,13 @@ import {
 
 function member(name: string, role: Role): Member {
   return {
-    user: { id: name, email: `${name.toLowerCase()}@example.com`, name, created_at: "" },
+    user: {
+      id: name,
+      email: `${name.toLowerCase()}@example.com`,
+      name,
+      created_at: "",
+      email_verified: true,
+    },
     role,
     created_at: "2026-10-01T00:00:00Z",
   };

@@ -1,3 +1,5 @@
+import type { AuditEvent } from "@/lib/api";
+
 /**
  * Human labels for audit actions. The backend records present-tense verbs
  * ("key.create"); past-tense aliases are accepted too so older or future
@@ -39,8 +41,37 @@ const AUDIT_ACTION_LABELS: ReadonlyMap<string, string> = new Map(
     "user.logout": "Signed out",
     "user.signup": "Created account",
     "user.password_reset": "Reset password",
+    "user.oauth_link": "Connected a sign-in provider",
+    "user.oauth_unlink": "Disconnected a sign-in provider",
+    "user.totp_enable": "Turned on two-factor authentication",
+    "user.totp_disable": "Turned off two-factor authentication",
   }),
 );
+
+/**
+ * The actions the server records, in the order the filter lists them. These are the exact values
+ * the `action` filter matches; the labels above are only how they read.
+ */
+export const AUDIT_FILTER_ACTIONS: readonly string[] = [
+  "org.create",
+  "org.update",
+  "project.create",
+  "project.update",
+  "project.delete",
+  "key.create",
+  "key.revoke",
+  "member.add",
+  "member.role_change",
+  "member.remove",
+  "invite.create",
+  "invite.accept",
+  "invite.revoke",
+  "user.password_reset",
+  "user.oauth_link",
+  "user.oauth_unlink",
+  "user.totp_enable",
+  "user.totp_disable",
+];
 
 /** The label for a known action, or null so the caller can show the raw action in mono. */
 export function auditActionLabel(action: string): string | null {
@@ -108,4 +139,9 @@ export function auditEventSummary(
 
 export function hasMetadata(metadata: Record<string, unknown> | null): boolean {
   return metadata !== null && Object.keys(metadata).length > 0;
+}
+
+/** Who acted: their name, else their email, or "System" for an event no person caused. */
+export function auditActorName(event: Pick<AuditEvent, "actor">): string {
+  return event.actor ? event.actor.name || event.actor.email : "System";
 }

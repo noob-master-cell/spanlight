@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils";
 const inputClasses = cn(
   "flex h-[46px] w-full min-w-0 rounded-input border border-input bg-surface px-4 text-sm text-foreground",
   "placeholder:text-subtle-foreground",
-  "transition-[border-color,box-shadow] duration-200 ease-out-quart",
-  "focus-visible:border-accent focus-visible:shadow-focus focus-visible:outline-none",
+  "transition-colors duration-200 ease-out-quart",
+  // The ring is the global :focus-visible outline; a field also turns its border violet.
+  "focus-visible:border-accent",
   "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-60",
   "aria-invalid:border-[1.5px] aria-invalid:border-danger",
-  "aria-invalid:focus-visible:shadow-focus-danger",
+  "aria-invalid:focus-visible:outline-danger",
   "file:border-0 file:bg-transparent file:text-sm file:font-medium",
 );
 

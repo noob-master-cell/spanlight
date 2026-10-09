@@ -38,8 +38,9 @@
 
   /* Lines */
   --border: #e8e6e1;
-  --border-strong: #d6d3cb;
-  --input: #d6d3cb;
+  --border-strong: #868391;
+  /* The input outline is the border/strong token in Figma: keep the two in step. */
+  --input: var(--border-strong);
 
   /* Brand: ink (primary actions), lime (highlight), violet (accent), fuchsia */
   --ink: #16151d;
@@ -98,6 +99,8 @@
   --chart-3: #0d9488;
   --chart-4: #f59e0b;
   --chart-grid: #eeece7;
+  /* The non-peak bars on an ink card (Figma chart/bar-muted-on-ink): white at 11%. */
+  --chart-bar-muted-on-ink: rgb(255 255 255 / 0.11);
 
   /* Hero mesh gradient */
   --mesh-1: #e9d5ff;
@@ -133,8 +136,8 @@
   --subtle-foreground: #9896a6;
 
   --border: #2a2933;
-  --border-strong: #3a3944;
-  --input: #3a3944;
+  --border-strong: #76747f;
+  --input: var(--border-strong);
 
   /* Primary actions turn lime in the dark theme. */
   --ink: #d4ff3a;
@@ -185,6 +188,7 @@
   --chart-3: #2dd4bf;
   --chart-4: #fbbf24;
   --chart-grid: #26252f;
+  --chart-bar-muted-on-ink: rgb(255 255 255 / 0.11);
 
   --mesh-1: #4c1d95;
   --mesh-2: #713f12;
@@ -259,6 +263,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-grid: var(--chart-grid);
+  --color-chart-bar-muted-on-ink: var(--chart-bar-muted-on-ink);
   --color-mesh-1: var(--mesh-1);
   --color-mesh-2: var(--mesh-2);
   --color-mesh-3: var(--mesh-3);
@@ -329,7 +334,7 @@
   --text-code: 0.875rem; /* Mono/Code */
   --text-code--line-height: 1.7;
 
-  /* Shape: pills are rounded-full; cards 28, dialogs 24, tiles 18, inputs 14 */
+  /* Shape: pills are rounded-full; cards 28, dialogs 24, tiles 18, inputs 14, tooltips 12, checkboxes 5 */
   --radius-xs: 0.375rem;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
@@ -338,6 +343,8 @@
   --radius-2xl: 1.125rem;
   --radius-3xl: 1.5rem;
   --radius-input: 0.875rem;
+  --radius-checkbox: 0.3125rem;
+  --radius-tooltip: 0.75rem;
   --radius-tile: 1.125rem;
   --radius-popover: 1.125rem;
   --radius-dialog: 1.5rem;
@@ -347,9 +354,6 @@
   --shadow-sm: var(--elevation-card);
   --shadow-card: var(--elevation-card);
   --shadow-lg: var(--elevation-lg);
-  /* Field focus: accent border plus a soft 3px glow. */
-  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-  --shadow-focus-danger: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
 
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 
@@ -433,6 +437,7 @@
     line-height: var(--text-sm--line-height);
   }
 
+  /* Keyboard focus: a solid 2px violet ring, 2px outside the control. */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;

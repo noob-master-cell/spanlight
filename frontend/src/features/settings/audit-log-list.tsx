@@ -1,21 +1,14 @@
 import { ChevronRight } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState } from "react";
 
 import { JsonViewer } from "@/components/json-viewer";
-import { UnknownValue } from "@/components/unknown-value";
 import { Button } from "@/components/ui/button";
 import type { AuditEvent } from "@/lib/api";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import {
-  auditActionLabel,
-  auditEventSummary,
-  hasMetadata,
-  shortTargetId,
-  targetTypeLabel,
-} from "./audit-actions";
-import { InitialAvatar } from "./initial-avatar";
+import { auditActionLabel, auditActorName, auditEventSummary, hasMetadata } from "./audit-actions";
+import { AuditActor, AuditIp, AuditTarget, DetailRow } from "./audit-row-cells";
 import { RelativeTime } from "./relative-time";
 import { ColumnLabels, TileList } from "./settings-list";
 
@@ -83,7 +76,7 @@ function AuditEventRow({ event }: { event: AuditEvent }) {
           ) : null}
           {/* Narrow cards: who and when move under the action. */}
           <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground @[34rem]:hidden">
-            <span className="truncate">{actorName(event)}</span>
+            <span className="truncate">{auditActorName(event)}</span>
             <span aria-hidden>·</span>
             <RelativeTime iso={event.created_at} className="shrink-0" />
           </span>
@@ -135,73 +128,4 @@ function AuditEventRow({ event }: { event: AuditEvent }) {
       ) : null}
     </li>
   );
-}
-
-interface DetailRowProps {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}
-
-function DetailRow({ label, children, className }: DetailRowProps) {
-  return (
-    <div className={cn("contents", className)}>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0">{children}</dd>
-    </div>
-  );
-}
-
-function actorName(event: AuditEvent): string {
-  return event.actor ? event.actor.name || event.actor.email : "System";
-}
-
-function AuditActor({ event }: { event: AuditEvent }) {
-  const name = actorName(event);
-  return (
-    <span className="flex min-w-0 items-center gap-2">
-      <InitialAvatar
-        name={name}
-        seed={event.actor?.id ?? "system"}
-        size="sm"
-        tone={event.actor ? undefined : "neutral"}
-      />
-      <span
-        title={event.actor?.email}
-        className={cn(
-          "truncate text-sm font-medium",
-          event.actor ? "text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {name}
-      </span>
-    </span>
-  );
-}
-
-function AuditTarget({ event }: { event: AuditEvent }) {
-  if (!event.target_type && !event.target_id) {
-    return <UnknownValue reason="No target recorded" />;
-  }
-  return (
-    <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-      {event.target_type ? (
-        <span className="text-xs font-medium text-muted-foreground">
-          {targetTypeLabel(event.target_type)}
-        </span>
-      ) : null}
-      {event.target_id ? (
-        <span title={event.target_id} className="truncate font-mono text-label text-foreground">
-          {shortTargetId(event.target_id)}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function AuditIp({ event }: { event: AuditEvent }) {
-  if (!event.ip) {
-    return <UnknownValue reason="Not recorded" className="font-mono text-label" />;
-  }
-  return <span className="truncate font-mono text-label text-muted-foreground">{event.ip}</span>;
 }

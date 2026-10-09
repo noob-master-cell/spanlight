@@ -1,12 +1,11 @@
 import { ProfileSection } from "./profile-section";
-import { SessionsSection } from "./sessions-section";
 import { SignOutSection } from "./sign-out-section";
 
+/** Settings › Account: who you are, and signing out. Active sessions live on Security. */
 export function AccountPage() {
   return (
     <div className="flex flex-col gap-5">
       <ProfileSection />
-      <SessionsSection />
       <SignOutSection />
     </div>
   );

@@ -1,16 +1,23 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { orgsApi, queryKeys, type Me } from "@/lib/api";
+import { isTwoFactorRequired, orgsApi, queryKeys, type Me, type Project } from "@/lib/api";
 import { readLastProject } from "@/lib/last-project";
 
 type HomeDestination =
   | { to: "/onboarding"; search: { org?: string } }
+  | { to: "/account/security" }
   | { to: "/$orgId/$projectId/overview"; params: { orgId: string; projectId: string } };
 
 /**
  * Where "/" should send a signed-in user: their last project if they still
  * have access, otherwise the first project of their first org, otherwise
  * onboarding.
+ *
+ * An org that requires two-factor authentication answers `403 TWO_FACTOR_REQUIRED` to everyone
+ * who has not turned it on, even for its list of projects. Such an org is skipped, so a person who
+ * belongs to another one still gets in (or, if that one has no project yet, onboards in it). Only
+ * when every org is locked is there nothing to show, so they go to their account's Security page,
+ * the one place that stays open, to turn it on.
  */
 export async function resolveHomeDestination(
   queryClient: QueryClient,
@@ -27,12 +34,16 @@ export async function resolveHomeDestination(
       ? [last.orgId, ...orgIds.filter((id) => id !== last.orgId)]
       : orgIds;
 
+  let locked = false;
+  // The first org that opened but has no project to land on, for onboarding below.
+  let openOrgId: string | null = null;
   for (const orgId of orderedOrgIds) {
-    const projects = await queryClient.query({
-      queryKey: queryKeys.org(orgId).projects,
-      queryFn: () => orgsApi.projects(orgId),
-      staleTime: "static",
-    });
+    const projects = await orgProjectsOrNull(queryClient, orgId);
+    if (projects === null) {
+      locked = true;
+      continue;
+    }
+    openOrgId ??= orgId;
     const preferred = projects.find((project) => project.id === last?.projectId) ?? projects[0];
     if (preferred) {
       return {
@@ -42,5 +53,27 @@ export async function resolveHomeDestination(
     }
   }
 
-  return { to: "/onboarding", search: { org: orderedOrgIds[0] } };
+  if (locked && openOrgId === null) {
+    return { to: "/account/security" };
+  }
+  return { to: "/onboarding", search: { org: openOrgId ?? orderedOrgIds[0] } };
+}
+
+/** The org's projects, or null when it is locked behind two-factor authentication. */
+async function orgProjectsOrNull(
+  queryClient: QueryClient,
+  orgId: string,
+): Promise<Project[] | null> {
+  try {
+    return await queryClient.query({
+      queryKey: queryKeys.org(orgId).projects,
+      queryFn: () => orgsApi.projects(orgId),
+      staleTime: "static",
+    });
+  } catch (error) {
+    if (isTwoFactorRequired(error)) {
+      return null;
+    }
+    throw error;
+  }
 }

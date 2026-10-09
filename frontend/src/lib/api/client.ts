@@ -8,7 +8,15 @@ export type QueryParams = Record<string, QueryValue>;
 interface RequestOptions {
   query?: QueryParams;
   body?: unknown;
+  /** Extra request headers, such as `Idempotency-Key`. The built-in ones take precedence. */
+  headers?: Record<string, string>;
   signal?: AbortSignal;
+}
+
+/** A file fetched through the API: the bytes and the name the server suggested, if any. */
+export interface DownloadedFile {
+  blob: Blob;
+  filename: string | null;
 }
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -66,12 +74,18 @@ export function buildUrl(path: string, query?: QueryParams): string {
   return search ? `${path}?${search}` : path;
 }
 
-async function request<T>(
+/**
+ * Sends the request and resolves with the response once it is known to be a success. Every failure
+ * (no response, or a non-2xx status) is thrown as the error type callers expect.
+ */
+async function send(
   method: HttpMethod,
   path: string,
-  options: RequestOptions = {},
-): Promise<T> {
-  const headers = new Headers({ Accept: "application/json" });
+  options: RequestOptions,
+  accept: string,
+): Promise<Response> {
+  const headers = new Headers(options.headers);
+  headers.set("Accept", accept);
 
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
@@ -108,12 +122,58 @@ async function request<T>(
     throw new ApiError(response.status, problem);
   }
 
+  return response;
+}
+
+async function request<T>(
+  method: HttpMethod,
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await send(method, path, options, "application/json");
+
   if (response.status === 204) {
     return undefined as T;
   }
 
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
+}
+
+async function download(
+  path: string,
+  query?: QueryParams,
+  signal?: AbortSignal,
+): Promise<DownloadedFile> {
+  const response = await send("GET", path, { query, signal }, "text/csv");
+  let blob: Blob;
+  try {
+    blob = await response.blob();
+  } catch (error) {
+    // The connection can drop while the body streams, after the status line was fine.
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+    throw new NetworkError(error);
+  }
+  return { blob, filename: filenameFromDisposition(response.headers.get("Content-Disposition")) };
+}
+
+/** The `filename` of a `Content-Disposition` header, or null when there is none. */
+export function filenameFromDisposition(header: string | null): string | null {
+  if (!header) {
+    return null;
+  }
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header);
+  const name = match?.[1];
+  if (!name) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
 }
 
 async function readProblem(response: Response): Promise<ProblemDetails> {
@@ -145,13 +205,18 @@ export const api = {
   get<T>(path: string, query?: QueryParams, signal?: AbortSignal): Promise<T> {
     return request<T>("GET", path, { query, signal });
   },
-  post<T>(path: string, body?: unknown): Promise<T> {
-    return request<T>("POST", path, { body });
+  post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+    return request<T>("POST", path, { body, headers });
   },
   patch<T>(path: string, body: unknown): Promise<T> {
     return request<T>("PATCH", path, { body });
   },
-  delete(path: string): Promise<void> {
-    return request<undefined>("DELETE", path);
+  /** `body` is for the deletions that ask for a typed confirmation. */
+  delete(path: string, body?: unknown): Promise<void> {
+    return request<undefined>("DELETE", path, { body });
+  },
+  /** Fetches a file as a blob, e.g. a CSV export. Failures throw the same errors as JSON calls. */
+  download(path: string, query?: QueryParams, signal?: AbortSignal): Promise<DownloadedFile> {
+    return download(path, query, signal);
   },
 };

@@ -17,8 +17,8 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       className={cn(
         "flex h-[46px] w-full items-center justify-between gap-2 rounded-input border border-input bg-surface px-4 text-sm text-foreground",
-        "transition-[border-color,box-shadow] duration-200 ease-out-quart",
-        "focus-visible:border-accent focus-visible:shadow-focus focus-visible:outline-none",
+        "transition-colors duration-200 ease-out-quart",
+        "focus-visible:border-accent",
         "disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-subtle-foreground",
         "[&>span]:truncate",
         className,

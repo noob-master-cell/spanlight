@@ -30,6 +30,24 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * `422 EXPORT_TOO_LARGE`: more events match the audit log filters than one CSV may hold, so nothing
+ * was sent. Narrow the filters. It is an `ApiError`, so `code`, `detail` and `requestId` are the
+ * server's; the type only lets a caller tell this case apart from any other failure.
+ */
+export class ExportTooLargeError extends ApiError {
+  constructor(source: ApiError) {
+    super(source.status, {
+      title: source.title,
+      detail: source.detail ?? undefined,
+      code: source.code,
+      request_id: source.requestId ?? undefined,
+      errors: source.fieldErrors,
+    });
+    this.name = "ExportTooLargeError";
+  }
+}
+
 /** Thrown when the request never produced an HTTP response (offline, DNS, CORS, abort). */
 export class NetworkError extends Error {
   constructor(cause: unknown) {
@@ -38,35 +56,22 @@ export class NetworkError extends Error {
   }
 }
 
-/**
- * The password was right, but the account needs a second factor before it is signed in. Carries
- * the challenge the second step sends back to the server with a code.
- */
-export class TwoFactorRequiredError extends Error {
-  readonly challenge: string;
-  readonly expiresAt: string;
-
-  constructor(challenge: string, expiresAt: string) {
-    super(
-      "This account uses two-factor authentication, and the dashboard can't finish that step yet.",
-    );
-    this.name = "TwoFactorRequiredError";
-    this.challenge = challenge;
-    this.expiresAt = expiresAt;
-  }
-}
-
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+/**
+ * `403 TWO_FACTOR_REQUIRED`: the organization requires two-factor authentication and the caller has
+ * not turned it on. Every organization and project route answers it until they do; `/auth/*` stays
+ * open so they can.
+ */
+export function isTwoFactorRequired(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 403 && error.code === "TWO_FACTOR_REQUIRED";
+}
+
 /** A short, human-readable message for any error thrown by the API layer. */
 export function errorMessage(error: unknown): string {
-  if (
-    error instanceof ApiError ||
-    error instanceof NetworkError ||
-    error instanceof TwoFactorRequiredError
-  ) {
+  if (error instanceof ApiError || error instanceof NetworkError) {
     return error.message;
   }
   return "Something went wrong. Try again.";

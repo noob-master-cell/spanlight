@@ -1,21 +1,18 @@
-import { Link } from "@tanstack/react-router";
-import { FilterX, Radio } from "lucide-react";
 import { useEffect } from "react";
 
-import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { PageHeader } from "@/components/page-header";
 import { UnknownValue } from "@/components/unknown-value";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useProjectFilters, useProjectParams } from "@/features/shell/project-context";
+import { useProjectFilters } from "@/features/shell/project-context";
 import { formatInteger } from "@/lib/format";
-import { describeRange } from "@/lib/time-range";
 
 import { recallOpenedTrace, rememberTracesSearch } from "./last-traces-search";
 import { loadedSummary, rangePhrase, tracesNoun } from "./list-summary";
 import { useTraceCountQuery, useTraceListQuery } from "./trace-queries";
+import { ExportTracesButton } from "./export-trigger";
 import { TraceTiles, TraceTilesSkeleton } from "./trace-tiles";
+import { TracesEmptyState } from "./traces-empty-state";
 import { TracesListFooter } from "./traces-list-footer";
 import { TracesTable, TracesTableSkeleton } from "./traces-table";
 import { TracesToolbar } from "./traces-toolbar";
@@ -118,7 +115,11 @@ export function TracesPage() {
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <PageHeader title="Traces" description={<TraceCountLine countQuery={countQuery} />} />
+      <PageHeader
+        title="Traces"
+        description={<TraceCountLine countQuery={countQuery} />}
+        actions={<ExportTracesButton />}
+      />
       <TracesToolbar
         search={filters.search}
         activeFilters={filters.activeFilters}
@@ -150,50 +151,5 @@ function TraceCountLine({ countQuery }: { countQuery: ReturnType<typeof useTrace
     <span className="tabular">
       {formatInteger(count) ?? count} {tracesNoun(count)} {phrase}
     </span>
-  );
-}
-
-interface TracesEmptyStateProps {
-  hasFacetFilters: boolean;
-  onClearFilters: () => void;
-}
-
-function TracesEmptyState({ hasFacetFilters, onClearFilters }: TracesEmptyStateProps) {
-  const { orgId, projectId } = useProjectParams();
-  const { range, environment } = useProjectFilters();
-  const period = describeRange(range).toLowerCase();
-
-  if (hasFacetFilters) {
-    return (
-      <EmptyState
-        icon={FilterX}
-        title="No traces match these filters"
-        description={`Nothing in the ${period} matches every filter. Remove a filter or widen the time range.`}
-        action={
-          <Button size="sm" onClick={onClearFilters}>
-            Clear filters
-          </Button>
-        }
-      />
-    );
-  }
-
-  return (
-    <EmptyState
-      icon={Radio}
-      title="No traces in this range"
-      description={
-        environment
-          ? `No traces from the "${environment}" environment in the ${period}. Pick a wider time range or another environment.`
-          : `No traces were received in the ${period}. Pick a wider time range, or connect your app to start sending traces.`
-      }
-      action={
-        <Button asChild size="sm" variant="primary">
-          <Link to="/onboarding" search={{ org: orgId, project: projectId }}>
-            Connect your app
-          </Link>
-        </Button>
-      }
-    />
   );
 }

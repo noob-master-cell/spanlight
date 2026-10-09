@@ -1,11 +1,12 @@
+import { ApproxValue } from "@/components/approx-value";
 import { DeltaPill } from "@/components/delta-pill";
-import { UnknownValue } from "@/components/unknown-value";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OverviewMetrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 import type { ChartPoint } from "./chart-data";
+import { CARD_LAYOUT } from "./kpi-card-placeholders";
 import {
   buildKpiCards,
   formatDeltaMagnitude,
@@ -14,7 +15,7 @@ import {
   type KpiDelta,
   type KpiId,
 } from "./kpis";
-import { EmptySparkline, Sparkline, type SparklineTone } from "./sparkline";
+import { Sparkline, type SparklineTone } from "./sparkline";
 
 const SPARKLINE_TONES: Record<KpiId, SparklineTone> = {
   p95: "latency",
@@ -25,8 +26,6 @@ const SPARKLINE_TONES: Record<KpiId, SparklineTone> = {
 
 /** The Tokens card is the page's one accent (violet → fuchsia) card. */
 const ACCENT_KPI: KpiId = "tokens";
-
-const CARD_LAYOUT = "flex h-full min-h-[132px] gap-3 py-5 pr-5 pl-6";
 
 interface KpiCardsProps {
   metrics: OverviewMetrics;
@@ -74,7 +73,11 @@ function KpiCard({ card, points, comparisonLabel }: KpiCardProps) {
           {card.label}
         </p>
         <p className={cn("truncate text-metric", accent ? "" : "text-foreground")}>
-          {card.value === null ? <UnknownValue reason={card.unknownReason} /> : card.value}
+          <ApproxValue
+            value={card.value}
+            approximate={card.approximate}
+            unknownReason={card.unknownReason}
+          />
         </p>
         {card.detail ? (
           <p
@@ -83,7 +86,7 @@ function KpiCard({ card, points, comparisonLabel }: KpiCardProps) {
               accent ? "" : "text-subtle-foreground",
             )}
           >
-            {card.detail}
+            <KpiDetail card={card} />
           </p>
         ) : null}
       </div>
@@ -92,6 +95,23 @@ function KpiCard({ card, points, comparisonLabel }: KpiCardProps) {
         <KpiSparkline id={card.id} points={points} />
       </div>
     </Card>
+  );
+}
+
+/** The line under the value. The p95 card's p50 may be an estimate, so it carries the "≈". */
+function KpiDetail({ card }: { card: KpiCardModel }) {
+  if (card.p50 === null) {
+    return card.detail;
+  }
+  return (
+    <>
+      p50{" "}
+      <ApproxValue
+        value={card.p50}
+        approximate={card.approximate}
+        unknownReason={card.unknownReason}
+      />
+    </>
   );
 }
 
@@ -129,52 +149,5 @@ function KpiDeltaPill({ delta, accent, comparisonLabel }: KpiDeltaPillProps) {
       surface={accent ? "accent" : "default"}
       comparisonLabel={comparisonLabel}
     />
-  );
-}
-
-/** Loading placeholders shaped like the four KPI cards. */
-export function KpiCardsSkeleton({ className }: { className?: string }) {
-  return (
-    <div aria-hidden className={cn("grid gap-4 sm:grid-cols-2", className)}>
-      {Array.from({ length: 4 }, (_, index) => (
-        <Card key={index} className={CARD_LAYOUT}>
-          <div className="flex flex-1 flex-col gap-2.5">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-3 w-28" />
-          </div>
-          <div className="flex flex-col items-end justify-between">
-            <Skeleton className="h-6 w-14 rounded-full" />
-            <Skeleton className="h-8 w-24" />
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-const EMPTY_KPI_LABELS = ["LLM calls", "p95 latency", "Error rate", "Spend"] as const;
-
-/** First-run KPI cards: the metrics the page will show, with nothing to report yet. */
-export function EmptyKpiCards() {
-  return (
-    <ul aria-label="Key metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {EMPTY_KPI_LABELS.map((label) => (
-        <li key={label} className="min-w-0">
-          <Card className={CARD_LAYOUT}>
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <p className="text-sm font-medium text-muted-foreground">{label}</p>
-              <p aria-hidden className="text-metric text-subtle-foreground">
-                —
-              </p>
-              <p className="text-xs font-medium text-subtle-foreground">No data yet</p>
-            </div>
-            <div className="flex shrink-0 flex-col justify-end">
-              <EmptySparkline />
-            </div>
-          </Card>
-        </li>
-      ))}
-    </ul>
   );
 }

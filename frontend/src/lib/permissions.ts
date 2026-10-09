@@ -2,25 +2,32 @@ import type { Role } from "@/lib/api";
 
 /** Mirrors backend `core/permissions.py`. The server is authoritative; this only drives UI. */
 export type Permission =
+  | "org:read"
   | "project:read"
   | "key:create"
   | "key:revoke_own"
   | "key:revoke_any"
   | "project:write"
+  | "project:delete"
   | "member:manage"
   | "audit:read"
-  | "org:delete";
+  | "org:update"
+  | "org:delete"
+  | "org:security"
+  | "export:create";
 
-const VIEWER: Permission[] = ["project:read"];
-const MEMBER: Permission[] = [...VIEWER, "key:create", "key:revoke_own"];
+const VIEWER: Permission[] = ["org:read", "project:read"];
+const MEMBER: Permission[] = [...VIEWER, "key:create", "key:revoke_own", "export:create"];
 const ADMIN: Permission[] = [
   ...MEMBER,
   "key:revoke_any",
   "project:write",
+  "project:delete",
   "member:manage",
+  "org:update",
   "audit:read",
 ];
-const OWNER: Permission[] = [...ADMIN, "org:delete"];
+const OWNER: Permission[] = [...ADMIN, "org:delete", "org:security"];
 
 const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   viewer: new Set(VIEWER),

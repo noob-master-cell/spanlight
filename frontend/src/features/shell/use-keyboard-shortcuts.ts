@@ -1,6 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import { isNavigationLocked } from "@/lib/navigation-lock";
+
 import { NAV_ITEMS } from "./nav-items";
 import { useProjectParams } from "./project-context";
 
@@ -33,7 +35,15 @@ export function useKeyboardShortcuts(onTogglePalette: () => void): void {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        onTogglePalette();
+        // A screen that must not be left (recovery codes) keeps the palette closed.
+        if (!isNavigationLocked()) {
+          onTogglePalette();
+        }
+        return;
+      }
+
+      if (isNavigationLocked()) {
+        awaitingSecondKey = false;
         return;
       }
 
