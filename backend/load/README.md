@@ -1,0 +1,97 @@
+# Load tests
+
+[k6](https://k6.io) scripts and a seeder that measure the shipped Compose stack. What is measured, the thresholds and the method are in [Performance](../../docs/performance.md); this page is about running them.
+
+| File | What it does |
+|---|---|
+| `seed.py` | Creates an organization, a project, one ingest key and ten read keys, then stores spans through the real ingestion pipeline, builds the hourly rollups and runs `VACUUM ANALYZE`. Writes the keys to a JSON file. |
+| `seed_data.py`, `seed_workspace.py` | Used by `seed.py` and kept beside it: the generator of the spans (no I/O), and the creation of the organization, owner, project and keys. |
+| `ingest.js` | 500 spans a second (5 requests of 100 spans) to `POST /v1/traces`. Threshold: p95 below 200 ms. |
+| `overview.js` | 20 requests a second to the overview metrics, rotating through 1 hour, 24 hours, 7 days and 30 days. Threshold: p95 below 300 ms. |
+| `traces.js` | 20 requests a second to the trace list: the first page, one model, failed traces only. Threshold: p95 below 300 ms. |
+| `summary.js` | Used by the three scripts: turns the k6 results into the Markdown table and the JSON summary. |
+| `compose.load.yaml` | The only change to `deploy/compose.yaml`: publishes Postgres on `127.0.0.1` for the seeder and turns the demo traffic job off. |
+
+Every script also has three more thresholds: `http_req_failed` below 1 % (a `429` is a failure), `checks` above 99 %, and `dropped_iterations` equal to 0, which means the target rate was really held (k6 drops an iteration when it has no free virtual user left). A script exits non-zero when any threshold is missed.
+
+## On GitHub
+
+Open the repository's Actions tab, choose **Load test** and **Run workflow**.
+
+- `smoke` (the default) seeds 100 000 spans and runs each scenario for 30 seconds. It checks that the setup works and has a limit of 30 minutes.
+- `full` seeds 10 million spans and runs each scenario for 2 minutes (ingestion 3 minutes). It takes several hours, almost all of it seeding.
+
+Both run on a GitHub-hosted `ubuntu-latest` runner. The run's summary page shows the run's environment and one table per script; the raw k6 summaries are attached as the artifact `load-results-<profile>`. The job is red when any threshold is missed, and all three scripts run either way.
+
+## On your machine
+
+You need Docker with the Compose plugin, [uv](https://docs.astral.sh/uv/) and, to run the scripts without Docker, [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/). Run everything from the repository root.
+
+1. Start a stack of its own. The project name keeps it apart from a development stack, and `deploy/.env` needs `POSTGRES_PASSWORD`, `APP_DB_PASSWORD` and `SECRET_KEY` (see `deploy/.env.example`).
+
+   ```bash
+   docker compose -p spanlight-load -f deploy/compose.yaml -f backend/load/compose.load.yaml \
+     --env-file deploy/.env up -d --build
+   curl -s http://localhost:8080/health/ready
+   ```
+
+2. Seed it. The seeder connects as the database owner, so it needs the `postgres` password. It reads the URL from `LOAD_DATABASE_URL` and not from `DATABASE_URL`, so a shell that points at a development database cannot fill it by accident.
+
+   ```bash
+   cd backend
+   export LOAD_DATABASE_URL="postgresql+psycopg://postgres:$(sed -n 's/^POSTGRES_PASSWORD=//p' ../deploy/.env)@127.0.0.1:55433/spanlight"
+   uv run python load/seed.py --spans 100000 --credentials-file ../.local/load/credentials.json
+   cd ..
+   ```
+
+   `--spans` is how many spans to store (use at least 100 000: with fewer, a window or a filter of the scripts can have nothing to return) and `--seed` repeats a data shape. The seeder prints its rate and the time left with every million spans, and stops early when the seed is projected to take longer than `--max-minutes` (default 240). The workflow passes 15 for `smoke` and 240 for `full`, which is what is left of the job's limit once the build, the rollups and the scenarios are counted.
+
+   The keys are in the credentials file (mode 600, in the git-ignored `.local/`) and are never printed. It also holds `data_end`, the instant the seeded data ends at. The overview and trace list scripts ask for windows that end there, not at the wall clock, so a seed that takes hours does not leave the newest windows empty.
+
+3. Run a script. The paths are the ones the scripts read, so give them as absolute paths.
+
+   ```bash
+   mkdir -p /tmp/spanlight-load-results
+   k6 run \
+     -e CREDENTIALS_FILE="$PWD/.local/load/credentials.json" \
+     -e RESULTS_DIR=/tmp/spanlight-load-results \
+     -e DURATION=30s \
+     backend/load/overview.js
+   ```
+
+   Or with the image the workflow uses (host networking, so on Linux, or in Docker Desktop with host networking turned on):
+
+   ```bash
+   docker run --rm --network host --user "$(id -u):$(id -g)" \
+     -e K6_NO_USAGE_REPORT=true -e DURATION=30s \
+     -v "$PWD/backend/load:/load:ro" -v "$PWD/.local/load:/creds:ro" \
+     -v /tmp/spanlight-load-results:/results \
+     grafana/k6:2.3.0 run /load/overview.js
+   ```
+
+   Each script writes `<name>.json` (the full k6 summary) and `<name>.md` (the table) to the results directory.
+
+4. Remove the stack and its volumes when you are done:
+
+   ```bash
+   docker compose -p spanlight-load -f deploy/compose.yaml -f backend/load/compose.load.yaml \
+     --env-file deploy/.env down --volumes
+   ```
+
+## Settings of the scripts
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BASE_URL` | `http://localhost:8080` | The `web` service. The scripts go through Caddy, the path a real request takes. |
+| `DURATION` | `30s` | How long the arrival rate is held. |
+| `CREDENTIALS_FILE` | `/creds/credentials.json` | The file `seed.py` wrote. |
+| `RESULTS_DIR` | `/results` | Where the JSON and Markdown summaries are written. It must exist. |
+| `FILTER_MODEL` | `claude-haiku-4-5` | `traces.js` only: the model of the filtered requests. It is the most common seeded one. |
+
+## Reading a failed run
+
+- **Many `429` responses.** The read scripts use ten keys so no key gets near its limit of 20 requests a second. If you changed the rate or the number of keys, check that each key still stays below it.
+- **Dropped iterations.** k6 had no free virtual user, so it did not start requests at the target rate. The server was too slow to keep up, and the latency figures understate it.
+- **The check "the window has traces" fails.** The overview of a window came back empty. The seeded data covers all four windows, so for 7 and 30 days this is what missing rollups look like (the seeder stops when its backfill writes no rows): run `spanlight rollups backfill` for the project, or seed again. For 1 and 24 hours it means the data is older than the windows, or too few spans were seeded.
+- **The check "reported the expected source" fails.** The API said `"approximate"` the wrong way round for a window. It follows the window length alone (raw spans up to 24 hours, rollups above), so the API's rule changed; this check does not look at the rollup rows.
+- **The check "the page has traces" fails.** The data does not match the filter, usually because too few spans were seeded.

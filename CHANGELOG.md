@@ -21,10 +21,12 @@ Production hardening: accounts and access control, a versioned API, durable back
 - **Observability of Spanlight itself.** Optional self-tracing with OpenTelemetry, a readiness check (`/health/ready`) that reports the database, the migrations and the worker, and Prometheus metrics for the worker (jobs, outbox, notifications, rollups) on `WORKER_METRICS_PORT`.
 - **Operations.** Runbooks for deploying, rolling back, restoring, rotating secrets, revoking keys, scaling, ingestion spikes and service level objectives, plus a threat model and security documentation.
 - **Documentation site.** Quickstart, Python SDK, OTLP, self-hosting, configuration, API reference, security, runbooks and this changelog, served at `/docs/` by the web image.
+- **Load tests.** k6 scripts and a seeder in `backend/load/` measure ingestion (500 spans a second), the dashboard overview and the trace list (10 million spans) against the Compose stack, and a manually started workflow runs them on a GitHub-hosted runner. Method and targets are in `docs/performance.md`.
 
 ### Changed
 
 - **Versioned API.** Dashboard routes moved from `/api/<resource>` to `/api/v1/<resource>`. The old paths return `404`. Ingestion (`/v1/traces`, `/v1/otlp/traces`) keeps its own version and is unchanged. A future breaking change will ship as `/api/v2`, with `/api/v1` kept for at least 12 months.
+- **Postgres shared memory.** The Compose `postgres` service gets 256 MB of `/dev/shm` instead of Docker's 64 MB default, which parallel queries on large tables could exhaust ("could not resize shared memory segment").
 - **More than one replica.** Rate limits and idempotency state live in Postgres, so the API can run as several replicas.
 - **Optional features report themselves.** A request that needs an unconfigured integration (email, object storage, OAuth, `CREDENTIALS_KEYS`) answers `409 NOT_CONFIGURED` and names the setting; a background job that needs one ends as `skipped_not_configured`.
 

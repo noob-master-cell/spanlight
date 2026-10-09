@@ -60,6 +60,8 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    # Docker's 64 MB /dev/shm is too small for parallel hash joins ("could not resize shared memory segment").
+    shm_size: 256mb
     environment:
       POSTGRES_DB: spanlight
       POSTGRES_USER: postgres

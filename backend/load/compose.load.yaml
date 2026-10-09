@@ -1,0 +1,21 @@
+# Load-test override for deploy/compose.yaml. Use it as a second -f file:
+#
+#   docker compose -f deploy/compose.yaml -f backend/load/compose.load.yaml \
+#     --env-file deploy/.env up -d --build
+#
+# It changes only what a measurement needs and nothing about how the product runs. Postgres is
+# published on the loopback interface so seed.py can reach it from the host, and the demo traffic
+# job is switched off so no provider is called during a run. Limits, pool sizes, code paths and
+# Postgres settings stay exactly as shipped: the point is to measure what a self-hoster gets.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${LOAD_POSTGRES_PORT:-55433}:5432"
+
+  api:
+    environment:
+      DEMO_ENABLED: "false"
+
+  worker:
+    environment:
+      DEMO_ENABLED: "false"

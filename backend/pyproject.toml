@@ -62,6 +62,8 @@ filterwarnings = ["error"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# `load` holds the load-test scripts, which import their sibling modules (seed_data) by name.
+src = [".", "load"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "S", "ASYNC", "SIM", "RUF", "PL", "PT", "BLE"]

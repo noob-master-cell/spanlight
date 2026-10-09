@@ -1,0 +1,198 @@
+name: Load test
+
+# Run by hand only. A run builds the self-host stack from the dispatched commit, fills it with
+# spans through the real ingestion pipeline and drives it with k6 at the thresholds in
+# docs/performance.md. The result tables are on the run's summary page and the raw k6 summaries are
+# an artifact. `smoke` is a small run that checks the setup; `full` is the measured run and takes
+# several hours, almost all of it seeding.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "smoke: 100 000 spans, 30 s per scenario. full: 10 000 000 spans, 2 to 3 min per scenario."
+        type: choice
+        options:
+          - smoke
+          - full
+        default: smoke
+
+# One load run at a time. A run that is started while another is going waits; it is not cancelled.
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    # The full run is mostly seeding 10 million spans. The runner's own limit is 360 minutes.
+    timeout-minutes: ${{ inputs.profile == 'full' && 330 || 30 }}
+    env:
+      PROFILE: ${{ inputs.profile }}
+      SEED_SPANS: ${{ inputs.profile == 'full' && '10000000' || '100000' }}
+      # The seeder stops early when the seed is projected to take longer. What is left of the job
+      # limit after it has to cover the build, the rollups, VACUUM and the three scenarios.
+      SEED_MAX_MINUTES: ${{ inputs.profile == 'full' && '240' || '15' }}
+      READ_DURATION: ${{ inputs.profile == 'full' && '2m' || '30s' }}
+      INGEST_DURATION: ${{ inputs.profile == 'full' && '3m' || '30s' }}
+      # An exact release, so a run can be repeated with the same tool.
+      K6_IMAGE: grafana/k6:2.3.0
+      WEB_PORT: "8080"
+      LOAD_POSTGRES_PORT: "55433"
+      COMPOSE_PROJECT_NAME: spanlight-load
+      COMPOSE_FILE: deploy/compose.yaml:backend/load/compose.load.yaml
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # Seeding ten million spans needs the disk: the table, its indexes and the write-ahead log
+      # come to tens of gigabytes. These toolchains are not used here.
+      - name: Free disk space
+        if: inputs.profile == 'full'
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h
+
+      # The same throwaway secrets as the compose-smoke job in ci.yml: random, masked in the log
+      # and gone with the runner.
+      - name: Write a throwaway env file
+        run: |
+          env_file="$RUNNER_TEMP/load.env"
+          add_secret() {
+            value=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+            echo "::add-mask::$value"
+            echo "$1=$value" >> "$env_file"
+          }
+          : > "$env_file"
+          add_secret POSTGRES_PASSWORD
+          add_secret APP_DB_PASSWORD
+          add_secret SECRET_KEY
+          add_secret METRICS_TOKEN
+          echo "APP_BASE_URL=http://localhost:$WEB_PORT" >> "$env_file"
+          echo "WEB_PORT=$WEB_PORT" >> "$env_file"
+          echo "LOAD_POSTGRES_PORT=$LOAD_POSTGRES_PORT" >> "$env_file"
+          mkdir -p "$RUNNER_TEMP/load-results" "$RUNNER_TEMP/load-credentials"
+          echo "LOAD_ENV_FILE=$env_file" >> "$GITHUB_ENV"
+          echo "RESULTS_DIR=$RUNNER_TEMP/load-results" >> "$GITHUB_ENV"
+          echo "CREDENTIALS_FILE=$RUNNER_TEMP/load-credentials/credentials.json" >> "$GITHUB_ENV"
+
+      - name: Start the stack
+        run: docker compose --env-file "$LOAD_ENV_FILE" up -d --build
+
+      - name: Wait for the stack to be ready
+        run: |
+          for _ in $(seq 1 90); do
+            if curl --fail --silent --output /dev/null "http://localhost:$WEB_PORT/health/ready"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "the stack was not ready after 180 s" >&2
+          exit 1
+
+      # Writes the keys to $CREDENTIALS_FILE (mode 600) and prints nothing secret.
+      - name: Seed the database
+        working-directory: backend
+        run: |
+          postgres_password=$(sed -n 's/^POSTGRES_PASSWORD=//p' "$LOAD_ENV_FILE")
+          export LOAD_DATABASE_URL="postgresql+psycopg://postgres:${postgres_password}@127.0.0.1:${LOAD_POSTGRES_PORT}/spanlight"
+          df -h
+          uv run --frozen --no-dev python load/seed.py \
+            --spans "$SEED_SPANS" --max-minutes "$SEED_MAX_MINUTES" \
+            --credentials-file "$CREDENTIALS_FILE"
+          df -h
+
+      # Before any step that could print them.
+      - name: Mask the API keys
+        run: |
+          jq -r '.ingest_key, .read_keys[]' "$CREDENTIALS_FILE" | while IFS= read -r key; do
+            echo "::add-mask::$key"
+          done
+
+      - name: Record the environment
+        run: |
+          psql_value() {
+            docker compose --env-file "$LOAD_ENV_FILE" exec -T postgres \
+              psql -U postgres -d spanlight -tAc "$1"
+          }
+          date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          cores=$(nproc)
+          memory=$(awk '/MemTotal/ {printf "%.1f GiB", $2 / 1048576}' /proc/meminfo)
+          disk=$(df -h --output=size,avail / | tail -n 1 | awk '{print $1 " total, " $2 " free"}')
+          runner_image="${ImageOS:-unknown} ${ImageVersion:-unknown}"
+          postgres_version=$(psql_value 'SHOW server_version')
+          spans=$(psql_value 'SELECT count(*) FROM spans')
+          traces=$(psql_value 'SELECT count(*) FROM traces')
+          k6_version=$(docker run --rm "$K6_IMAGE" version | head -n 1)
+          jq -n \
+            --arg date_utc "$date_utc" --arg profile "$PROFILE" --arg commit "$GITHUB_SHA" \
+            --arg vcpus "$cores" --arg memory "$memory" --arg disk "$disk" \
+            --arg runner_image "$runner_image" --arg postgres "$postgres_version" \
+            --arg k6 "$k6_version" --arg spans "$spans" --arg traces "$traces" \
+            '{date_utc: $date_utc, profile: $profile, commit: $commit, vcpus: $vcpus,
+              memory: $memory, disk_after_seeding: $disk, runner_image: $runner_image,
+              postgres: $postgres, k6: $k6, seeded_spans: $spans, seeded_traces: $traces}' \
+            > "$RESULTS_DIR/environment.json"
+          cat > "$RESULTS_DIR/environment.md" <<EOF
+          ### Load test run
+
+          | | |
+          |---|---|
+          | Date (UTC) | $date_utc |
+          | Profile | $PROFILE |
+          | Commit (the image is built from it) | \`$GITHUB_SHA\` |
+          | Runner | ubuntu-latest, $cores vCPU, $memory RAM, disk $disk (after seeding) |
+          | Runner image | $runner_image |
+          | Postgres | $postgres_version |
+          | k6 | $k6_version |
+          | Seeded | $spans spans in $traces traces |
+          EOF
+
+      # Every script runs even when an earlier one misses its thresholds, so one run records all
+      # three. The step, and with it the job, still ends red if any of them did.
+      - name: Run the k6 scenarios
+        run: |
+          status=0
+          for script in overview traces ingest; do
+            duration=$READ_DURATION
+            if [ "$script" = ingest ]; then duration=$INGEST_DURATION; fi
+            echo "::group::k6 $script"
+            docker run --rm --network host --user "$(id -u):$(id -g)" \
+              -e K6_NO_USAGE_REPORT=true \
+              -e BASE_URL="http://localhost:$WEB_PORT" -e DURATION="$duration" \
+              -e CREDENTIALS_FILE=/creds/credentials.json -e RESULTS_DIR=/results \
+              -v "$GITHUB_WORKSPACE/backend/load:/load:ro" \
+              -v "$(dirname "$CREDENTIALS_FILE"):/creds:ro" \
+              -v "$RESULTS_DIR:/results" \
+              "$K6_IMAGE" run "/load/$script.js" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+
+      - name: Publish the results
+        if: always()
+        run: |
+          for name in environment overview traces ingest; do
+            if [ -f "$RESULTS_DIR/$name.md" ]; then
+              cat "$RESULTS_DIR/$name.md" >> "$GITHUB_STEP_SUMMARY"
+              echo >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Upload the k6 summaries
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: load-results-${{ inputs.profile }}
+          path: ${{ runner.temp }}/load-results/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Show the service logs
+        if: failure()
+        run: docker compose --env-file "$LOAD_ENV_FILE" logs --no-color --tail 60 api worker || true
