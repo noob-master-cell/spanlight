@@ -80,7 +80,7 @@ Every api process holds three pools, set in `backend/app/main.py`:
 
 | Pool | Size | Setting |
 |---|---|---|
-| Main (requests) | 10, may overflow by another 10 | fixed in code |
+| Main (requests) | 10, may overflow by another 10; waits up to `API_POOL_TIMEOUT_SECONDS` (5 s) | size fixed in code, wait in the environment |
 | Idempotency (reserving and completing an `Idempotency-Key`) | `IDEMPOTENCY_POOL_SIZE`, default 5, no overflow; waits up to `IDEMPOTENCY_POOL_TIMEOUT_SECONDS` (5 s) | environment |
 | Rate limiting | `RATE_LIMIT_POOL_SIZE`, default 5, no overflow; waits up to `RATE_LIMIT_POOL_TIMEOUT_SECONDS` (0.25 s) | environment |
 
@@ -94,17 +94,17 @@ So one api replica can open up to **20 + 5 + 5 = 30** connections. A worker hold
 
 What running out looks like:
 
-- The main pool is full: requests wait up to 30 seconds for a connection, then fail with 5xx. Latency climbs first.
+- The main pool is full: requests wait up to `API_POOL_TIMEOUT_SECONDS` (5 s) for a connection, then fail with `503 SERVICE_UNAVAILABLE` and `Retry-After: 5`, and the api logs `db_pool_timeout`. A statement that runs longer than `API_STATEMENT_TIMEOUT_SECONDS` (10 s) is cancelled the same way and logged as `db_statement_timeout`. Latency climbs first.
 - The idempotency pool is full: a request with an `Idempotency-Key` fails after `IDEMPOTENCY_POOL_TIMEOUT_SECONDS`.
 - The rate-limit pool is full: the check is **skipped** and the request goes through, so limits are not enforced while it lasts. The api counts each skipped check in `spanlight_rate_limit_unavailable_total{scope}` and logs `rate_limit_unavailable` with the scope (at most once a minute per scope). If that counter rises, the stack is over its connection budget.
 
-Raise `max_connections` on the Compose Postgres with an override file, then restart Postgres (it is a restart, so plan a brief outage):
+Raise `max_connections` on the Compose Postgres with an override file, then restart Postgres (it is a restart, so plan a brief outage). The override replaces the service's `command`, so keep the `jit=off` the shipped file sets:
 
 ```yaml
 # deploy/compose.connections.yaml
 services:
   postgres:
-    command: ["postgres", "-c", "max_connections=200"]
+    command: ["postgres", "-c", "jit=off", "-c", "max_connections=200"]
 ```
 
 ```bash

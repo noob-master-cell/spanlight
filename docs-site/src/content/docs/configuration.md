@@ -94,6 +94,15 @@ The live demo is fed by real model calls under a monthly budget. It is on by def
 | `DEMO_ENABLED` | boolean | unset | Force the demo workspace on or off. Unset means on exactly when `ANTHROPIC_API_KEY` is set. |
 | `DEMO_MONTHLY_BUDGET_USD` | decimal | `1.00` | Month-to-date spending cap for the demo's model calls, in US dollars. The demo job checks it before every provider call. |
 
+### API request limits
+
+A request that would otherwise wait on a busy database fails fast with `503` and `Retry-After` instead of queueing behind slow work. The worker, exports and deleting an organization or project are not subject to the statement limit.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `API_POOL_TIMEOUT_SECONDS` | number (min 1, max 60) | `5.0` | Seconds an API request waits for a connection from the main pool. Past it the request answers `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`. Blank keeps the default. |
+| `API_STATEMENT_TIMEOUT_SECONDS` | number (min 1, max 300) | `10.0` | Longest one database statement of an API request may run. The database cancels it and the request answers `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`. Blank keeps the default. |
+
 ### Connection pools
 
 Idempotency keys and rate limiting each use a small pool of their own, so they cannot starve the main one. Change these only after reading the [scaling runbook](/docs/runbooks/scale/).

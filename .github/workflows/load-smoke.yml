@@ -156,13 +156,15 @@ jobs:
       # Every script runs even when an earlier one misses its thresholds, so one run records all
       # three. The step, and with it the job, still ends red if any of them did, or if a script
       # did not write its results: when handleSummary throws, k6 prints its default summary and
-      # exits 0, so the exit status alone cannot tell.
+      # exits 0, so the exit status alone cannot tell. Before each script the database is given up
+      # to two minutes to finish the work of the one before (see backend/load/settle.sh).
       - name: Run the k6 scenarios
         run: |
           status=0
           for script in overview traces ingest; do
             duration=$READ_DURATION
             if [ "$script" = ingest ]; then duration=$INGEST_DURATION; fi
+            bash backend/load/settle.sh
             echo "::group::k6 $script"
             docker run --rm --network host --user "$(id -u):$(id -g)" \
               -e K6_NO_USAGE_REPORT=true \
@@ -212,6 +214,31 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Show the service logs
-        if: failure()
-        run: docker compose --env-file "$LOAD_ENV_FILE" logs --no-color --tail 60 api worker || true
+      # The whole log of each service, not its tail: the line that explains a failure is rarely
+      # among the last few. Counts the error-level events and the unhandled exceptions by type,
+      # then prints the first 20 of them. The 503s the API answers when the database is behind
+      # are logged as warnings under their own names, so they are counted separately.
+      - name: Summarize errors in the service logs
+        if: always()
+        run: |
+          for service in api worker; do
+            log="$RUNNER_TEMP/$service.log"
+            errors="$RUNNER_TEMP/$service-errors.jsonl"
+            docker compose --env-file "$LOAD_ENV_FILE" logs --no-color --no-log-prefix "$service" \
+              > "$log" || true
+            # The services log JSON lines; `fromjson?` skips anything else, such as a traceback
+            # printed by a crash.
+            jq -R -c 'fromjson? | select(.level == "error" or .event == "unhandled_exception")' \
+              "$log" > "$errors" || true
+            echo "::group::$service: error events over the whole run"
+            echo "error-level events: $(wc -l < "$errors")"
+            echo "by event and error type:"
+            jq -r -s 'group_by([.event, (.error_type // "-")]) | sort_by(-length) | .[]
+              | "\(length)\t\(.[0].event)\t\(.[0].error_type // "-")"' "$errors" || true
+            echo "first 20:"
+            head -n 20 "$errors" | cut -c1-2000
+            echo "database limit warnings (503 answers): $(
+              jq -R -c 'fromjson? | select(.event == "db_pool_timeout" or .event == "db_statement_timeout")' \
+                "$log" | wc -l)"
+            echo "::endgroup::"
+          done

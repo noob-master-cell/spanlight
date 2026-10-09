@@ -22,8 +22,9 @@ and its percentile estimates are clamped to ``BOUNDS_MS[-1]``.
 The rollup job computes the bucket index in SQL, so the SQL and
 :func:`bucket_index` must agree on every value: the index is the number of
 bounds strictly less than the duration, capped at ``BUCKET_COUNT - 1``. The
-SQL must take its bounds from :data:`BOUNDS_MS` (as a bound parameter) instead
-of recomputing them, so the two cannot drift apart.
+SQL must take its bounds from :data:`BOUNDS_MS` (as a bound parameter, negated
+and reversed for ``width_bucket``; see ``app.rollups.compute``) instead of
+recomputing them, so the two cannot drift apart.
 
 This module is pure: no I/O, no settings, no database.
 """
@@ -61,7 +62,8 @@ def bucket_index(ms: float) -> int:
     number of bounds strictly less than ``ms``, capped at the last bucket. Values
     at or below the first bound (including zero and negatives) land in bucket 0
     and values above the last bound land in bucket ``BUCKET_COUNT - 1``. The SQL
-    in the rollup job must compute ``least(31, count of bounds < value)``.
+    in the rollup job must compute ``least(31, count of bounds < value)``, which it does as
+    ``least(31, 32 - width_bucket(-value, negated bounds in reverse order))``.
 
     Raises:
         ValueError: ``ms`` is NaN, which has no position on the scale.

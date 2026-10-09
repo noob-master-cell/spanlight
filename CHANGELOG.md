@@ -27,12 +27,26 @@ Production hardening: accounts and access control, a versioned API, durable back
 
 - **Versioned API.** Dashboard routes moved from `/api/<resource>` to `/api/v1/<resource>`. The old paths return `404`. Ingestion (`/v1/traces`, `/v1/otlp/traces`) keeps its own version and is unchanged. A future breaking change will ship as `/api/v2`, with `/api/v1` kept for at least 12 months.
 - **Postgres shared memory.** The Compose `postgres` service gets 256 MB of `/dev/shm` instead of Docker's 64 MB default, which parallel queries on large tables could exhaust ("could not resize shared memory segment").
+- **Dashboard queries at 10 million spans.** Migration 0016 swaps the `spans` time index for a covering one, so a 24 hour overview is answered from the index and not from the table. It is built `CONCURRENTLY`: writes continue, and on a large table it takes minutes and extra disk.
+- **Row-level security policies read their settings once per statement.** Migration 0017 rewrites the tenant-isolation and worker-bypass policies of `traces`, `spans`, the rollup tables and `exports` so `current_setting()` is evaluated once per query instead of once per row; which rows are visible does not change. It takes a brief exclusive lock on each table and gives up after 5 seconds if it cannot get it, so run it again at a quieter moment.
+- **A busy database answers `503`, not `500`.** A request that waits more than 5 seconds for a connection (`API_POOL_TIMEOUT_SECONDS`) or has a statement that runs longer than 10 seconds (`API_STATEMENT_TIMEOUT_SECONDS`) now gets `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`.
+- **Postgres JIT off in Compose.** The `postgres` service starts with `jit=off`, which costs more than it saves on the dashboard and rollup queries.
 - **More than one replica.** Rate limits and idempotency state live in Postgres, so the API can run as several replicas.
 - **Optional features report themselves.** A request that needs an unconfigured integration (email, object storage, OAuth, `CREDENTIALS_KEYS`) answers `409 NOT_CONFIGURED` and names the setting; a background job that needs one ends as `skipped_not_configured`.
 
 ### Security
 
 - Two-factor seeds are encrypted at rest with the keys in `CREDENTIALS_KEYS`.
+- Sign-up is throttled per client IP.
+- Password hashing and checking (argon2) run off the event loop, on a small dedicated executor that caps how many hashes run at once, so a burst of sign-ins cannot starve other requests or exhaust memory.
+- Requests to `/api/v1` are limited to 1 MiB (`413` above that). Deeply nested JSON sent to ingestion answers `400 INVALID_JSON` instead of `500`.
+- `BACKUPS_ENABLED` and `BACKUP_DATABASE_URL` are set only on the worker, the only service that runs backups. The object storage keys stay on both services, because the API signs export download links.
+- Responses that reveal a secret (a new API key or access token, recovery codes, a two-factor setup secret) carry `Cache-Control: no-store`.
+- The `/metrics` token is compared in constant time.
+- The web image runs Caddy as a non-root user.
+- Export files are written under a separate key for each attempt, so a retry or a lease takeover can never delete a file another attempt finished. Download links force the browser to save the file instead of showing it.
+- A database that is too busy to answer answers `503` with `Retry-After`, not `500`.
+- Row-level security policies read their settings once per query. Which rows are visible does not change.
 
 ## [0.1.0]
 

@@ -31,6 +31,11 @@ class MeOut(BaseModel):
     # Whether two-factor authentication is on for the caller. Self-only, like `has_password`:
     # the org's `require_2fa` says what an org needs, this says whether the caller has it.
     totp_enabled: bool
+    # Whether the caller has to verify their email address: the server can send email, the
+    # address is not yet verified and the caller is not the shared demo account, which is never
+    # asked and cannot receive email. False on a server without email, where no link can arrive,
+    # so the dashboard shows no verification prompt there. Self-only, like `has_password`.
+    email_verification_required: bool
 
 
 class SessionOut(BaseModel):

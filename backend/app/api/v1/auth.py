@@ -278,6 +278,11 @@ async def me(
         ],
         has_password=auth.user.has_password,
         totp_enabled=auth.user.totp_enabled,
+        email_verification_required=(
+            settings.is_email_configured
+            and not auth.user.email_verified
+            and not is_demo_user(auth.user)
+        ),
     )
 
 

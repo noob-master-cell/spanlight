@@ -1,6 +1,6 @@
 """Read the hourly rollups for the metrics endpoints.
 
-These queries return the same quantities as the raw span queries in ``app.api.v1.metrics`` and
+These queries return the same quantities as the raw span queries in ``app.metrics.queries`` and
 use the same definitions:
 
 * ``llm_calls``, errors, latency histograms and ``unpriced_calls`` come from rows of kind

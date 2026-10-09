@@ -19,3 +19,7 @@ The application connects as a non-superuser role, because superusers bypass RLS.
 ## Consequences
 
 A query that forgets its tenant filter returns nothing instead of everything. Tests prove cross-tenant reads fail even through raw SQL. The cost is one `SET LOCAL` per request and slightly more care in migrations.
+
+## Amendment
+
+Amended 2026-10-09: the policies now wrap each `current_setting()` call in `(SELECT …)`, so Postgres evaluates the setting once per statement (an InitPlan) instead of once per row. Which rows are visible is unchanged; migration 0017 made the change because the per-row evaluation was a measurable cost when reading millions of spans.

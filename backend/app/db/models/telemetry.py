@@ -14,6 +14,7 @@ from sqlalchemy import (
     Double,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     Numeric,
     Text,
@@ -71,6 +72,27 @@ class Span(Base):
             ["project_id", "trace_id"],
             ["traces.project_id", "traces.trace_id"],
             ondelete="CASCADE",
+        ),
+        # The windowed reads (overview, time series, models, rollups) are answered from this index
+        # alone. Migration 0016 creates it; keep the two column lists in step. The migration also
+        # sets the table's autovacuum insert triggers, which the model does not describe.
+        Index(
+            "spans_project_started_cov_idx",
+            "project_id",
+            "started_at",
+            postgresql_include=[
+                "trace_id",
+                "kind",
+                "status",
+                "duration_ms",
+                "cost_usd",
+                "input_tokens",
+                "output_tokens",
+                "cached_tokens",
+                "provider",
+                "model",
+                "time_to_first_token_ms",
+            ],
         ),
     )
 

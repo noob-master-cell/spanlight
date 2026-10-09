@@ -44,8 +44,21 @@ original design; everything else is a clarification.
   `SLUG_UNAVAILABLE` (409), `PAYLOAD_TOO_LARGE` (413),
   `UNSUPPORTED_MEDIA_TYPE` (415), `VALIDATION_ERROR` (422, with `errors[].field`),
   `RATE_LIMITED` (429, with `Retry-After`), `INVALID_JSON` / `INVALID_OTLP` / `BAD_REQUEST` (400),
-  `INTERNAL_ERROR` (500).
+  `INTERNAL_ERROR` (500), `SERVICE_UNAVAILABLE` (503, with `Retry-After`, the database could not take or
+  finish the request in time).
 - Validation `errors[].field` is the dotted path without the `body.`/`query.` prefix (e.g. `password`).
+- **A busy database is a 503, not a 500** (added 2026-10-09). A request answers `503 SERVICE_UNAVAILABLE` with
+  `Retry-After: 5` in two cases: it waited longer than `API_POOL_TIMEOUT_SECONDS` (default 5) for a database
+  connection, or one of its statements ran longer than `API_STATEMENT_TIMEOUT_SECONDS` (default 10) and the
+  database cancelled it. Before this, the first case waited 30 seconds and then answered `500 INTERNAL_ERROR`, and
+  the second ran until the client gave up, holding its connection the whole time. The server logs each as a
+  warning (`db_pool_timeout`, `db_statement_timeout`) and not as an unhandled exception. Clients may retry after
+  the delay; the Python SDK already does for every `5xx`. Both limits apply to the database session of every
+  `/api` and ingestion request, with two exceptions: deleting an organization or a project is not subject to the statement limit
+  (the foreign keys remove all its spans in one statement, which on a large project takes longer than any
+  request limit), and the work that runs on its own sessions has no statement limit: the worker, exports, the
+  audit-log CSV stream (`GET /api/v1/orgs/{org_id}/audit/export.csv`) and the idempotency and rate-limit pools (the
+  last two have their own pool settings). Any other database failure stays a `500 INTERNAL_ERROR`.
 - **Request body limit:** every `/api/v1` request body is limited to **1 MiB**. Over the limit is `413
   PAYLOAD_TOO_LARGE`, answered without reading the body when `Content-Length` already declares too much, and
   while reading when the body is chunked or understates its length. Ingestion (`/v1/traces`,
@@ -240,11 +253,14 @@ card and the trace list. Computed with a correlated subquery on the spans primar
 
 ## Email verification (added 2026-10-08)
 
-Verification is soft: an unverified user uses the product normally; nothing is blocked on it.
+Verification is soft: an unverified user uses the product normally. Two actions need a verified email address when email is configured (`409 EMAIL_UNVERIFIED`): turning on two-factor authentication and linking a sign-in provider.
 
 - `User` gains `email_verified: boolean`, true once the owner of the address has proven it. It is on
-  every response that embeds a user: signup, login, `GET /api/v1/auth/me` (as `user.email_verified`;
-  `MeOut` has no separate top-level field), members, API key creators and audit actors.
+  every response that embeds a user: signup, login, `GET /api/v1/auth/me` (as `user.email_verified`), members, API key creators and audit actors.
+- `GET /api/v1/auth/me` gains a top-level **`email_verification_required`** boolean, next to `has_password`:
+  true only when the server can send email, the caller's address is not yet verified and the caller is not the
+  shared demo account (which is never asked and cannot receive email). It exists so the dashboard knows whether
+  to ask for verification at all, since on a server without email no link can arrive.
 - `POST /api/v1/auth/email/verify/request` (session and CSRF) → **202 `{"status": "accepted"}`** and
   queues a verification email for the signed-in user. The body is the `AcceptedOut` shape, meant for
   any request whose work is finished later by the worker. Checked in this order:
@@ -767,7 +783,7 @@ the OpenAPI document; on any other route the header is ignored.
 - **Size limit.** More than 100 000 matching traces end the export as `failed` with `error_code`
   `EXPORT_TOO_LARGE`, and the job does not retry. The `error_code` values are `EXPORT_TOO_LARGE`, `NOT_CONFIGURED`
   (storage was switched off after the request), `EXPORT_TIMEOUT` (a read ran past two minutes; not retried) and
-  `EXPORT_FAILED` (every attempt failed, or the job was lost and cleanup gave up on it after two hours).
+  `EXPORT_FAILED` (every attempt failed, or the job was lost and cleanup gave up on it after 24 hours).
 - **Download links.** `download_url` is present only while the status is `done`, in the list as well as on a single
   export, and is a presigned link valid for one hour. Fetch the export again (`GET .../exports/{export_id}`) for a
   fresh link; none is given once `expires_at` has passed. A file is deleted 7 days after the export completed and

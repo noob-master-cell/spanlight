@@ -979,6 +979,10 @@
       },
       "MeOut": {
         "properties": {
+          "email_verification_required": {
+            "title": "Email Verification Required",
+            "type": "boolean"
+          },
           "has_password": {
             "title": "Has Password",
             "type": "boolean"
@@ -1002,7 +1006,8 @@
           "user",
           "memberships",
           "has_password",
-          "totp_enabled"
+          "totp_enabled",
+          "email_verification_required"
         ],
         "title": "MeOut",
         "type": "object"

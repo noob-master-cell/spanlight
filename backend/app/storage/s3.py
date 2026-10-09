@@ -5,6 +5,7 @@ boto3 is synchronous, so every call that touches the network runs in a worker th
 
 import asyncio
 import builtins
+import re
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
@@ -53,6 +54,15 @@ def _build_client(
             response_checksum_validation="when_required",
         ),
     )
+
+
+_UNSAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]")
+
+
+def attachment_disposition(key: str) -> str:
+    """`attachment; filename="<last part of the key>"`, the name limited to `[A-Za-z0-9._-]`."""
+    name = _UNSAFE_FILENAME_CHARS.sub("_", key.rsplit("/", 1)[-1]) or "download"
+    return f'attachment; filename="{name}"'
 
 
 class S3ObjectStore:
@@ -145,10 +155,17 @@ class S3ObjectStore:
         return await asyncio.to_thread(self._list_sync, prefix)
 
     def presigned_get_url(self, key: str, expires_in: int) -> str:
-        # Signing is local arithmetic with no network call, so it needs no thread.
+        # Signing is local arithmetic with no network call, so it needs no thread. The link asks
+        # the store to answer with `Content-Disposition: attachment`, so a browser saves the file
+        # instead of rendering it (or an error page) in the dashboard's tab. The header is signed
+        # into the URL, so it also applies to objects stored before this was added.
         return self._presign_client.generate_presigned_url(
             "get_object",
-            Params={"Bucket": self._bucket, "Key": key},
+            Params={
+                "Bucket": self._bucket,
+                "Key": key,
+                "ResponseContentDisposition": attachment_disposition(key),
+            },
             ExpiresIn=expires_in,
         )
 

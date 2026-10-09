@@ -106,6 +106,13 @@ GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ("anthropic_api_key", "demo_enabled", "demo_monthly_budget_usd"),
     ),
     (
+        "API request limits",
+        "A request that would otherwise wait on a busy database fails fast with `503` and "
+        "`Retry-After` instead of queueing behind slow work. The worker, exports and deleting an "
+        "organization or project are not subject to the statement limit.",
+        ("api_pool_timeout_seconds", "api_statement_timeout_seconds"),
+    ),
+    (
         "Connection pools",
         "Idempotency keys and rate limiting each use a small pool of their own, so they cannot "
         "starve the main one. Change these only after reading the "
@@ -227,6 +234,15 @@ DESCRIPTIONS: dict[str, str] = {
     "demo_monthly_budget_usd": (
         "Month-to-date spending cap for the demo's model calls, in US dollars. The demo job "
         "checks it before every provider call."
+    ),
+    "api_pool_timeout_seconds": (
+        "Seconds an API request waits for a connection from the main pool. Past it the request "
+        "answers `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`. Blank keeps the default."
+    ),
+    "api_statement_timeout_seconds": (
+        "Longest one database statement of an API request may run. The database cancels it and "
+        "the request answers `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`. Blank keeps the "
+        "default."
     ),
     "idempotency_pool_size": "Connections in the idempotency-key pool.",
     "idempotency_pool_timeout_seconds": (

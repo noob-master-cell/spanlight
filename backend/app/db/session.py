@@ -33,8 +33,16 @@ def create_engine(
         # Sentry and to stdout via the exception log. A deadlock or reset while inserting a
         # trace would then send fragments of prompts and completions to both.
         hide_parameters=True,
-        # Pin the session time zone so timestamps and date_trunc() are UTC everywhere.
-        connect_args={"options": "-c timezone=UTC"},
+        connect_args={
+            # Pin the session time zone so timestamps and date_trunc() are UTC everywhere.
+            "options": "-c timezone=UTC",
+            # No server-side prepared statements. psycopg prepares a statement after five runs on
+            # a connection, and Postgres may then switch it to a generic plan, which is built
+            # without the parameter values. A query over a time window then assumes a small one
+            # and picks a join that is far slower for a day of spans: a 1 hour overview got ten
+            # times slower. Planning each statement afresh costs a fraction of a millisecond.
+            "prepare_threshold": None,
+        },
     )
 
 

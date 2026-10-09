@@ -10,7 +10,7 @@
 - **Private by design.** Postgres row-level security isolates every project. Secrets are redacted from payloads before storage, and payload capture can be switched off per project.
 - **Self-hosted on one database.** Postgres is the only datastore, the job queue included. One `docker compose up`, or [deploy to Railway](docs/deploy/railway.md).
 
-**Status:** pre-1.0. Tracing, the dashboard, sessions, teams and the Python SDK work end to end. The 0.2 hardening work (email verification and password reset, GitHub and Google sign-in, two-factor authentication, token scopes, exports, backups, hourly rollups) is built into the API; its dashboard screens are in progress. See the [changelog](CHANGELOG.md).
+**Status:** pre-1.0. Tracing, the dashboard, sessions, teams and the Python SDK work end to end. The 0.2 hardening work (email verification and password reset, GitHub and Google sign-in, two-factor authentication, token scopes, exports, backups, hourly rollups) is built into the API and the dashboard, and is unreleased. See the [changelog](CHANGELOG.md).
 
 ## Quickstart
 

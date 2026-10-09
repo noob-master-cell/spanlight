@@ -46,6 +46,8 @@ x-backend: &backend
     WORKER_REQUIRED: ${WORKER_REQUIRED:-}
     ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
     DEMO_ENABLED: ${DEMO_ENABLED:-}
+    API_POOL_TIMEOUT_SECONDS: ${API_POOL_TIMEOUT_SECONDS:-}
+    API_STATEMENT_TIMEOUT_SECONDS: ${API_STATEMENT_TIMEOUT_SECONDS:-}
     IDEMPOTENCY_POOL_SIZE: ${IDEMPOTENCY_POOL_SIZE:-}
     IDEMPOTENCY_POOL_TIMEOUT_SECONDS: ${IDEMPOTENCY_POOL_TIMEOUT_SECONDS:-}
     RATE_LIMIT_POOL_SIZE: ${RATE_LIMIT_POOL_SIZE:-}
@@ -62,6 +64,8 @@ services:
     restart: unless-stopped
     # Docker's 64 MB /dev/shm is too small for parallel hash joins ("could not resize shared memory segment").
     shm_size: 256mb
+    # JIT compiles for longer than the dashboard and rollup queries take to run, so it only slows them down.
+    command: ["postgres", "-c", "jit=off"]
     environment:
       POSTGRES_DB: spanlight
       POSTGRES_USER: postgres

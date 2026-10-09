@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     # the listener off: the worker's job, outbox, notification and rollup metrics are only on it.
     worker_metrics_port: int | None = Field(default=None, ge=1, le=65535)
 
+    # How long an API request may wait for a connection from the main pool, and how long any one
+    # of its statements may run. Past either limit the request fails fast with 503 and a
+    # `Retry-After`, instead of queueing behind slow work until every other request is stuck too.
+    # The worker and the streaming exports are not subject to them.
+    api_pool_timeout_seconds: float = Field(default=5.0, ge=1, le=60)
+    api_statement_timeout_seconds: float = Field(default=10.0, ge=1, le=300)
+
     # The pool that idempotency keys use, apart from the main one. Reserving, completing and
     # releasing a key each take a connection for a few milliseconds while the request itself
     # holds one from the main pool; sharing that pool would let enough concurrent requests wait
@@ -152,6 +159,8 @@ class Settings(BaseSettings):
         "email_provider",
         "smtp_port",
         "smtp_starttls",
+        "api_pool_timeout_seconds",
+        "api_statement_timeout_seconds",
         "idempotency_pool_size",
         "idempotency_pool_timeout_seconds",
         "rate_limit_pool_size",

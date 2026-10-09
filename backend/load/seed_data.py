@@ -18,6 +18,15 @@ from typing import Any
 SPREAD = timedelta(days=28)
 MIN_AGE = timedelta(minutes=5)
 
+# Batches go in oldest to newest, so the table fills in time order like a real system that ingests
+# as traffic happens: rows that started close together sit on neighbouring pages, which is what
+# makes a read of the last hour or day touch few pages. A trace that is sent late (a retry, a
+# batching client) lands among newer rows while its start time is older. About 2 % of the traces
+# do, by up to an hour. Spreading every batch over all 28 days instead would scatter a day of
+# spans over a fifth of the table and make the raw-window reads many times slower than in use.
+LATE_SHARE = 0.02
+MAX_LATE = timedelta(hours=1)
+
 ERROR_RATE = 0.02  # share of spans that fail
 
 
@@ -178,13 +187,46 @@ def _build_trace(rng: random.Random, size: int, started_at: datetime) -> list[di
     return [root, *children]
 
 
-def build_batch(seed: int, index: int, count: int, now: datetime) -> list[dict[str, Any]]:
-    """`count` spans in whole traces (the last one is cut short), the same for the same inputs."""
+def _trace_sizes(rng: random.Random, count: int) -> list[int]:
+    """Span counts of consecutive traces that add up to `count` (the last one is cut short)."""
+    sizes: list[int] = []
+    remaining = count
+    while remaining > 0:
+        size = min(rng.randint(1, 6), remaining)
+        sizes.append(size)
+        remaining -= size
+    return sizes
+
+
+def _slice_bounds(index: int, batches: int, now: datetime) -> tuple[datetime, datetime]:
+    """When the traces of batch `index` (of `batches`) start: one slice of the spread.
+
+    The slices tile the spread from the oldest start to the newest, and the oldest one begins
+    `MAX_LATE` after the oldest start the data may have, so a late trace still starts inside it.
+    """
+    newest = now - MIN_AGE
+    oldest = newest - SPREAD + MAX_LATE
+    width = (newest - oldest) / batches
+    return oldest + width * index, oldest + width * (index + 1)
+
+
+def build_batch(
+    seed: int, index: int, count: int, now: datetime, batches: int
+) -> list[dict[str, Any]]:
+    """`count` spans in whole traces (the last one is cut short), the same for the same inputs.
+
+    Batch `index` of `batches` holds the traces that start in its slice of the spread, in the
+    order they start, apart from the late ones (see `LATE_SHARE`).
+    """
     rng = random.Random(f"{seed}:{index}")  # noqa: S311 - reproducible test data, not a secret
-    newest_start = now - MIN_AGE
+    sizes = _trace_sizes(rng, count)
+    slice_start, slice_end = _slice_bounds(index, batches, now)
+    window_seconds = (slice_end - slice_start).total_seconds()
+    arrivals = sorted(rng.uniform(0, window_seconds) for _ in sizes)
     spans: list[dict[str, Any]] = []
-    while len(spans) < count:
-        size = min(rng.randint(1, 6), count - len(spans))
-        started_at = newest_start - timedelta(seconds=rng.uniform(0, SPREAD.total_seconds()))
+    for size, offset in zip(sizes, arrivals, strict=True):
+        started_at = slice_start + timedelta(seconds=offset)
+        if rng.random() < LATE_SHARE:
+            started_at -= timedelta(seconds=rng.uniform(0, MAX_LATE.total_seconds()))
         spans.extend(_build_trace(rng, size, started_at))
     return spans

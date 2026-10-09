@@ -28,6 +28,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Organization, Project
+from app.db.timeouts import lift_statement_limit
 from app.exports.purge import enqueue_project_purge
 
 
@@ -82,6 +83,9 @@ async def lock_project_for_write(
 
 
 async def delete_project_rows(db: AsyncSession, project_id: uuid.UUID) -> None:
+    # The foreign keys remove every trace and span in one statement, which on a large project
+    # takes far longer than the limit that protects the other requests.
+    await lift_statement_limit(db)
     await db.execute(
         delete(Project).where(Project.id == project_id).execution_options(synchronize_session=False)
     )
@@ -93,6 +97,7 @@ async def delete_organization(db: AsyncSession, org_id: uuid.UUID) -> list[uuid.
 
     The caller has locked the organization (`lock_organization`).
     """
+    await lift_statement_limit(db)  # as in `delete_project_rows`
     project_ids = await db.scalars(
         delete(Project)
         .where(Project.org_id == org_id)

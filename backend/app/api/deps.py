@@ -52,6 +52,7 @@ from app.db.models import (
     TokenScope,
 )
 from app.db.rls import bind_project
+from app.db.timeouts import limit_statement_time
 from app.services.sessions import resolve_session
 
 SESSION_COOKIE = "spl_session"
@@ -69,8 +70,14 @@ def get_settings(request: Request) -> Settings:
 
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
-    """One session (and transaction) per request. Handlers commit explicitly."""
+    """One session (and transaction) per request. Handlers commit explicitly.
+
+    A statement that runs longer than `API_STATEMENT_TIMEOUT_SECONDS` is cancelled and the request
+    answers 503 (see `app.core.errors`), so one slow read cannot hold a connection indefinitely.
+    """
+    settings: Settings = request.app.state.settings
     async with request.app.state.session_factory() as session:
+        limit_statement_time(session, round(settings.api_statement_timeout_seconds * 1000))
         yield session
 
 

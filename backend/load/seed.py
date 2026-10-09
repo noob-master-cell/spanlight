@@ -3,9 +3,10 @@
 Creates an organization, an owner, a project, one ingest key (`ingest:write`) and ten read keys
 (`traces:read`), then stores spans through the real ingestion pipeline, in this process, in
 batches of 1 000. Calling `app.ingest.pipeline.ingest_spans` (validate, normalize, price, upsert)
-means the rows are exactly what the API would have stored. It skips HTTP on purpose: the ingest
-limit of 50 requests a second per key would turn 10 million spans into hours of waiting, and the
-load test would then measure the seeder instead of the server.
+means the rows are exactly what the API would have stored, laid out in time order (batches go
+oldest first, see `seed_data.py`). It skips HTTP on purpose: the ingest limit of 50 requests a
+second per key would turn 10 million spans into hours of waiting, and the load test would then
+measure the seeder instead of the server.
 
 It prints its rate every million spans and stops early when the seed is projected to take longer
 than --max-minutes. Afterwards it builds the hourly rollups, runs VACUUM ANALYZE and prints the
@@ -79,6 +80,10 @@ class Options:
     credentials_file: Path
     seed: int
     max_minutes: float
+
+    @property
+    def batch_count(self) -> int:
+        return math.ceil(self.spans / SPANS_PER_BATCH)
 
 
 def say(message: str) -> None:
@@ -161,7 +166,7 @@ async def _worker(
 ) -> None:
     # The workers share one iterator. `next` never awaits, so no two workers get the same batch.
     for index, count in batches:
-        raw = build_batch(options.seed, index, count, now)
+        raw = build_batch(options.seed, index, count, now, options.batch_count)
         async with session_factory() as session:
             outcome = await ingest_spans(session, target, raw, now=now)
             if outcome.rejected or outcome.accepted != count:

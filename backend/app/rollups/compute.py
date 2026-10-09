@@ -6,7 +6,7 @@ computed from the raw rows. Delete-then-insert (instead of an upsert) is deliber
 is sent again with another model or environment moves to a different group, and an upsert would
 leave the old group's row behind with counts that no longer exist.
 
-The aggregates use the same definitions as the raw metrics queries in ``app.api.v1.metrics``, so
+The aggregates use the same definitions as the raw metrics queries in ``app.metrics.queries``, so
 a rollup and a raw read of the same hours agree:
 
 * ``span_count`` counts every span of the row's kind; ``errors`` counts spans with status
@@ -47,17 +47,28 @@ def _histogram(index_column: str) -> str:
     return f"CAST(ARRAY[{counts}] AS integer[])"
 
 
-# The bucket index is the number of bounds strictly below the value, capped at the last bucket.
-# It is not Postgres' width_bucket(), which counts bounds at or below the value and would put a
-# value that sits exactly on a bound one bucket higher than `app.rollups.buckets.bucket_index`.
-# The bounds are bound as a double precision array taken from BOUNDS_MS, so SQL and Python
-# cannot drift apart; casting them to numeric or real would change which side of a bound a
-# value falls on. NaN would compare above every bound, but it cannot reach this query: ingest
-# validates durations as non-negative and `duration_ms` is derived from two timestamps.
+# The bucket index is the number of bounds strictly below the value, capped at the last bucket,
+# which is what `app.rollups.buckets.bucket_index` computes. Postgres' `width_bucket(x, thresholds)`
+# counts the thresholds at or below x, so it is applied to the negated value and to the negated
+# bounds in reverse order (which are sorted ascending, as it needs): the thresholds at or below
+# -value are the bounds at or above value, and `BUCKET_COUNT` minus that count is the number of
+# bounds strictly below it. A value that sits exactly on a bound stays in that bound's bucket, 0
+# lands in bucket 0 and anything above the last bound is clamped to the last bucket.
+#
+# This replaces a correlated `SELECT count(*) FROM unnest(bounds) WHERE bound < value`. Postgres
+# inlines the CTE that holds the index, so that subquery ran once per row for each of the 64
+# `FILTER` clauses that read the index, and a 48 hour recompute on a large project outlived the
+# worker's task timeout. `width_bucket` is a binary search with no subquery.
+#
+# The bounds are bound as a double precision array taken from BOUNDS_MS, so SQL and Python cannot
+# drift apart; casting them to numeric or real would change which side of a bound a value falls on.
+# Negating a float is exact, so the negated bounds are the same numbers. NaN would land in bucket
+# 0 here (Postgres sorts it above every number), but it cannot reach this query: ingest validates
+# durations as non-negative and `duration_ms` is derived from two timestamps.
+_NEGATED_BOUNDS = tuple(-bound for bound in reversed(BOUNDS_MS))
 _BUCKET_INDEX = (
-    "least(" + str(BUCKET_COUNT - 1) + ", "
-    "(SELECT count(*) FROM unnest(CAST(:bounds AS double precision[])) AS bound "
-    "WHERE bound < {value}))"
+    "least(" + str(BUCKET_COUNT - 1) + ", " + str(BUCKET_COUNT) + " - "
+    "width_bucket(-({value}), CAST(:neg_bounds AS double precision[])))"
 )
 
 # Two runs for one project (the job and the CLI, or two workers) would both delete the range and
@@ -144,7 +155,7 @@ _INSERT_SPAN_ROLLUPS = text(
     FROM scoped
     GROUP BY project_id, bucket_start, environment, provider, model, kind
     """
-).bindparams(bindparam("bounds", type_=ARRAY(Double())))
+).bindparams(bindparam("neg_bounds", type_=ARRAY(Double())))
 
 _INSERT_TRACE_ROLLUPS = text(
     f"""
@@ -205,7 +216,9 @@ async def compute_rollups(
     params: dict[str, Any] = {"project_id": project_id, "start": aligned_start, "end": aligned_end}
     await db.execute(_DELETE_SPAN_ROLLUPS, params)
     await db.execute(_DELETE_TRACE_ROLLUPS, params)
-    span_result = await db.execute(_INSERT_SPAN_ROLLUPS, {**params, "bounds": list(BOUNDS_MS)})
+    span_result = await db.execute(
+        _INSERT_SPAN_ROLLUPS, {**params, "neg_bounds": list(_NEGATED_BOUNDS)}
+    )
     trace_result = await db.execute(_INSERT_TRACE_ROLLUPS, params)
     return int(getattr(span_result, "rowcount", 0)) + int(getattr(trace_result, "rowcount", 0))
 

@@ -10,10 +10,13 @@ from collections.abc import Mapping, Sequence
 from http import HTTPStatus
 from typing import Any, TypedDict, cast
 
+import psycopg.errors
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.request_context import current_request_id
@@ -130,6 +133,28 @@ def too_many_requests(retry_after_seconds: int, detail: str) -> ProblemError:
     )
 
 
+# How long a client is told to wait after a 503. The pool and the statement limits are seconds
+# long, so a retry a few seconds later finds the database less busy.
+RETRY_AFTER_SECONDS = 5
+
+
+def service_unavailable(
+    detail: str = "The service is too busy to answer right now. Try again in a few seconds.",
+    *,
+    retry_after_seconds: int = RETRY_AFTER_SECONDS,
+) -> ProblemError:
+    """503 for a request the database could not take or finish in time.
+
+    `Retry-After` says when the client may try again.
+    """
+    return ProblemError(
+        503,
+        "SERVICE_UNAVAILABLE",
+        detail,
+        headers={"Retry-After": str(max(1, retry_after_seconds))},
+    )
+
+
 def problem_response(
     status: int,
     code: str,
@@ -174,6 +199,7 @@ _CODES_BY_STATUS = {
     415: "UNSUPPORTED_MEDIA_TYPE",
     422: "VALIDATION_ERROR",
     429: "RATE_LIMITED",
+    503: "SERVICE_UNAVAILABLE",
 }
 
 
@@ -218,8 +244,29 @@ async def _handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
     return problem_response(500, "INTERNAL_ERROR", "An unexpected error occurred.")
 
 
+async def _busy(event: str, request: Request) -> JSONResponse:
+    """The 503 for an overloaded database, logged under a name an operator can alert on."""
+    logger.warning(event, method=request.method, path=request.url.path)
+    return await _handle_problem(request, service_unavailable())
+
+
+async def _handle_pool_timeout(request: Request, _: Exception) -> JSONResponse:
+    # No connection came free within the pool timeout: the database is behind.
+    return await _busy("db_pool_timeout", request)
+
+
+async def _handle_operational_error(request: Request, exc: Exception) -> JSONResponse:
+    error = cast(OperationalError, exc)
+    # `QueryCanceled` is what Postgres raises when a statement outlives `statement_timeout`.
+    if isinstance(error.orig, psycopg.errors.QueryCanceled):
+        return await _busy("db_statement_timeout", request)
+    return await _handle_unexpected(request, exc)
+
+
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ProblemError, _handle_problem)
     app.add_exception_handler(RequestValidationError, _handle_validation)
     app.add_exception_handler(StarletteHTTPException, _handle_http)
+    app.add_exception_handler(PoolTimeoutError, _handle_pool_timeout)
+    app.add_exception_handler(OperationalError, _handle_operational_error)
     app.add_exception_handler(Exception, _handle_unexpected)

@@ -56,13 +56,14 @@ The `citext` extension is "trusted", so the owning role can create it during the
 | `EMAIL_CONSOLE_FILE` | – | `console` only: append every message to this file as a JSON line. Email counts as configured for `console` only when this is set |
 | `OAUTH_GITHUB_CLIENT_ID` / `OAUTH_GITHUB_CLIENT_SECRET` | – | Sign in with GitHub. On when both are set; setting only one stops startup. Register `<APP_BASE_URL>/api/v1/auth/oauth/github/callback` as the callback URL |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | – | Sign in with Google, the same way. Callback URL `<APP_BASE_URL>/api/v1/auth/oauth/google/callback` |
+| `API_POOL_TIMEOUT_SECONDS` / `API_STATEMENT_TIMEOUT_SECONDS` | `5` / `10` | Seconds an API request waits for a database connection, and the longest one of its statements may run, before it answers `503` with `Retry-After` |
 | `IDEMPOTENCY_POOL_SIZE` / `IDEMPOTENCY_POOL_TIMEOUT_SECONDS` | `5` / `5` | Connections the API keeps for idempotency keys, in a pool apart from the main one, and the seconds a request waits for one before failing |
 | `SENTRY_DSN` | – | Optional error reporting (api and worker) |
 | `LOG_LEVEL` / `LOG_JSON` | `INFO` / `true` | Structured JSON logs on stdout |
 
 Behind a reverse proxy, run uvicorn with `--proxy-headers --forwarded-allow-ips=<proxy>` so client
-IPs (login throttling, audit log) are real. Rate limiters are in-process: run one API replica, or
-move them to a shared store first.
+IPs (login throttling, audit log) are real. Rate limits and idempotency keys live in Postgres, so
+several API replicas share them.
 
 ## Admin CLI
 

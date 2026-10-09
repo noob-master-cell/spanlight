@@ -4,13 +4,16 @@
 
 | File | What it does |
 |---|---|
-| `seed.py` | Creates an organization, a project, one ingest key and ten read keys, then stores spans through the real ingestion pipeline, builds the hourly rollups and runs `VACUUM ANALYZE`. Writes the keys to a JSON file. |
-| `seed_data.py`, `seed_workspace.py` | Used by `seed.py` and kept beside it: the generator of the spans (no I/O), and the creation of the organization, owner, project and keys. |
+| `seed.py` | Creates an organization, a project, one ingest key and ten read keys, then stores spans through the real ingestion pipeline, oldest first, builds the hourly rollups and runs `VACUUM ANALYZE`. Writes the keys to a JSON file. |
+| `seed_data.py`, `seed_workspace.py` | Used by `seed.py` and kept beside it: the generator of the spans (no I/O; each batch holds one slice of the 28 days, and about 2 % of the traces arrive up to an hour late), and the creation of the organization, owner, project and keys. |
+| `settle.sh` | Waits (at most 2 minutes) until no application query and no job is running. The workflow calls it before each k6 script. |
 | `ingest.js` | 500 spans a second (5 requests of 100 spans) to `POST /v1/traces`. Threshold: p95 below 200 ms. |
 | `overview.js` | 20 requests a second to the overview metrics, rotating through 1 hour, 24 hours, 7 days and 30 days. Threshold: p95 below 300 ms. |
 | `traces.js` | 20 requests a second to the trace list: the first page, one model, failed traces only. Threshold: p95 below 300 ms. |
 | `summary.js` | Used by the three scripts: turns the k6 results into the Markdown table and the JSON summary. |
 | `compose.load.yaml` | The only change to `deploy/compose.yaml`: publishes Postgres on `127.0.0.1` for the seeder and turns the demo traffic job off. |
+
+Run `settle.sh` between two scripts on your machine too, so the second does not start on the leftovers of the first: `LOAD_ENV_FILE=deploy/.env COMPOSE_PROJECT_NAME=spanlight-load COMPOSE_FILE=deploy/compose.yaml:backend/load/compose.load.yaml backend/load/settle.sh`.
 
 Every script also has three more thresholds: `http_req_failed` below 1 % (a `429` is a failure), `checks` above 99 %, and `dropped_iterations` equal to 0, which means the target rate was really held (k6 drops an iteration when it has no free virtual user left). A script exits non-zero when any threshold is missed.
 

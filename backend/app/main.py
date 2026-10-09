@@ -45,7 +45,9 @@ def create_app(
     configure_logging(settings.log_level, json=settings.log_json)
     init_sentry(settings)
 
-    engine = create_engine(settings.database_url)
+    # A request waits only briefly for a connection: a pool that is full means the database is
+    # behind, and an early 503 lets the client back off instead of piling up behind it.
+    engine = create_engine(settings.database_url, pool_timeout=settings.api_pool_timeout_seconds)
     session_factory = create_session_factory(engine)
     # Idempotency keys get a pool of their own: they take a second connection while the request
     # still holds one from the main pool. No overflow, and a short wait before giving up.
