@@ -1,12 +1,12 @@
 import { ErrorState } from "@/components/error-state";
+import { SectionCard } from "@/components/section-card";
+import { TileList, TileListSkeleton } from "@/components/tile-list";
 import { Button } from "@/components/ui/button";
 import type { AuthSession } from "@/lib/api";
 
 import { useAuthSessionsQuery } from "./account-queries";
 import { DeviceRow } from "./device-row";
 import { SignOutOthersDialog } from "./sign-out-others-dialog";
-import { TileList, TileListSkeleton } from "./settings-list";
-import { SettingsSection } from "./settings-section";
 
 /**
  * Devices signed in to the account. Each other device can be revoked on its own, and "Sign out of
@@ -16,13 +16,13 @@ export function SessionsSection() {
   const sessionsQuery = useAuthSessionsQuery();
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Active sessions"
       description="Devices signed in to your account. Revoke any session you don't recognise."
       className="gap-3"
     >
       <SessionsContent query={sessionsQuery} />
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

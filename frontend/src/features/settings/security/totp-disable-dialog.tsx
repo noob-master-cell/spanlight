@@ -3,6 +3,7 @@ import { useState, type SyntheticEvent } from "react";
 import { toast } from "sonner";
 
 import { Callout } from "@/components/callout";
+import { DialogHeading } from "@/components/dialog-heading";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -11,7 +12,6 @@ import { useMe } from "@/features/auth";
 import { queryKeys, securityApi } from "@/lib/api";
 import { useUncachedAction } from "@/lib/use-uncached-action";
 
-import { DialogHeading } from "../dialog-heading";
 import {
   NOT_AVAILABLE_TITLE,
   RATE_LIMITED_MESSAGE,

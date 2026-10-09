@@ -1,29 +1,29 @@
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ErrorState } from "@/components/error-state";
+import { RelativeTime } from "@/components/relative-time";
+import { SectionCard } from "@/components/section-card";
+import { RowAction, TileList, TileListSkeleton } from "@/components/tile-list";
 import { Badge } from "@/components/ui/badge";
 import type { PendingInvite } from "@/lib/api";
 import { formatTimestamp } from "@/lib/format";
 import { ROLE_LABELS } from "@/lib/permissions";
 
-import { ConfirmDialog } from "./confirm-dialog";
 import { useInvitesQuery, useRevokeInvite } from "./member-queries";
 import { inviteExpiryLabel } from "./member-utils";
-import { RelativeTime } from "./relative-time";
-import { RowAction, TileList, TileListSkeleton } from "./settings-list";
-import { SettingsSection } from "./settings-section";
 
 export function PendingInvitesSection() {
   const invitesQuery = useInvitesQuery(true);
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Pending invites"
       description="Links that haven't been used yet. Revoke a link to stop it from working."
       className="gap-3"
     >
       <PendingInvitesContent query={invitesQuery} />
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

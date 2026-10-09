@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { MouseEvent, ReactNode } from "react";
 
+import { RelativeTime } from "@/components/relative-time";
 import { ValueOrUnknown } from "@/components/unknown-value";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectParams } from "@/features/shell/project-context";
@@ -9,7 +10,6 @@ import { formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { CostValue } from "./cost-value";
-import { RelativeTime } from "./relative-time";
 import { TraceStatusDot } from "./status";
 import { EnvironmentBadge, ModelBadges, TagBadges, TokenPair, UserSession } from "./trace-cells";
 

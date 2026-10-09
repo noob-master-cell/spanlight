@@ -259,6 +259,63 @@ const sessionDetailRoute = createRoute({
   ),
 });
 
+const gatewayRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/gateway",
+  head: () => pageTitle("Gateway"),
+  component: lazyRouteComponent(
+    () => import("@/features/gateway/overview-page"),
+    "GatewayOverviewPage",
+  ),
+});
+
+const gatewayKeysRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/gateway/keys",
+  head: () => pageTitle("Gateway keys"),
+  component: lazyRouteComponent(
+    () => import("@/features/gateway/keys/keys-page"),
+    "GatewayKeysPage",
+  ),
+});
+
+const gatewayRoutesRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/gateway/routes",
+  head: () => pageTitle("Gateway routes"),
+  component: lazyRouteComponent(
+    () => import("@/features/gateway/routes/routes-page"),
+    "GatewayRoutesPage",
+  ),
+});
+
+const gatewayRouteEditorRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/gateway/routes/$routeId",
+  head: () => pageTitle("Gateway route"),
+  component: lazyRouteComponent(
+    () => import("@/features/gateway/routes/route-editor-page"),
+    "RouteEditorPage",
+  ),
+});
+
+const gatewayCredentialsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/gateway/credentials",
+  head: () => pageTitle("Provider credentials"),
+  component: lazyRouteComponent(
+    () => import("@/features/gateway/credentials/credentials-page"),
+    "GatewayCredentialsPage",
+  ),
+});
+
+const gatewayLabRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/gateway/lab",
+  head: () => pageTitle("Integration Lab"),
+  component: lazyRouteComponent(() => import("@/features/gateway/lab/lab-page"), "GatewayLabPage"),
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/settings",
@@ -372,6 +429,12 @@ const routeTree = rootRoute.addChildren([
       traceDetailRoute,
       sessionsRoute,
       sessionDetailRoute,
+      gatewayRoute,
+      gatewayKeysRoute,
+      gatewayRoutesRoute,
+      gatewayRouteEditorRoute,
+      gatewayCredentialsRoute,
+      gatewayLabRoute,
       settingsRoute.addChildren([
         settingsIndexRoute,
         projectSettingsRoute,

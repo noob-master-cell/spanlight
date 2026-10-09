@@ -1,9 +1,9 @@
+import { ColumnLabels, TileList } from "@/components/tile-list";
 import type { ApiKey } from "@/lib/api";
 
 import { KEY_COLUMNS } from "./api-key-columns";
 import { ApiKeyRow } from "./api-key-row";
 import type { RevokeAbility } from "./api-key-utils";
-import { ColumnLabels, TileList } from "./settings-list";
 
 interface ApiKeyListProps {
   keys: ApiKey[];

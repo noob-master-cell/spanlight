@@ -1,0 +1,12 @@
+/**
+ * What other features may use from `features/gateway`: the page frame, the gateway URLs and the
+ * queries several gateway pages share. Import from this file, not from the modules behind it.
+ */
+export { GatewayLayout } from "./gateway-layout";
+export { gatewayAnthropicBaseUrl, gatewayBaseUrl } from "./gateway-url";
+export {
+  useCredentialsQuery,
+  useFaultProfilesQuery,
+  useGatewayKeysQuery,
+  useGatewayRoutesQuery,
+} from "./gateway-queries";

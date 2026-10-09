@@ -3,13 +3,13 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/form-field";
+import { SectionCard } from "@/components/section-card";
 import { Input } from "@/components/ui/input";
 import { errorMessage, type Org } from "@/lib/api";
 import { applyServerFieldErrors } from "@/lib/form-errors";
 
 import { ReadOnlySlugField } from "../read-only-slug-field";
 import { SettingsSaveBar } from "../settings-save-bar";
-import { SettingsSection } from "../settings-section";
 import {
   isNameChanged,
   ORG_NAME_MAX_LENGTH,
@@ -65,7 +65,7 @@ export function OrganizationForm({ org, canEdit, canSecure }: OrganizationFormPr
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
-      <SettingsSection title="General" description="How your organization appears to its members.">
+      <SectionCard title="General" description="How your organization appears to its members.">
         <div className="grid gap-5 sm:grid-cols-2">
           <FormField
             label="Name"
@@ -86,7 +86,7 @@ export function OrganizationForm({ org, canEdit, canSecure }: OrganizationFormPr
           </FormField>
           <ReadOnlySlugField slug={org.slug} hint="Read-only. Used in URLs and can't be changed." />
         </div>
-      </SettingsSection>
+      </SectionCard>
 
       {canEdit ? (
         <SettingsSaveBar

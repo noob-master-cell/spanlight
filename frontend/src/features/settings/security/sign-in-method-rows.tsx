@@ -1,14 +1,14 @@
 import { Info, Lock } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 
+import { DisabledReason } from "@/components/disabled-reason";
+import { RelativeTime } from "@/components/relative-time";
+import { RowAction } from "@/components/tile-list";
 import { Badge } from "@/components/ui/badge";
 import { GithubMark, GoogleMark, rememberOAuthProvider } from "@/features/auth";
 import { oauthStartUrl, type OAuthIdentity, type OAuthProvider } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
-import { DisabledReason } from "../disabled-reason";
-import { RelativeTime } from "../relative-time";
-import { RowAction } from "../settings-list";
 import { SignInMethodTile } from "./sign-in-method-tile";
 import { PROVIDER_LABELS, type ProviderMethod } from "./sign-in-methods";
 

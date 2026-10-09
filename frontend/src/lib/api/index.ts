@@ -10,8 +10,10 @@ export {
   isApiError,
   isTwoFactorRequired,
 } from "./errors";
+export { credentialsApi, priceOverridesApi } from "./credentials";
 export { exportsApi, newIdempotencyKey } from "./exports";
 export type { CreateExportInput, ExportListQuery } from "./exports";
+export { gatewayApi } from "./gateway";
 export { orgsApi } from "./orgs";
 export type { AuditFilters, AuditQuery, OrgUpdate } from "./orgs";
 export { pricesApi } from "./prices";

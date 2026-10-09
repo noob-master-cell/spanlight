@@ -1,7 +1,7 @@
+import { DialogHeading } from "@/components/dialog-heading";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 
-import { DialogHeading } from "../dialog-heading";
 import { requireDialogBody } from "./organization-flow";
 
 interface RequireTwoFactorDialogProps {

@@ -1,15 +1,15 @@
 import { useRef, useState, type ReactElement, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { DialogHeading } from "@/components/dialog-heading";
+import { DisabledReason } from "@/components/disabled-reason";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { errorMessage } from "@/lib/api";
 
-import { DisabledReason } from "./disabled-reason";
 import { isConfirmationMismatch, matchesSlug, mismatchMessage } from "./confirm-slug";
-import { DialogHeading } from "./dialog-heading";
 
 interface ConfirmSlugDialogProps {
   /** The element that opens the dialog, usually the danger zone's button. */

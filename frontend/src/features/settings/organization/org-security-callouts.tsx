@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 
 import { Callout } from "@/components/callout";
+import { RowAction } from "@/components/tile-list";
 import { useProjectParams } from "@/features/shell";
 
 import { NOT_AVAILABLE_TITLE } from "../security/totp-flow";
-import { RowAction } from "../settings-list";
 
 /**
  * The answer to turning the requirement on when the server has no `CREDENTIALS_KEYS` (`409

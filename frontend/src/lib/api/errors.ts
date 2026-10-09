@@ -8,6 +8,8 @@ export class ApiError extends Error {
   readonly detail: string | null;
   readonly requestId: string | null;
   readonly fieldErrors: ProblemFieldError[];
+  /** `409 ROUTE_VERSION_CONFLICT` only: the version the route is at now. Null on every other error. */
+  readonly currentVersion: number | null;
 
   constructor(status: number, problem: ProblemDetails) {
     const title = problem.title ?? defaultTitle(status);
@@ -19,6 +21,7 @@ export class ApiError extends Error {
     this.detail = problem.detail ?? null;
     this.requestId = problem.request_id ?? null;
     this.fieldErrors = problem.errors ?? [];
+    this.currentVersion = problem.current_version ?? null;
   }
 
   get isNotFound(): boolean {

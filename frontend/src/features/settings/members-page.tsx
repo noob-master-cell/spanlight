@@ -2,6 +2,9 @@ import { Users } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { ReadOnlyNote } from "@/components/read-only-note";
+import { SectionCard } from "@/components/section-card";
+import { TileListSkeleton } from "@/components/tile-list";
 import { Badge } from "@/components/ui/badge";
 import { useMe } from "@/features/auth";
 import { useCurrentOrg, usePermission } from "@/features/shell";
@@ -11,9 +14,6 @@ import { MemberList } from "./member-list";
 import { useMembersQuery } from "./member-queries";
 import { sortMembers } from "./member-utils";
 import { PendingInvitesSection } from "./pending-invites-section";
-import { ReadOnlyNote } from "./read-only-note";
-import { TileListSkeleton } from "./settings-list";
-import { SettingsSection } from "./settings-section";
 
 export function MembersPage() {
   const canManage = usePermission("member:manage");
@@ -42,7 +42,7 @@ function MembersSection({ canManage }: { canManage: boolean }) {
   const count = membersQuery.data?.length;
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Members"
       description={`People in ${orgName}. Roles apply to every project in the organization.`}
       actions={
@@ -82,6 +82,6 @@ function MembersSection({ canManage }: { canManage: boolean }) {
           orgName={orgName}
         />
       ) : null}
-    </SettingsSection>
+    </SectionCard>
   );
 }

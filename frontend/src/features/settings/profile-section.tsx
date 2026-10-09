@@ -1,15 +1,15 @@
+import { SectionCard } from "@/components/section-card";
 import { useMe } from "@/features/auth";
 import { formatDate } from "@/lib/format";
 
 import { InitialAvatar } from "./initial-avatar";
-import { SettingsSection } from "./settings-section";
 
 export function ProfileSection() {
   const { user } = useMe();
   const name = user.name || user.email;
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Profile"
       description="How you appear to other members of your organizations."
     >
@@ -26,6 +26,6 @@ export function ProfileSection() {
           </dd>
         </dl>
       </div>
-    </SettingsSection>
+    </SectionCard>
   );
 }

@@ -2,6 +2,8 @@ import { ChevronRight } from "lucide-react";
 import { useId, useState } from "react";
 
 import { JsonViewer } from "@/components/json-viewer";
+import { RelativeTime } from "@/components/relative-time";
+import { ColumnLabels, TileList } from "@/components/tile-list";
 import { Button } from "@/components/ui/button";
 import type { AuditEvent } from "@/lib/api";
 import { formatTimestamp } from "@/lib/format";
@@ -9,8 +11,6 @@ import { cn } from "@/lib/utils";
 
 import { auditActionLabel, auditActorName, auditEventSummary, hasMetadata } from "./audit-actions";
 import { AuditActor, AuditIp, AuditTarget, DetailRow } from "./audit-row-cells";
-import { RelativeTime } from "./relative-time";
-import { ColumnLabels, TileList } from "./settings-list";
 
 /*
  * Columns by card width (container queries): the action, and a details toggle, always; time

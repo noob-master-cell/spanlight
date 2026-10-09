@@ -412,4 +412,8 @@ export interface ProblemDetails {
   code?: string;
   request_id?: string;
   errors?: ProblemFieldError[];
+  /** An RFC 9457 extension member of `409 ROUTE_VERSION_CONFLICT`. */
+  current_version?: number;
 }
+
+export type * from "./gateway-types";

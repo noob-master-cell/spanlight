@@ -1,8 +1,11 @@
 import { KeyRound } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { DisabledReason } from "@/components/disabled-reason";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { SectionCard } from "@/components/section-card";
+import { TileListSkeleton } from "@/components/tile-list";
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/features/auth";
 import { usePermission } from "@/features/shell";
@@ -11,9 +14,6 @@ import { ApiKeyList } from "./api-key-list";
 import { useApiKeysQuery } from "./api-key-queries";
 import { sortApiKeys, type RevokeAbility } from "./api-key-utils";
 import { CreateApiKeyDialog } from "./create-api-key-dialog";
-import { DisabledReason } from "./disabled-reason";
-import { TileListSkeleton } from "./settings-list";
-import { SettingsSection } from "./settings-section";
 
 export function ApiKeysPage() {
   const me = useMe();
@@ -26,7 +26,7 @@ export function ApiKeysPage() {
   };
 
   return (
-    <SettingsSection
+    <SectionCard
       title="API keys"
       description="Keys let an application send traces to this project or read them through the API. The secret is shown once."
       actions={<CreateKeyButton canCreate={canCreate} />}
@@ -37,7 +37,7 @@ export function ApiKeysPage() {
         ability={ability}
         emptyAction={canCreate ? <CreateKeyButton canCreate /> : undefined}
       />
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

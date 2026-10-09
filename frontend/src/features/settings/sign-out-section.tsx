@@ -2,15 +2,14 @@ import { Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { useProjectParams, useSignOut } from "@/features/shell";
-
-import { SettingsSection } from "./settings-section";
+import { SectionCard } from "@/components/section-card";
 
 export function SignOutSection() {
   const signOut = useSignOut();
   const params = useProjectParams();
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Sign out"
       description={
         <>

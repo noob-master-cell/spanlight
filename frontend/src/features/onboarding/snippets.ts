@@ -4,10 +4,14 @@
  * (`sdks/python`, import `spanlight`) and the ingestion contract.
  */
 
+import { gatewayAnthropicBaseUrl, gatewayBaseUrl } from "@/features/gateway";
+
 export const API_KEY_PLACEHOLDER = "<YOUR_API_KEY>";
 export const DEFAULT_ENVIRONMENT = "production";
 
-export type SnippetId = "python" | "openai" | "anthropic" | "otel" | "curl";
+export const GATEWAY_KEY_PLACEHOLDER = "<YOUR_GATEWAY_KEY>";
+
+export type SnippetId = "python" | "openai" | "anthropic" | "otel" | "curl" | "gateway";
 export type SnippetLanguage = "shell" | "python";
 
 export interface SnippetBlock {
@@ -226,6 +230,66 @@ EOF`,
   };
 }
 
+/**
+ * "No SDK": point an existing provider client at the gateway. The key is a gateway key, never the
+ * ingest API key, so it is always the placeholder; the user creates one under Gateway › Credentials.
+ */
+function gatewaySnippet(host: string): Snippet {
+  const openAiBase = gatewayBaseUrl(host);
+  const anthropicBase = gatewayAnthropicBaseUrl(host);
+  return {
+    id: "gateway",
+    label: "No SDK",
+    description: "Add a provider credential, then create a gateway key.",
+    blocks: [
+      {
+        title: "OpenAI SDK",
+        filename: "openai_sdk.py",
+        language: "python",
+        code: `from openai import OpenAI
+
+client = OpenAI(
+    base_url="${openAiBase}",
+    api_key="${GATEWAY_KEY_PLACEHOLDER}",
+)
+
+response = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "Say hello"}],
+)
+print(response.choices[0].message.content)`,
+      },
+      {
+        title: "Anthropic SDK",
+        filename: "anthropic_sdk.py",
+        language: "python",
+        code: `from anthropic import Anthropic
+
+client = Anthropic(
+    base_url="${anthropicBase}",
+    api_key="${GATEWAY_KEY_PLACEHOLDER}",
+)
+
+message = client.messages.create(
+    model="claude-haiku-4-5",
+    max_tokens=256,
+    messages=[{"role": "user", "content": "Say hello"}],
+)
+print(message.content[0].text)`,
+      },
+      {
+        title: "curl",
+        filename: "curl",
+        language: "shell",
+        code: `curl -sS -X POST "${openAiBase}/chat/completions" \\
+  -H "Authorization: Bearer ${GATEWAY_KEY_PLACEHOLDER}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model": "gpt-4.1-mini", "messages": [{"role": "user", "content": "Say hello"}]}'`,
+      },
+    ],
+  };
+}
+
 /** All snippets, in tab order, with the key and host filled in. */
 export function buildSnippets({
   apiKey,
@@ -240,5 +304,6 @@ export function buildSnippets({
     anthropicSnippet(key, origin, environment),
     otelSnippet(key, origin, environment),
     curlSnippet(key, origin, environment),
+    gatewaySnippet(origin),
   ];
 }

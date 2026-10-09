@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 /**
- * Building blocks for the settings lists (keys, members, invites, audit events, devices):
+ * Building blocks for the tile lists (Settings keys, members, invites, audit events, devices,
+ * and the gateway keys, routes and lab lists):
  * rows are muted tiles with a 6px gap, under a row of overline column labels.
  */
 

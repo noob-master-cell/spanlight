@@ -17,10 +17,12 @@ interface WaitingForTraceProps {
   /** The polling error, shown only while there is no status yet. */
   error: Error | null;
   onRetry: () => void;
+  /** On the "No SDK" tab the next step is a gateway key, not the ingest snippet. */
+  gateway?: boolean;
 }
 
 /** "Waiting for your first trace…" row with a live pulse (Figma "Status — waiting"). */
-export function WaitingForTrace({ error, onRetry }: WaitingForTraceProps) {
+export function WaitingForTrace({ error, onRetry, gateway = false }: WaitingForTraceProps) {
   if (error) {
     return (
       <Card>
@@ -30,17 +32,33 @@ export function WaitingForTrace({ error, onRetry }: WaitingForTraceProps) {
   }
 
   return (
-    <Card className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1 py-[18px] pr-6 pl-[18px] sm:grid-cols-[2.25rem_minmax(0,1fr)_auto]">
-      <LiveIndicator />
+    <Card
+      className={cn(
+        "items-center py-[18px] pr-6 pl-[18px]",
+        // Nothing is polled on the gateway tab, so no pulse and no poll note.
+        gateway
+          ? "flex"
+          : "grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-4 gap-y-1 sm:grid-cols-[2.25rem_minmax(0,1fr)_auto]",
+      )}
+    >
+      {gateway ? null : <LiveIndicator />}
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-semibold text-foreground">Waiting for your first trace…</p>
+        <p className="text-sm font-semibold text-foreground">
+          {gateway
+            ? "Create a gateway key to send your first call"
+            : "Waiting for your first trace…"}
+        </p>
         <p className="text-xs font-medium text-muted-foreground">
-          Run the snippet — this page updates automatically.
+          {gateway
+            ? "Calls show up here once a key exists and a snippet runs."
+            : "Run the snippet — this page updates automatically."}
         </p>
       </div>
-      <p className="col-start-2 text-xs font-medium text-subtle-foreground sm:col-start-3 sm:row-start-1">
-        Checking every {POLL_INTERVAL_MS / 1000} s
-      </p>
+      {gateway ? null : (
+        <p className="col-start-2 text-xs font-medium text-subtle-foreground sm:col-start-3 sm:row-start-1">
+          Checking every {POLL_INTERVAL_MS / 1000} s
+        </p>
+      )}
     </Card>
   );
 }

@@ -1,6 +1,6 @@
+import { ColumnLabels, TileList, TileListSkeleton } from "@/components/tile-list";
 import type { PersonalAccessToken } from "@/lib/api";
 
-import { ColumnLabels, TileList, TileListSkeleton } from "../settings-list";
 import { TOKEN_COLUMNS } from "./token-columns";
 import { TokenRow } from "./token-row";
 

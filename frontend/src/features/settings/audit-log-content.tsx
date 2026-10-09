@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { TileListSkeleton } from "@/components/tile-list";
 import { Button } from "@/components/ui/button";
 import { formatInteger } from "@/lib/format";
 
 import { AuditLogList } from "./audit-log-list";
 import type { useAuditLogQuery } from "./audit-queries";
-import { TileListSkeleton } from "./settings-list";
 
 type AuditQuery = ReturnType<typeof useAuditLogQuery>;
 

@@ -1,14 +1,14 @@
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { RelativeTime } from "@/components/relative-time";
+import { RowAction } from "@/components/tile-list";
 import { Badge } from "@/components/ui/badge";
 import { UnknownValue } from "@/components/unknown-value";
 import type { PersonalAccessToken } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
-import { ConfirmDialog } from "../confirm-dialog";
-import { RelativeTime } from "../relative-time";
 import { REVOKE_DESCRIPTION } from "../revoke-copy";
-import { RowAction } from "../settings-list";
 import { expiryState } from "./expiry";
 import { ExpiresText } from "./expires-text";
 import { ScopeTag } from "./scope-tag";

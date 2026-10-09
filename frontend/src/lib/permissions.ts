@@ -14,7 +14,9 @@ export type Permission =
   | "org:update"
   | "org:delete"
   | "org:security"
-  | "export:create";
+  | "export:create"
+  | "gateway:write"
+  | "credentials:manage";
 
 const VIEWER: Permission[] = ["org:read", "project:read"];
 const MEMBER: Permission[] = [...VIEWER, "key:create", "key:revoke_own", "export:create"];
@@ -26,8 +28,9 @@ const ADMIN: Permission[] = [
   "member:manage",
   "org:update",
   "audit:read",
+  "gateway:write",
 ];
-const OWNER: Permission[] = [...ADMIN, "org:delete", "org:security"];
+const OWNER: Permission[] = [...ADMIN, "org:delete", "org:security", "credentials:manage"];
 
 const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   viewer: new Set(VIEWER),

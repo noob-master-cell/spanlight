@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/form-field";
+import { SectionCard } from "@/components/section-card";
 import { Input } from "@/components/ui/input";
 import { errorMessage, type Project } from "@/lib/api";
 import { applyServerFieldErrors } from "@/lib/form-errors";
@@ -20,7 +21,6 @@ import {
 import { CapturePayloadsField, ProjectIdentifiers } from "./project-settings-parts";
 import { ReadOnlySlugField } from "./read-only-slug-field";
 import { SettingsSaveBar } from "./settings-save-bar";
-import { SettingsSection } from "./settings-section";
 import { useUpdateProject } from "./use-update-project";
 
 interface ProjectSettingsFormProps {
@@ -69,7 +69,7 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
-      <SettingsSection
+      <SectionCard
         title="General"
         description="Shown in the project switcher and the command palette."
       >
@@ -92,9 +92,9 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
           />
         </div>
         <ProjectIdentifiers project={project} />
-      </SettingsSection>
+      </SectionCard>
 
-      <SettingsSection
+      <SectionCard
         title="Data"
         description="Control how long traces are kept and what is stored with them."
       >
@@ -127,7 +127,7 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
         </div>
         <hr className="border-border" />
         <CapturePayloadsField control={form.control} canEdit={canEdit} />
-      </SettingsSection>
+      </SectionCard>
 
       {canEdit ? (
         <SettingsSaveBar

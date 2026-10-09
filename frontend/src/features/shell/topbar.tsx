@@ -8,23 +8,24 @@ import { cn } from "@/lib/utils";
 
 import { EnvironmentFilter } from "./environment-filter";
 import { ProjectSwitcher } from "./project-switcher";
+import type { TimeRangeOptions } from "./time-range-options";
 import { TimeRangePicker } from "./time-range-picker";
 
 interface TopbarProps {
   onOpenCommandPalette: () => void;
-  /** Time range and environment controls, shown on time-windowed data pages. */
-  showDataFilters: boolean;
+  /** Time range and environment controls of a time-windowed data page; null hides them. */
+  dataFilters: TimeRangeOptions | null;
 }
 
 /** In-panel top bar for desktop (Figma "App/Topbar"): search pill left, controls right. */
-export function Topbar({ onOpenCommandPalette, showDataFilters }: TopbarProps) {
+export function Topbar({ onOpenCommandPalette, dataFilters }: TopbarProps) {
   return (
     <div className="flex h-11 items-center justify-between gap-4">
       <SearchPill onClick={onOpenCommandPalette} />
       <div className="flex items-center gap-2">
-        {showDataFilters ? (
+        {dataFilters ? (
           <>
-            <TimeRangePicker />
+            <TimeRangePicker options={dataFilters} />
             <EnvironmentFilter />
           </>
         ) : null}
@@ -94,10 +95,10 @@ export function MobileAppBar({
 }
 
 /** Mobile placement of the data filters: a wrapping row above the page content. */
-export function MobileDataFilters() {
+export function MobileDataFilters({ options }: { options: TimeRangeOptions }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <TimeRangePicker />
+      <TimeRangePicker options={options} />
       <EnvironmentFilter />
     </div>
   );

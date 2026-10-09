@@ -107,3 +107,10 @@ export function describeRange(range: ResolvedRange): string {
   });
   return `${format.format(new Date(range.from))} – ${format.format(new Date(range.to))}`;
 }
+
+/** `<input type="datetime-local">` wants local time without a zone: 2026-10-07T14:30 */
+export function toLocalInputValue(iso: string): string {
+  const date = new Date(iso);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}

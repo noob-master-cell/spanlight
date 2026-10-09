@@ -75,8 +75,3 @@ export function revokeDecision(key: ApiKey, ability: RevokeAbility): RevokeDecis
   }
   return { allowed: false, reason: "Viewers can't revoke API keys." };
 }
-
-/** The line a developer pastes into their environment. */
-export function envLine(secret: string): string {
-  return `SPANLIGHT_API_KEY=${secret}`;
-}

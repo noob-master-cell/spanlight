@@ -2,13 +2,13 @@ import { Monitor, Smartphone } from "lucide-react";
 import { useState, type ReactElement } from "react";
 import { toast } from "sonner";
 
+import { DialogHeading } from "@/components/dialog-heading";
+import { RelativeTime } from "@/components/relative-time";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import type { AuthSession } from "@/lib/api";
 
 import { useRevokeOtherAuthSessions } from "./account-queries";
-import { RelativeTime } from "./relative-time";
-import { DialogHeading } from "./dialog-heading";
 import { describeUserAgent } from "./user-agent";
 
 interface SignOutOthersDialogProps {

@@ -6,7 +6,8 @@ import { defineConfig } from "vitest/config";
 
 const backendTarget = process.env.VITE_BACKEND_URL ?? "http://localhost:8000";
 
-const proxiedPaths = ["/api", "/v1", "/health"];
+// `/gw` is the gateway: the proxy streams bodies through unbuffered and adds no compression.
+const proxiedPaths = ["/api", "/v1", "/gw", "/health"];
 
 const FONT_FILE = /\.(woff2?|ttf|otf)$/;
 

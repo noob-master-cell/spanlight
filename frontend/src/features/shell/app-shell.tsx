@@ -21,19 +21,31 @@ import { writeLastProject } from "@/lib/last-project";
 import { CommandPalette } from "./command-palette";
 import { useProjectParams, useProjectQuery } from "./project-context";
 import { Sidebar } from "./sidebar";
+import {
+  DEFAULT_TIME_RANGE_OPTIONS,
+  GATEWAY_TIME_RANGE_OPTIONS,
+  type TimeRangeOptions,
+} from "./time-range-options";
 import { MobileAppBar, MobileDataFilters, Topbar } from "./topbar";
 import { TwoFactorRequired } from "./two-factor-required";
 import { useOnAccountSettingsPath, useOnSecurityPath, useTwoFactorGate } from "./two-factor-gate";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 
-/** Pages that show time-windowed data get the range and environment controls. */
-function useShowsDataFilters(): boolean {
+/**
+ * Pages that show time-windowed data get the range and environment controls. The gateway overview
+ * (the exact `/gateway` route, not Keys, Routes, Credentials or Lab) offers only the windows its
+ * endpoint accepts.
+ */
+function useDataFilters(): TimeRangeOptions | null {
   const matchRoute = useMatchRoute();
-  return Boolean(
+  if (matchRoute({ to: "/$orgId/$projectId/gateway", fuzzy: false })) {
+    return GATEWAY_TIME_RANGE_OPTIONS;
+  }
+  const windowed =
     matchRoute({ to: "/$orgId/$projectId/overview" }) ||
     matchRoute({ to: "/$orgId/$projectId/traces" }) ||
-    matchRoute({ to: "/$orgId/$projectId/sessions" }),
-  );
+    matchRoute({ to: "/$orgId/$projectId/sessions" });
+  return windowed ? DEFAULT_TIME_RANGE_OPTIONS : null;
 }
 
 /**
@@ -61,7 +73,8 @@ export function AppShell() {
   // The Security page's 2FA card carries the same "verify your email" prompt, so it has no banner.
   const onSecurityPage = useOnSecurityPath();
   // Data controls are for pages that can show data, and there are none while the org is locked.
-  const showsDataFilters = useShowsDataFilters() && !twoFactorBlocked;
+  const routeDataFilters = useDataFilters();
+  const dataFilters = twoFactorBlocked ? null : routeDataFilters;
 
   const togglePalette = useCallback(() => {
     setPaletteOpen((current) => !current);
@@ -140,12 +153,12 @@ export function AppShell() {
         />
 
         <div className="relative mx-auto hidden w-full max-w-[1440px] px-10 pt-7 lg:block">
-          <Topbar onOpenCommandPalette={openPalette} showDataFilters={showsDataFilters} />
+          <Topbar onOpenCommandPalette={openPalette} dataFilters={dataFilters} />
         </div>
 
-        {showsDataFilters ? (
+        {dataFilters ? (
           <div className="relative px-4 pt-3 lg:hidden">
-            <MobileDataFilters />
+            <MobileDataFilters options={dataFilters} />
           </div>
         ) : null}
 

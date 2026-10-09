@@ -1,7 +1,9 @@
 import { Download, ShieldCheck } from "lucide-react";
 
 import { Callout } from "@/components/callout";
+import { DisabledReason } from "@/components/disabled-reason";
 import { EmptyState } from "@/components/empty-state";
+import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { usePermission } from "@/features/shell";
@@ -9,8 +11,6 @@ import { usePermission } from "@/features/shell";
 import { AuditFilterBar } from "./audit-filter-bar";
 import { AuditLogContent } from "./audit-log-content";
 import { useAuditLogQuery } from "./audit-queries";
-import { DisabledReason } from "./disabled-reason";
-import { SettingsSection } from "./settings-section";
 import { useAuditCsv } from "./use-audit-csv";
 import { useAuditFilters } from "./use-audit-filters";
 
@@ -49,7 +49,7 @@ function AuditLogCard() {
   }
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Audit log"
       description="Security-relevant changes in this organization: keys, members, invites and project settings. Newest first."
       actions={
@@ -73,7 +73,7 @@ function AuditLogCard() {
         </Callout>
       ) : null}
       <AuditLogContent query={query} filtered={hasFilters} onClearFilters={clearFilters} />
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

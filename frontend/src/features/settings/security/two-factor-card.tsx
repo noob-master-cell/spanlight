@@ -2,13 +2,13 @@ import { ShieldCheck, ShieldOff } from "lucide-react";
 import { useId } from "react";
 
 import { Callout } from "@/components/callout";
+import { DisabledReason } from "@/components/disabled-reason";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { DisabledReason } from "../disabled-reason";
 import {
   NotAvailableCallout,
   RecoveryCodesTile,

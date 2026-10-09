@@ -1,5 +1,8 @@
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DisabledReason } from "@/components/disabled-reason";
+import { ColumnLabels, RowAction, TileList } from "@/components/tile-list";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -13,12 +16,9 @@ import { formatDate } from "@/lib/format";
 import { ROLE_LABELS, ROLES } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
-import { ConfirmDialog } from "./confirm-dialog";
-import { DisabledReason } from "./disabled-reason";
 import { InitialAvatar } from "./initial-avatar";
 import { useRemoveMember, useUpdateMemberRole } from "./member-queries";
 import { displayName, isRole } from "./member-utils";
-import { ColumnLabels, RowAction, TileList } from "./settings-list";
 
 interface MemberListProps {
   members: Member[];

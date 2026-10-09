@@ -18,7 +18,10 @@ interface DialogHeadingProps {
   titleRef?: Ref<HTMLHeadingElement>;
 }
 
-/** Figma "Settings/Dialog header": overline, 22 px title, muted description and a close button. */
+/**
+ * Figma "Settings/Dialog header", shared by the app's dialogs: overline, 22 px title, muted
+ * description and a close button.
+ */
 export function DialogHeading({
   overline,
   title,
@@ -32,7 +35,7 @@ export function DialogHeading({
         {overline ? (
           <p className="text-overline text-subtle-foreground uppercase">{overline}</p>
         ) : null}
-        <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
+        <DialogTitle ref={titleRef} tabIndex={-1} className="[overflow-wrap:anywhere] outline-none">
           {title}
         </DialogTitle>
         {description ? <DialogDescription>{description}</DialogDescription> : null}

@@ -15,7 +15,7 @@ export interface CodeSegment {
 
 export type CodeLine = readonly CodeSegment[];
 
-export type CodeSampleId = "python" | "openai" | "otlp";
+export type CodeSampleId = "python" | "openai" | "otlp" | "gateway";
 
 export interface CodeSample {
   id: CodeSampleId;
@@ -117,6 +117,32 @@ const OTLP_LINES: readonly CodeLine[] = [
   code`${muted("export")} OTEL_SERVICE_NAME=${accent('"support-copilot"')}`,
 ];
 
+const GATEWAY_KEY_PLACEHOLDER = "<YOUR_GATEWAY_KEY>";
+
+const GATEWAY_LINES: readonly CodeLine[] = [
+  code`${muted("# No SDK: point your existing client at the gateway")}`,
+  code`${muted("from")} openai ${muted("import")} OpenAI`,
+  BLANK,
+  code`client = ${accent("OpenAI")}(`,
+  code`    base_url=${accent('"http://localhost:8080/gw/v1"')},`,
+  code`    api_key=${accent(`"${GATEWAY_KEY_PLACEHOLDER}"`)},`,
+  code`)`,
+  BLANK,
+  code`response = client.chat.completions.${accent("create")}(`,
+  code`    model=${accent('"gpt-4.1-mini"')},`,
+  code`    messages=[{${accent('"role"')}: ${accent('"user"')}, ${accent('"content"')}: ${accent('"Say hello"')}}],`,
+  code`)`,
+];
+
+const GATEWAY_COMPACT_LINES: readonly CodeLine[] = [
+  code`${muted("from")} openai ${muted("import")} OpenAI`,
+  BLANK,
+  code`client = ${accent("OpenAI")}(`,
+  code`    base_url=${accent('"…/gw/v1"')},`,
+  code`    api_key=${accent('"<YOUR_GATEWAY_KEY>"')},`,
+  code`)`,
+];
+
 export const CODE_SAMPLES: Record<CodeSampleId, CodeSample> = {
   python: {
     id: "python",
@@ -138,10 +164,17 @@ export const CODE_SAMPLES: Record<CodeSampleId, CodeSample> = {
     description: "OpenTelemetry exporter environment",
     lines: OTLP_LINES,
   },
+  gateway: {
+    id: "gateway",
+    label: "Gateway",
+    description: "OpenAI client pointed at the Spanlight gateway, no SDK",
+    lines: GATEWAY_LINES,
+    compactLines: GATEWAY_COMPACT_LINES,
+  },
 };
 
 /** Tab order. */
-export const CODE_SAMPLE_IDS: readonly CodeSampleId[] = ["python", "openai", "otlp"];
+export const CODE_SAMPLE_IDS: readonly CodeSampleId[] = ["python", "openai", "otlp", "gateway"];
 
 export function isCodeSampleId(value: string): value is CodeSampleId {
   return Object.hasOwn(CODE_SAMPLES, value);

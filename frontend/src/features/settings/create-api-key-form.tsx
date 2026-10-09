@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { DialogHeading } from "@/components/dialog-heading";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
@@ -13,7 +14,6 @@ import { applyServerFieldErrors } from "@/lib/form-errors";
 
 import { ApiKeyScopeField } from "./api-key-scope-field";
 import { useCreateApiKey } from "./api-key-queries";
-import { DialogHeading } from "./dialog-heading";
 import { DEFAULT_EXPIRY, expiryTimestamp, type ExpiryChoice } from "./tokens/expiry";
 import { ExpiryField } from "./tokens/expiry-field";
 import { DEFAULT_KEY_SCOPES, hasKeyScope } from "./tokens/scopes";

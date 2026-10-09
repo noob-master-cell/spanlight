@@ -3,10 +3,10 @@ import { Info } from "lucide-react";
 import { toast } from "sonner";
 
 import { ErrorState } from "@/components/error-state";
+import { SectionCard } from "@/components/section-card";
+import { TileListSkeleton, TileList } from "@/components/tile-list";
 import { useMe } from "@/features/auth";
 
-import { TileListSkeleton, TileList } from "../settings-list";
-import { SettingsSection } from "../settings-section";
 import { PasswordRow, ProviderRow, type ProviderRestriction } from "./sign-in-method-rows";
 import { PROVIDER_LABELS, buildSignInMethods, isDemoAccount } from "./sign-in-methods";
 import {
@@ -46,7 +46,7 @@ export function OAuthConnectionsSection() {
       : null;
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Sign-in methods"
       description="Ways you can sign in to Spanlight. Keep at least one."
       className="gap-3"
@@ -92,6 +92,6 @@ export function OAuthConnectionsSection() {
         You can disconnect a provider as long as you keep another way to sign in. Only providers set
         up on this server are listed.
       </p>
-    </SettingsSection>
+    </SectionCard>
   );
 }

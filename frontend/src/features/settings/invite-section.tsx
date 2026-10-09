@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { CopyButton } from "@/components/copy-button";
+import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,6 @@ import { ROLE_LABELS, ROLES } from "@/lib/permissions";
 
 import { useCreateInvite } from "./member-queries";
 import { inviteExpiryLabel, isRole, roleHint, roleWithArticle } from "./member-utils";
-import { SettingsSection } from "./settings-section";
 
 const DEFAULT_INVITE_ROLE: Role = "member";
 
@@ -41,7 +41,7 @@ export function InviteSection() {
   }
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Invite people"
       description="Create a single-use link and share it with the person you want to add."
       className="gap-4"
@@ -80,7 +80,7 @@ export function InviteSection() {
       </p>
 
       {invite ? <CreatedInviteLink invite={invite} /> : null}
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

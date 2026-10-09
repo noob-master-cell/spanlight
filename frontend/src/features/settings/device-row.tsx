@@ -1,15 +1,15 @@
 import { Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { RelativeTime } from "@/components/relative-time";
+import { RowAction } from "@/components/tile-list";
 import { UnknownValue } from "@/components/unknown-value";
 import { Badge } from "@/components/ui/badge";
 import type { AuthSession } from "@/lib/api";
 import { formatDate, formatTimestamp } from "@/lib/format";
 
 import { useRevokeAuthSession } from "./account-queries";
-import { ConfirmDialog } from "./confirm-dialog";
-import { RelativeTime } from "./relative-time";
-import { RowAction } from "./settings-list";
 import { describeUserAgent } from "./user-agent";
 
 /** Figma "Settings/Device row". */

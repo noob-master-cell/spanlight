@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { ApiKey, User } from "@/lib/api";
+import { envLine } from "@/lib/reveal-copy";
 
-import { envLine, formatKeyPrefix, revokeDecision, sortApiKeys } from "./api-key-utils";
+import { formatKeyPrefix, revokeDecision, sortApiKeys } from "./api-key-utils";
 
 const alice: User = {
   id: "u1",

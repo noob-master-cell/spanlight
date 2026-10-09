@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
 
-import { SettingsSection } from "../settings-section";
 import { CreateTokenDialog } from "./create-token-dialog";
 import { TokenList, TokenListSkeleton } from "./token-list";
 import { useTokensQuery } from "./token-queries";
@@ -19,7 +19,7 @@ export function TokensPage() {
   const empty = query.isSuccess && query.data.length === 0;
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Personal access tokens"
       description="Tokens let scripts and tools call the Spanlight API as you. A token is shown once, when it's created."
       // The empty state carries the one call to action, so the header button steps aside.
@@ -27,7 +27,7 @@ export function TokensPage() {
       className="gap-3"
     >
       <TokensContent query={query} />
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

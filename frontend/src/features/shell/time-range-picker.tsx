@@ -11,34 +11,36 @@ import {
   describeRange,
   MAX_WINDOW_MS,
   RANGE_LABELS,
-  RANGE_PRESETS,
+  toLocalInputValue,
   type RangePreset,
 } from "@/lib/time-range";
 import { cn } from "@/lib/utils";
 
 import { useProjectFilters } from "./project-context";
+import { DEFAULT_TIME_RANGE_OPTIONS, type TimeRangeOptions } from "./time-range-options";
 
-const PRESET_OPTIONS: SegmentedOption<RangePreset>[] = RANGE_PRESETS.map((preset) => ({
-  value: preset,
-  label: preset,
-  srLabel: RANGE_LABELS[preset].toLowerCase(),
-}));
+function presetOptions(presets: readonly RangePreset[]): SegmentedOption<RangePreset>[] {
+  return presets.map((preset) => ({
+    value: preset,
+    label: preset,
+    srLabel: RANGE_LABELS[preset].toLowerCase(),
+  }));
+}
 
-/** `<input type="datetime-local">` wants local time without a zone: 2026-10-07T14:30 */
-function toLocalInputValue(iso: string): string {
-  const date = new Date(iso);
-  const offsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+interface TimeRangePickerProps {
+  /** Defaults to every preset plus the custom range. */
+  options?: TimeRangeOptions;
 }
 
 /**
  * The time window for project data (Figma "Control/Time range"): a segmented pill for the
  * presets, plus a calendar pill that opens a custom from/to range.
  */
-export function TimeRangePicker() {
+export function TimeRangePicker({ options = DEFAULT_TIME_RANGE_OPTIONS }: TimeRangePickerProps) {
   const navigate = useNavigate();
   const { range } = useProjectFilters();
-  const preset = range.value === "custom" ? null : range.value;
+  const preset =
+    options.presets.find((candidate) => candidate === range.value) ?? options.fallback ?? null;
 
   function selectPreset(next: RangePreset) {
     void navigate({
@@ -53,9 +55,9 @@ export function TimeRangePicker() {
         aria-label="Time range"
         value={preset}
         onValueChange={selectPreset}
-        options={PRESET_OPTIONS}
+        options={presetOptions(options.presets)}
       />
-      <CustomRangePopover />
+      {options.allowCustom ? <CustomRangePopover /> : null}
     </div>
   );
 }

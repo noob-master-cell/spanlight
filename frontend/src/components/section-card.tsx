@@ -3,7 +3,7 @@ import { useId, type ReactNode } from "react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-interface SettingsSectionProps {
+interface SectionCardProps {
   title: string;
   description?: ReactNode;
   /** Controls aligned with the title, e.g. a "Create key" button or a count badge. */
@@ -13,14 +13,17 @@ interface SettingsSectionProps {
   className?: string;
 }
 
-/** One settings card: title and description, optional actions, then the content. */
-export function SettingsSection({
+/**
+ * One page card (the Figma settings section, also used by the gateway pages): title and
+ * description, optional actions, then the content.
+ */
+export function SectionCard({
   title,
   description,
   actions,
   children,
   className,
-}: SettingsSectionProps) {
+}: SectionCardProps) {
   const titleId = useId();
 
   return (

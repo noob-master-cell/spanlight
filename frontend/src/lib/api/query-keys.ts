@@ -28,11 +28,14 @@ export const queryKeys = {
       /** Every audit query of the org: invalidate with this, read one with `auditEvents`. */
       audit,
       auditEvents: (filters: AuditFilters) => [...audit, filters] as const,
+      credentials: [...all, "credentials"] as const,
+      priceOverrides: [...all, "price-overrides"] as const,
     };
   },
 
   project: (projectId: string) => {
     const all = ["project", projectId] as const;
+    const gateway = [...all, "gateway"] as const;
     return {
       all,
       detail: [...all, "detail"] as const,
@@ -49,6 +52,16 @@ export const queryKeys = {
       timeseries: (query: MetricsQuery & { bucket: Bucket }) =>
         [...all, "timeseries", query] as const,
       models: (query: MetricsQuery) => [...all, "models", query] as const,
+      gateway: {
+        /** Every gateway query of the project: invalidate with this. */
+        all: gateway,
+        overview: (query: MetricsQuery) => [...gateway, "overview", query] as const,
+        keys: [...gateway, "keys"] as const,
+        routes: [...gateway, "routes"] as const,
+        route: (routeId: string) => [...gateway, "route", routeId] as const,
+        versions: (routeId: string) => [...gateway, "route", routeId, "versions"] as const,
+        faultProfiles: [...gateway, "fault-profiles"] as const,
+      },
     };
   },
 };

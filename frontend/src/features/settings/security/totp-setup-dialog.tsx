@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { toast } from "sonner";
 
+import { DialogHeading } from "@/components/dialog-heading";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { TotpSetup } from "@/lib/api";
 import { useNavigationLock } from "@/lib/navigation-lock";
 import { cn } from "@/lib/utils";
 
-import { DialogHeading } from "../dialog-heading";
 import { RecoveryCodesStep } from "./recovery-codes-step";
 import { TotpConfirmStep } from "./totp-confirm-step";
 import { TotpScanStep } from "./totp-scan-step";

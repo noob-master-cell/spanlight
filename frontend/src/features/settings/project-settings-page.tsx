@@ -1,11 +1,11 @@
 import { ErrorState } from "@/components/error-state";
+import { ReadOnlyNote } from "@/components/read-only-note";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentOrg, usePermission, useProjectQuery } from "@/features/shell";
 
 import { ProjectDangerZone } from "./project-danger-zone";
 import { ProjectSettingsForm } from "./project-settings-form";
-import { ReadOnlyNote } from "./read-only-note";
 
 /**
  * General and Data settings, then the "Danger zone". Deleting a project needs `project:delete`

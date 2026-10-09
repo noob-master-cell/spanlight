@@ -2,9 +2,10 @@ import { KeyRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { Callout } from "@/components/callout";
+import { RowAction } from "@/components/tile-list";
 import { ResendNote, useResendVerification } from "@/features/auth";
+
 import { RECOVERY_CODE_TOTAL } from "./recovery-codes";
-import { RowAction } from "../settings-list";
 import { NOT_AVAILABLE_TITLE, recoveryCodesSummary } from "./totp-flow";
 
 /** Ten segments, one per recovery code: violet while unused, grey once spent (decorative). */

@@ -1,5 +1,9 @@
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DisabledReason } from "@/components/disabled-reason";
+import { RelativeTime } from "@/components/relative-time";
+import { RowAction } from "@/components/tile-list";
 import { Badge } from "@/components/ui/badge";
 import { UnknownValue } from "@/components/unknown-value";
 import type { ApiKey } from "@/lib/api";
@@ -7,11 +11,7 @@ import { formatDate } from "@/lib/format";
 
 import { useRevokeApiKey } from "./api-key-queries";
 import { revokeDecision, type KeyStatus, type RevokeAbility } from "./api-key-utils";
-import { ConfirmDialog } from "./confirm-dialog";
-import { DisabledReason } from "./disabled-reason";
-import { RelativeTime } from "./relative-time";
 import { REVOKE_DESCRIPTION } from "./revoke-copy";
-import { RowAction } from "./settings-list";
 
 /** The cells of one key row that are more than a line of text. */
 

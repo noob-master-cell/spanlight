@@ -1,6 +1,5 @@
-import { envLine } from "../api-key-utils";
-
-export type SecretKind = "key" | "token";
+/** The secret kinds a create dialog reveals once: an ingest API key, a token, a gateway key. */
+export type SecretKind = "key" | "token" | "gateway_key";
 
 interface RevealCopy {
   title: string;
@@ -8,13 +7,29 @@ interface RevealCopy {
   warning: string;
   secretLabel: string;
   copyAriaLabel: string;
+}
+
+/** The line that puts a Settings secret to use, shown under it with its own Copy button. */
+interface UsageCopy {
   usageHint: string;
   usageCopyLabel: string;
   usageLine: (secret: string) => string;
 }
 
-/** Everything that differs between "Key created" and "Token created". */
-export const REVEAL_COPY: Record<SecretKind, RevealCopy> = {
+/** The environment line the SDK reads an ingest API key from. */
+export function envLine(secret: string): string {
+  return `SPANLIGHT_API_KEY=${secret}`;
+}
+
+/**
+ * Everything that differs between "Key created", "Token created" and the gateway "Key created".
+ * The gateway reveal shows SDK snippets instead of a usage line.
+ */
+export const REVEAL_COPY: {
+  key: RevealCopy & UsageCopy;
+  token: RevealCopy & UsageCopy;
+  gateway_key: RevealCopy;
+} = {
   key: {
     title: "Key created",
     warning: "Copy this key now. You won't be able to see it again.",
@@ -32,5 +47,11 @@ export const REVEAL_COPY: Record<SecretKind, RevealCopy> = {
     usageHint: "Send it as a bearer token in the Authorization header:",
     usageCopyLabel: "Copy Authorization header",
     usageLine: (secret) => `Authorization: Bearer ${secret}`,
+  },
+  gateway_key: {
+    title: "Key created",
+    warning: "Copy this key now. You won't be able to see it again.",
+    secretLabel: "Secret key",
+    copyAriaLabel: "Copy gateway key",
   },
 };

@@ -3,8 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ExportsList, useExportsQuery } from "@/features/exports";
 import { useProjectParams, useProjectQuery } from "@/features/shell";
-
-import { SettingsSection } from "./settings-section";
+import { SectionCard } from "@/components/section-card";
 
 /**
  * Settings › Exports: the project's trace exports, newest first. Exports are started from the
@@ -18,14 +17,14 @@ export function ExportsPage() {
   const name = project.data?.name ?? "this project";
 
   return (
-    <SettingsSection
+    <SectionCard
       title="Exports"
       description={`Trace exports for ${name}, newest first.${isEmpty ? "" : " Start one from the Traces page."}`}
       actions={isEmpty ? null : <GoToTraces variant="secondary" />}
       className="gap-3"
     >
       <ExportsList query={query} emptyAction={<GoToTraces variant="primary" />} />
-    </SettingsSection>
+    </SectionCard>
   );
 }
 

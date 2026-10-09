@@ -1,12 +1,12 @@
 import { useId, useState } from "react";
 
+import { DisabledReason } from "@/components/disabled-reason";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useMe } from "@/features/auth";
 import type { Org } from "@/lib/api";
 
-import { DisabledReason } from "../disabled-reason";
 import { EnableOwnTwoFactorCallout, NotConfiguredCallout } from "./org-security-callouts";
 import {
   mustEnableOwnTwoFactor,
