@@ -5,7 +5,7 @@ Thanks for helping. This file covers how to set up, what a change has to pass, a
 ## Before you start
 
 - Search the existing issues. For anything bigger than a small fix, open an issue first (bug report or feature request) and agree on the approach before you write code.
-- The [Roadmap](README.md#roadmap) says what is planned. The [Architecture](README.md#architecture) section and the [decision records](docs/decisions/) say how the system fits together.
+- The [What's next](README.md#whats-next) section says what is planned. The [Architecture](README.md#architecture) section and the [decision records](docs/decisions/) say how the system fits together.
 
 ## Set up
 
