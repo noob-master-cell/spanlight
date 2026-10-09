@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import Base, _pg_enum
@@ -94,6 +94,22 @@ class Span(Base):
                 "time_to_first_token_ms",
             ],
         ),
+        # Per gateway key reads (budgets, detectors). Partial: natively ingested spans have no key.
+        # Migration 0202 creates it.
+        Index(
+            "spans_project_source_key_started_idx",
+            "project_id",
+            "source_key_id",
+            "started_at",
+            postgresql_where=text("source_key_id IS NOT NULL"),
+        ),
+        # The gateway overview's window scan over every key's calls. Migration 0202 creates it.
+        Index(
+            "spans_project_gateway_started_idx",
+            "project_id",
+            "started_at",
+            postgresql_where=text("source_key_id IS NOT NULL"),
+        ),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
@@ -125,6 +141,9 @@ class Span(Base):
     output: Mapped[Any | None] = mapped_column(JSONB(none_as_null=True))
     attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     truncated: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # The gateway key the call came through; None for spans from native or OTLP ingestion.
+    # A plain uuid without a foreign key (migration 0202 says why).
+    source_key_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

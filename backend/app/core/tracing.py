@@ -71,8 +71,13 @@ _PRINCIPAL_KIND_ATTRIBUTE = "spanlight.principal_kind"
 _ROLE_ATTRIBUTE = "spanlight.role"
 
 
-def configure_tracing(settings: Settings, app: FastAPI, engine: AsyncEngine) -> None:
+def configure_tracing(
+    settings: Settings, app: FastAPI, engine: AsyncEngine, *, role: str = "api"
+) -> None:
     """Instrument `app`, `engine` and httpx, and start exporting. A no-op without an endpoint.
+
+    `role` names the process: `api`, or `gateway` for the standalone gateway, which reports as
+    the api's service name with `-gateway` in place of a trailing `-api` (as the worker does).
 
     The side-channel engines (idempotency keys, rate limiting) are read from `app.state`, so their
     queries appear under the request that caused them. The provider is kept on
@@ -87,7 +92,10 @@ def configure_tracing(settings: Settings, app: FastAPI, engine: AsyncEngine) -> 
     if not endpoint:
         return
 
-    provider = _create_provider(endpoint, settings.otel_service_name, role="api")
+    service = settings.otel_service_name
+    if role != "api":
+        service = f"{service.removesuffix('-api')}-{role}"
+    provider = _create_provider(endpoint, service, role=role)
     app.state.tracer_provider = provider
 
     FastAPIInstrumentor.instrument_app(
@@ -106,7 +114,7 @@ def configure_tracing(settings: Settings, app: FastAPI, engine: AsyncEngine) -> 
             engines.append(extra)
     _instrument_engines(provider, engines)
     _instrument_httpx(provider)
-    logger.info("tracing_enabled", service=settings.otel_service_name)
+    logger.info("tracing_enabled", service=service)
 
 
 def configure_worker_tracing(settings: Settings, engine: AsyncEngine) -> TracerProvider | None:

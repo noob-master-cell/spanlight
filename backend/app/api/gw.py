@@ -1,0 +1,254 @@
+"""The LLM gateway: `/gw/v1/*`, called by OpenAI and Anthropic SDKs with a Spanlight gateway key.
+
+The OpenAI SDK uses `base_url="<host>/gw/v1"`; the Anthropic SDK uses `base_url="<host>/gw"`
+(it appends `/v1/messages`). A call is checked in this order, and the first check that refuses
+answers in the provider envelope of the path (`app.api.gw_errors`):
+
+1. the key, from `Authorization: Bearer spl_gw_…` or `x-api-key: spl_gw_…` (both present with
+   different values is refused): parsed, found by its prefix, its secret compared in constant
+   time (an unknown prefix still runs a comparison), then its project, route and credentials
+   loaded (`UNAUTHORIZED`);
+2. the organization ceiling, the key's requests per minute, then its tokens per minute
+   (`RATE_LIMITED`); the request's transaction ends here, before any upstream call;
+3. the body: at most 10 MB (`PAYLOAD_TOO_LARGE`), a JSON object with a string `model`
+   (`INVALID_REQUEST`);
+4. `execute`, which applies the route (model allowlist, budget, cache, faults, retries and
+   fallbacks) and answers with the provider's bytes or a gateway error.
+
+A stream is answered as it arrives from the provider. However the response ends (the provider
+finished, the client went away, sending failed), the stream is closed in a `finally`, which
+closes the provider connection and writes the span. A `truncated_stream` fault ends the
+response with a clean end of stream after the last forwarded frame: Starlette has no way to
+abort a connection without raising through the server, so the truncation shows as a stream
+without its final event (`[DONE]` or `message_stop`), which is what SDKs detect.
+
+None of the dashboard's middleware touches these paths: no cookies, CSRF or Origin check (they
+are scoped to `/api/`), and the 1 MiB body limit is `/api/v1` only.
+"""
+
+import json
+from collections.abc import Mapping
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, Request, Response
+from starlette.datastructures import Headers
+from starlette.responses import StreamingResponse
+from starlette.types import Receive, Scope, Send
+
+from app.api.gw_errors import request_id_of
+from app.config import Settings
+from app.core.body import BodyTooLarge, UndecodableBody, UnsupportedEncoding, read_bounded_body
+from app.core.observability import GATEWAY_REQUESTS
+from app.core.security import GATEWAY_KEY_PREFIX, key_secret_matches, parse_key
+from app.db.timeouts import limit_statement_time
+from app.gateway.context import ByteStream, GatewayRequest, Received, context_for_key
+from app.gateway.errors import (
+    Surface,
+    envelope_for,
+    internal,
+    invalid_key,
+    invalid_request,
+    request_too_large,
+)
+from app.gateway.execute import execute
+from app.gateway.key_context import KeyContext, find_key, load_key_context
+from app.gateway.key_limits import check_limits
+from app.gateway.models_endpoint import answer_models
+from app.gateway.runtime import GatewayRuntime
+from app.gateway.trace_headers import TraceHeaders
+
+router = APIRouter(prefix="/gw/v1", tags=["gateway"])
+
+# "10 MB" in the error message. Caddy allows a little more (11 MiB), so this limit answers with
+# the provider-shaped 413 rather than Caddy's plain one.
+MAX_REQUEST_BYTES = 10 * 1024 * 1024
+# Compared against when the presented prefix matches no key, so an unknown key costs the same
+# hash comparison as a known one with the wrong secret.
+_DUMMY_SECRET_HASH = bytes(32)
+# Client headers that are credentials. They are dropped before the request reaches `execute`,
+# whose adapters copy only an allowlist upstream anyway.
+_CREDENTIAL_HEADERS = frozenset({"authorization", "x-api-key", "cookie"})
+_STREAM_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+
+_REQUEST_BODY_DOC: dict[str, Any] = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "required": ["model"],
+                    "properties": {"model": {"type": "string"}, "stream": {"type": "boolean"}},
+                    "additionalProperties": True,
+                }
+            }
+        },
+    }
+}
+
+
+def get_runtime(request: Request) -> GatewayRuntime:
+    runtime = getattr(request.app.state, "gateway_runtime", None)
+    if not isinstance(runtime, GatewayRuntime):
+        raise internal(request_id_of(request))  # the lifespan did not run
+    return runtime
+
+
+def presented_key(headers: Headers) -> str:
+    """The key the client sent. Raises `UNAUTHORIZED` when it sent none or two different ones.
+
+    Both values come from the client, so comparing them with each other leaks nothing.
+    """
+    values: list[str] = []
+    for value in headers.getlist("authorization"):
+        scheme, _, credential = value.strip().partition(" ")
+        values.append(credential.strip() if scheme.lower() == "bearer" else value.strip())
+    values.extend(value.strip() for value in headers.getlist("x-api-key"))
+    if len(set(values)) > 1:
+        raise invalid_key(conflicting=True)
+    if not values or not values[0]:
+        raise invalid_key()
+    return values[0]
+
+
+async def _authenticate(request: Request, *, check_tokens: bool) -> KeyContext:
+    # The call's clocks start here, so its overhead includes authentication, limits and the body.
+    request.state.gateway_received = Received.now()
+    runtime = get_runtime(request)
+    raw = presented_key(request.headers)
+    parsed = parse_key(raw, GATEWAY_KEY_PREFIX)
+    if parsed is None:
+        raise invalid_key()
+    settings: Settings = runtime.settings
+    async with runtime.sessions() as db:
+        limit_statement_time(db, round(settings.api_statement_timeout_seconds * 1000))
+        async with db.begin():
+            key = await find_key(db, parsed.prefix)
+            stored = key.secret_hash if key is not None else _DUMMY_SECRET_HASH
+            if not key_secret_matches(parsed.secret, stored) or key is None:
+                raise invalid_key()
+            key_context = await load_key_context(db, key)
+            if key_context is None:
+                raise invalid_key()
+            refusal = await check_limits(
+                db,
+                runtime.limiter,
+                key=key,
+                org_id=key_context.org_id,
+                settings=settings,
+                now=request.app.state.clock(),
+                check_tokens=check_tokens,
+            )
+    # The transaction is over: nothing is held while the provider answers.
+    if refusal is not None:
+        raise refusal
+    return key_context
+
+
+async def authenticate_gateway_key(request: Request) -> KeyContext:
+    """The key of a model call, after every limit passed."""
+    return await _authenticate(request, check_tokens=True)
+
+
+async def authenticate_models_key(request: Request) -> KeyContext:
+    """The key of a `/models` call: the tokens window is not checked, nothing is consumed."""
+    return await _authenticate(request, check_tokens=False)
+
+
+GatewayKey = Annotated[KeyContext, Depends(authenticate_gateway_key)]
+ModelsKey = Annotated[KeyContext, Depends(authenticate_models_key)]
+
+
+async def read_model_call(request: Request) -> dict[str, Any]:
+    """The body as a JSON object with a string `model`, at most `MAX_REQUEST_BYTES`."""
+    try:
+        raw = await read_bounded_body(request, MAX_REQUEST_BYTES)
+    except BodyTooLarge:
+        raise request_too_large() from None
+    except (UnsupportedEncoding, UndecodableBody):
+        message = "Request body could not be decoded: send JSON, optionally gzip or deflate."
+        raise invalid_request(message, param=None) from None
+    try:
+        body = json.loads(raw)
+    except (ValueError, RecursionError):
+        raise invalid_request() from None
+    if not isinstance(body, dict) or not isinstance(body.get("model"), str):
+        raise invalid_request()
+    return body
+
+
+def forwardable_headers(headers: Headers) -> dict[str, str]:
+    return {name: value for name, value in headers.items() if name not in _CREDENTIAL_HEADERS}
+
+
+class GatewayStreamingResponse(StreamingResponse):
+    """A provider stream, always closed when the response ends, however it ends."""
+
+    def __init__(self, stream: ByteStream, *, status_code: int, headers: Mapping[str, str]):
+        # No cache may keep a stream, and no proxy in front (nginx and the like) may buffer it:
+        # tokens must reach the client as they arrive.
+        super().__init__(stream, status_code=status_code, headers={**headers, **_STREAM_HEADERS})
+        self._stream = stream
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            # Covers a client gone before the first chunk and a send that failed: closing writes
+            # the span now instead of whenever the generator is collected. Idempotent.
+            await self._stream.aclose()
+
+
+async def _serve(request: Request, surface: Surface, key: KeyContext) -> Response:
+    runtime = get_runtime(request)
+    body = await read_model_call(request)
+    call = GatewayRequest(
+        surface=surface,
+        body=body,
+        stream=body.get("stream") is True,
+        trace=TraceHeaders.from_headers(request.headers),
+        client_headers=forwardable_headers(request.headers),
+        request_id=request_id_of(request),
+        received=getattr(request.state, "gateway_received", None),
+    )
+    result = await execute(call, context_for_key(key, runtime))
+    if result.stream is not None:
+        return GatewayStreamingResponse(
+            result.stream, status_code=result.status, headers=result.headers
+        )
+    return Response(result.body or b"", status_code=result.status, headers=result.headers)
+
+
+@router.post("/chat/completions", openapi_extra=_REQUEST_BODY_DOC)
+async def chat_completions(request: Request, key: GatewayKey) -> Response:
+    """OpenAI Chat Completions through the key's route; streams when `stream` is true."""
+    return await _serve(request, "chat_completions", key)
+
+
+@router.post("/responses", openapi_extra=_REQUEST_BODY_DOC)
+async def responses(request: Request, key: GatewayKey) -> Response:
+    """OpenAI Responses through the key's route; streams when `stream` is true."""
+    return await _serve(request, "responses", key)
+
+
+@router.post("/messages", openapi_extra=_REQUEST_BODY_DOC)
+async def messages(request: Request, key: GatewayKey) -> Response:
+    """Anthropic Messages through the key's route; streams when `stream` is true."""
+    return await _serve(request, "messages", key)
+
+
+@router.get("/models")
+async def models(request: Request, key: ModelsKey) -> Response:
+    """The models the key can ask for, in the OpenAI shape or, with `anthropic-version`, the
+    Anthropic one. Records no span and counts no tokens."""
+    runtime = get_runtime(request)
+    answer = await answer_models(
+        key,
+        envelope_for("models", request.headers),
+        http=runtime.http,
+        settings=runtime.settings,
+        client_headers=forwardable_headers(request.headers),
+        request_id=request_id_of(request),
+    )
+    GATEWAY_REQUESTS.labels("models", "upstream_error" if answer.upstream_error else "ok").inc()
+    return Response(answer.body, status_code=answer.status, headers=answer.headers)

@@ -25,7 +25,7 @@ The settings every deployment needs to look at.
 | `APP_BASE_URL` | string | `http://localhost:8000` | The public URL the dashboard is served from. It is the allowed `Origin` for state-changing requests and the base of the links in emails and OAuth callbacks. An `https` URL turns on `Secure` cookies and requires a real `SECRET_KEY`. |
 | `ALLOWED_ORIGINS` | comma-separated list | empty | Extra origins allowed to make state-changing requests, comma-separated. Leave empty unless another site must call the API from a browser. |
 | `SECRET_KEY` | secret | built-in development value (do not use) | HMAC key for CSRF tokens and for the short-lived signed state of two-factor and GitHub or Google sign-in. Required when `APP_BASE_URL` uses `https`: the application refuses to start with the built-in development value. Generate a long random string. Rotating it does not sign anyone out. |
-| `CREDENTIALS_KEYS` | secret | unset | Master keys that encrypt stored secrets such as two-factor seeds, as `<key_id>:<base64 of 32 bytes>`, comma-separated. The first entry encrypts new data; keep older entries so existing data stays readable. Unset leaves two-factor authentication unavailable. Back the value up: a lost key cannot be recovered. |
+| `CREDENTIALS_KEYS` | secret | unset | Master keys that encrypt stored secrets such as two-factor seeds and gateway provider credentials, as `<key_id>:<base64 of 32 bytes>`, comma-separated. The first entry encrypts new data; keep older entries so existing data stays readable. Unset leaves two-factor authentication and the gateway's provider credentials unavailable. Back the value up: a lost key cannot be recovered. |
 
 ### Email
 
@@ -94,6 +94,18 @@ The live demo is fed by real model calls under a monthly budget. It is on by def
 | `DEMO_ENABLED` | boolean | unset | Force the demo workspace on or off. Unset means on exactly when `ANTHROPIC_API_KEY` is set. |
 | `DEMO_MONTHLY_BUDGET_USD` | decimal | `1.00` | Month-to-date spending cap for the demo's model calls, in US dollars. The demo job checks it before every provider call. |
 
+### LLM gateway
+
+The gateway serves `/gw/v1/*` for OpenAI- and Anthropic-compatible clients. Provider credentials are sealed with `CREDENTIALS_KEYS`; without it, saving a credential answers `409 NOT_CONFIGURED`.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `GATEWAY_MODE` | `embedded` \| `standalone` \| `disabled` | `embedded` | Where the gateway runs. `embedded` serves it from the API process, `standalone` leaves it to a separate `python -m app.gateway` process (point `GATEWAY_UPSTREAM` at it) and `disabled` turns it off. In the last two the API answers `/gw/*` with `404`. |
+| `GATEWAY_ALLOW_INSECURE_BASE_URLS` | boolean | `false` | Allow provider credentials to use `http://` base URLs and private, loopback or link-local addresses, for a local model server. Off, a base URL must be `https://` and resolve only to public addresses. Keep it off on a shared deployment. |
+| `GATEWAY_ORG_RPM_CEILING` | integer (min 1, max 100000) | unset | Requests per minute one organization may send through the gateway, across all its keys, checked before each key's own limits. Unset means no ceiling. Set it on a shared deployment so one organization cannot crowd out the others. |
+| `GATEWAY_RECORD_CONCURRENCY` | integer (min 1, max 256) | `16` | Most gateway spans written to the database at once. Spans are written after the answer has been sent, and each write holds a connection. |
+| `GATEWAY_RECORD_BACKLOG` | integer (min 1, max 100000) | `1000` | Most gateway spans waiting or being written. Past it a span is dropped and counted in `spanlight_gateway_record_failures_total`; the call itself is never affected. |
+
 ### API request limits
 
 A request that would otherwise wait on a busy database fails fast with `503` and `Retry-After` instead of queueing behind slow work. The worker, exports and deleting an organization or project are not subject to the statement limit.
@@ -139,6 +151,7 @@ These are read by `deploy/compose.yaml` and the `web` role, not by the applicati
 | `TRUSTED_PROXIES` | `127.0.0.1/32` | Address ranges of a reverse proxy in front of `web` that always sets `X-Real-IP`, as space-separated CIDRs. Without it a client cannot choose the address that rate limits and session records see. |
 | `PORT` | `8080` | Port Caddy listens on inside the `web` container. Platforms such as Railway set it. |
 | `API_UPSTREAM` | `api:8000` | Where `web` proxies `/api`, `/v1` and `/health` to. |
+| `GATEWAY_UPSTREAM` | `api:8000` | Where `web` proxies `/gw/*` (the LLM gateway) to. The default is the API, which serves the gateway when `GATEWAY_MODE=embedded`. With `GATEWAY_MODE=standalone` and the `standalone-gateway` Compose profile, set it to `gateway:8000`. |
 
 ## Generating secrets
 

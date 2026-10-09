@@ -4,8 +4,9 @@
 //   api     FastAPI. Pre-deploy runs migrations as the Postgres owner, then the
 //           app connects as the non-superuser spanlight_app role so RLS applies.
 //   worker  Same image, `python -m app.jobs.worker`. No HTTP, no healthcheck.
-//   web     Caddy: serves the SPA and proxies /api, /v1, /health to api over the
-//           private network. The only service with a public domain.
+//   web     Caddy: serves the SPA and proxies /api, /v1, /health and /gw (the LLM
+//           gateway, embedded in api) to api over the private network. The only
+//           service with a public domain.
 //
 // This is a Railway Infrastructure as Code file. Config as Code (railway.toml,
 // railway.json) is deprecated and new services can't use it. Apply from the
@@ -81,6 +82,10 @@ export default defineRailway(() => {
       // Master keys for application-level encryption: "<id>:<base64 of 32 bytes>[,...]". The
       // worker must hold the same value, because it opens what the api seals.
       CREDENTIALS_KEYS: preserve(),
+      // The LLM gateway runs inside this service (/gw/*, routed by Caddy in web). The public demo
+      // is open to every signed-up user, so one organization may send at most this many gateway
+      // requests a minute across all its keys. Raise or remove it on a private deployment.
+      GATEWAY_ORG_RPM_CEILING: "60",
       // Sentry DSN, set in step 3 of docs/deploy/railway.md. Blank turns error reporting off.
       SENTRY_DSN: preserve(),
       // Object storage (exports and backups): one feature, uncommented on the api AND the worker
@@ -186,6 +191,9 @@ export default defineRailway(() => {
       SPANLIGHT_TARGET: "web",
       PORT: "8080",
       API_UPSTREAM: "${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}",
+      // /gw/* (the LLM gateway, embedded in api) goes to the same private address. Without it
+      // Caddy falls back to api:8000, which does not resolve on Railway, and every call is a 502.
+      GATEWAY_UPSTREAM: "${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}",
       // Railway's edge is the only way in and sets X-Real-IP to the client address.
       // Lets Caddy pass it to the api for rate limits and session records.
       TRUSTED_PROXIES: "0.0.0.0/0 ::/0",

@@ -4,6 +4,7 @@ spanlight create-user --email ada@example.com --name "Ada" [--org acme --role ow
 spanlight reset-password --email ada@example.com
 spanlight reset-2fa --email ada@example.com
 spanlight sync-prices
+spanlight reseal-credentials
 spanlight migrate
 spanlight ensure-app-role --role spanlight_app   # password from APP_DB_PASSWORD
 spanlight rollups backfill --project <uuid> --from 2026-09-01 --to 2026-10-01
@@ -28,11 +29,13 @@ from app.auth import totp_service
 from app.backups.retention import BACKUP_PREFIX
 from app.backups.service import BackupError, RestoreError, restore_backup, run_backup
 from app.config import get_settings
+from app.core.crypto import CryptoNotConfigured
 from app.core.security import MIN_PASSWORD_LENGTH, hash_password
 from app.db.migrations import upgrade_to_head
 from app.db.models import AuditAction, Membership, MembershipRole, Organization, Project, User
 from app.db.roles import ensure_app_role
 from app.db.session import create_engine, create_session_factory
+from app.gateway.reseal import ResealResult, reseal_credentials
 from app.pricing.cost import sync_seed_prices
 from app.rollups.compute import backfill_rollups
 from app.rollups.jobs import MAX_BACKFILL_DAYS
@@ -190,6 +193,37 @@ def sync_prices() -> None:
         return inserted
 
     typer.echo(f"Inserted {_run(operation)} price rows.")
+
+
+@app.command("reseal-credentials")
+def reseal_credentials_command() -> None:
+    """Re-seal every provider credential under the first key of CREDENTIALS_KEYS.
+
+    Run it after putting a new key first. It recounts afterwards and exits non-zero while any
+    provider credential is still sealed under an older key; once it succeeds, none needs the
+    older keys any more. Prints counts only, never a key.
+    """
+    settings = get_settings()
+
+    async def operation(db: AsyncSession) -> ResealResult:
+        return await reseal_credentials(db, settings=settings)
+
+    try:
+        result = _run(operation)
+    except CryptoNotConfigured:
+        raise _fail("CREDENTIALS_KEYS is not set") from None
+    typer.echo(f"Re-sealed {result.resealed} provider credentials.")
+    if result.failed:
+        typer.echo(
+            f"{result.failed} provider credentials could not be opened with any key in "
+            "CREDENTIALS_KEYS and were left as they were; their ids are in the log.",
+            err=True,
+        )
+    if result.remaining:
+        raise _fail(
+            f"{result.remaining} provider credentials are still sealed under an older key; "
+            "keep every key in CREDENTIALS_KEYS and run the command again."
+        )
 
 
 @app.command("migrate")

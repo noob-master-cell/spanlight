@@ -29,6 +29,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.oauth_providers import OAuthProfile
+from app.db.errors import violated_constraint
 from app.db.models import AuditAction, OAuthIdentity, User
 from app.services.audit import record_user_audit_in_each_org
 from app.services.demo import is_demo_user
@@ -91,7 +92,7 @@ async def sign_in_with_profile(
         # and won the unique constraint on the user's email or on the identity. What it wrote is
         # visible now, so the second pass finds it and signs this request in as the same user.
         # Any other integrity error is a bug or a bad row, not a race, and is not retried.
-        if _violated_constraint(error) not in _SIGN_IN_RACE_CONSTRAINTS:
+        if violated_constraint(error) not in _SIGN_IN_RACE_CONSTRAINTS:
             raise
         logger.info("oauth_sign_in_race", provider=profile.provider)
     return await _resolve(db, profile, ip)
@@ -137,7 +138,7 @@ async def link_identity(
     except IntegrityError as error:
         # Lost a race to link the same provider account (or this user's slot for the provider);
         # whoever won owns it. Any other integrity error is not a race and propagates.
-        if _violated_constraint(error) not in _LINK_RACE_CONSTRAINTS:
+        if violated_constraint(error) not in _LINK_RACE_CONSTRAINTS:
             raise
         raise OAuthRefused(OAuthCode.ALREADY_LINKED) from error
 
@@ -293,12 +294,6 @@ async def _user_by_email(db: AsyncSession, email: str | None) -> User | None:
     if email is None:
         return None
     return await db.scalar(select(User).where(User.email == email))
-
-
-def _violated_constraint(error: IntegrityError) -> str | None:
-    """The name of the constraint a database error is about, if the driver says."""
-    name = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
-    return name if isinstance(name, str) else None
 
 
 def _display_name(name: str | None, email: str) -> str:

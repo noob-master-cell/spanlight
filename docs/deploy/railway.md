@@ -42,7 +42,7 @@ Why the database items matter: a Postgres superuser bypasses row-level security 
 **Variables**
 
 - [x] `APP_BASE_URL` on `api` is `https://${{web.RAILWAY_PUBLIC_DOMAIN}}`, the public https origin. Generate the domain before the first api deploy (step 4).
-- [x] `API_UPSTREAM` on `web` is `${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}`, the api's private host and port. `deploy/Caddyfile` reads it as `{$API_UPSTREAM}`.
+- [x] `API_UPSTREAM` on `web` is `${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}`, the api's private host and port. `deploy/Caddyfile` reads it as `{$API_UPSTREAM}`. `GATEWAY_UPSTREAM` has the same value and is read as `{$GATEWAY_UPSTREAM}` for `/gw/*`; leave it out and every gateway call answers 502.
 - [x] `TRUSTED_PROXIES` on `web` is `0.0.0.0/0 ::/0`, which `deploy/Caddyfile` reads as `{$TRUSTED_PROXIES}`.
 - [x] `SECRET_KEY` (api), `METRICS_TOKEN` (api), `ANTHROPIC_API_KEY` (worker), and `SENTRY_DSN` and `CREDENTIALS_KEYS` (api and worker) are declared with `preserve()`, so `railway config apply` keeps the values you set. A variable that is set in Railway but not declared in `railway.ts` is deleted by the next apply, so every variable you set must be in the file. The optional features are the same, once you uncomment their blocks (see [Optional features](#optional-features)).
 - [x] `DEMO_MONTHLY_BUDGET_USD` on `worker` is `1.00`.
@@ -162,6 +162,7 @@ All variables, for reference. Values in `${{ }}` are Railway [reference variable
 | `SECRET_KEY` | api | random, step 3 | yes |
 | `APP_DB_PASSWORD` | api | random, at least 16 characters, step 3 | yes |
 | `METRICS_TOKEN` | api | random, step 3 | yes |
+| `GATEWAY_ORG_RPM_CEILING` | api | `60`: the most gateway requests per minute one organization may send across its keys (the LLM gateway runs inside the api; see the [gateway runbook](../runbooks/gateway.md)) | no |
 | `DATABASE_URL` | worker | as on api, with `${{api.APP_DB_PASSWORD}}` | holds one |
 | `DEMO_MONTHLY_BUDGET_USD` | worker | `1.00` | no |
 | `ANTHROPIC_API_KEY` | worker | your key, step 3 | yes |
@@ -176,6 +177,7 @@ All variables, for reference. Values in `${{ }}` are Railway [reference variable
 | `BACKUP_DATABASE_URL` | worker | opt-in (see [Optional features](#optional-features)): connection URL of a role that bypasses row-level security (the Postgres owner), used by the nightly `pg_dump`; the job ends `skipped_not_configured` without it | yes |
 | `WORKER_METRICS_PORT` | worker | opt-in (see [Optional features](#optional-features)): port for the worker's own `/metrics`. Leave empty unless a scraper runs in the project; it also needs `METRICS_TOKEN` on the worker, which is in the same opt-in block | no |
 | `API_UPSTREAM` | web | `${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}` | no |
+| `GATEWAY_UPSTREAM` | web | `${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}`, where Caddy sends `/gw/*` (the LLM gateway, embedded in the api) | no |
 | `TRUSTED_PROXIES` | web | `0.0.0.0/0 ::/0` | no |
 
 ### Optional features
@@ -409,7 +411,7 @@ If `railway config` isn't an option, set the same things in each service's **Set
 | api crashes with `SECRET_KEY must be set when APP_BASE_URL uses https` | Set `SECRET_KEY` (step 3). |
 | api or worker crashes with `CREDENTIALS_KEYS is invalid: entry 1 …` | The value isn't `<key id>:<base64 of 32 bytes>`. The message names the entry and the rule it breaks and never prints the value. Fix the value on both services. If secrets are already sealed, edit the existing key back into shape; a freshly generated one can't open them. |
 | Sign-up returns 403 `ORIGIN_NOT_ALLOWED` | `APP_BASE_URL` doesn't match the address in the browser. If the domain was generated after the api deployed, run `railway redeploy --service api`. For a custom domain, set `APP_BASE_URL=https://your.domain` on the api and add it to `railway.ts`. Extra origins go in `ALLOWED_ORIGINS` (comma-separated). |
-| `/api/…` returns 502 from web | The api isn't live yet, or `API_UPSTREAM` on web isn't `api.railway.internal:8000`. Environments created before 16 October 2025 use IPv6-only private networking. There, uvicorn must listen on `::`: set the api start command to `/bin/sh -c "unset MIGRATION_DATABASE_URL; exec uvicorn app.main:app --host :: --port $PORT --proxy-headers --forwarded-allow-ips=*"`. |
+| `/api/…` returns 502 from web | The api isn't live yet, or `API_UPSTREAM` on web (`GATEWAY_UPSTREAM` for `/gw/…`) isn't `api.railway.internal:8000`. Environments created before 16 October 2025 use IPv6-only private networking. There, uvicorn must listen on `::`: set the api start command to `/bin/sh -c "unset MIGRATION_DATABASE_URL; exec uvicorn app.main:app --host :: --port $PORT --proxy-headers --forwarded-allow-ips=*"`. |
 | The worker restarts a few times on the first deploy | Expected until the api's pre-deploy has created `spanlight_app`. If it doesn't settle, check `railway logs --service worker --latest`. |
 | The live demo says it isn't configured | `DEMO_ENABLED` isn't `true` on the api, or the api hasn't been redeployed since it was set. |
 | No demo traffic arrives | `ANTHROPIC_API_KEY` is missing on the worker, or this month's $1 budget is spent. The worker logs say which. |

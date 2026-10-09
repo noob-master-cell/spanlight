@@ -143,7 +143,7 @@ def is_bearer(authorization: str | None) -> bool:
 # lookup and the constant-time comparison cannot drift apart.
 API_KEY_PREFIX = "spl_live_"
 PAT_PREFIX = "spl_pat_"
-GATEWAY_KEY_PREFIX = "spl_gw_"  # reserved for the LLM gateway; nothing issues it yet
+GATEWAY_KEY_PREFIX = "spl_gw_"  # the key an application sends to the LLM gateway
 # Every kind of credential. Anything that has to recognise a credential in free text, such as
 # payload redaction, reads this tuple, so a new kind is covered the day it is added here.
 KEY_PREFIXES = (API_KEY_PREFIX, PAT_PREFIX, GATEWAY_KEY_PREFIX)

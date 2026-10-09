@@ -5,8 +5,12 @@
 #
 # It changes only what a measurement needs and nothing about how the product runs. Postgres is
 # published on the loopback interface so seed.py can reach it from the host, and the demo traffic
-# job is switched off so no provider is called during a run. Limits, pool sizes, code paths and
-# Postgres settings stay exactly as shipped: the point is to measure what a self-hoster gets.
+# job is switched off so no provider is called during a run. For the gateway test it adds a fake
+# OpenAI-compatible provider (fake_provider.py), lets the gateway call it over plain http on a
+# private address, and gives the api and worker a throwaway CREDENTIALS_KEYS to seal its key with.
+# Limits, pool sizes, code paths and Postgres settings stay exactly as shipped: the point is to
+# measure what a self-hoster gets. GATEWAY_ORG_RPM_CEILING is left unset, so the organization
+# ceiling does not throttle the gateway scenario.
 services:
   postgres:
     ports:
@@ -15,7 +19,54 @@ services:
   api:
     environment:
       DEMO_ENABLED: "false"
+      GATEWAY_ALLOW_INSECURE_BASE_URLS: "true"
+      # Test keyring: keep the default equal to DEFAULT_CREDENTIALS_KEYS in seed_gateway.py. It
+      # seals only the made-up key of the fake provider.
+      CREDENTIALS_KEYS: ${LOAD_CREDENTIALS_KEYS:-load:c3BhbmxpZ2h0LWxvYWQtdGVzdC1vbmx5LWtleS0wMDE=}
 
   worker:
     environment:
       DEMO_ENABLED: "false"
+      GATEWAY_ALLOW_INSECURE_BASE_URLS: "true"
+      CREDENTIALS_KEYS: ${LOAD_CREDENTIALS_KEYS:-load:c3BhbmxpZ2h0LWxvYWQtdGVzdC1vbmx5LWtleS0wMDE=}
+
+  # The provider the gateway test calls. The backend image already has uvicorn and Starlette, so
+  # the app is mounted in and nothing else is built. Published on the loopback interface for the
+  # k6 scenario that calls it directly. Relative paths in an override file resolve against the
+  # first file, deploy/compose.yaml.
+  fake-provider:
+    image: spanlight:local
+    pull_policy: never
+    restart: unless-stopped
+    command:
+      [
+        "uvicorn",
+        "fake_provider:app",
+        "--app-dir",
+        "/srv/fake-provider",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "9000",
+        "--no-access-log",
+      ]
+    environment:
+      FAKE_PROVIDER_DELAY_MS: ${FAKE_PROVIDER_DELAY_MS:-0}
+    volumes:
+      - ../backend/load/fake_provider.py:/srv/fake-provider/fake_provider.py:ro
+    ports:
+      - "127.0.0.1:${LOAD_FAKE_PROVIDER_PORT:-9000}:9000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/v1/models')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

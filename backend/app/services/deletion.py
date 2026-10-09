@@ -19,7 +19,9 @@ two such requests (one of them fails with a 500), so a new deleter must follow t
 The same rule covers writers, not only deleters: any path that touches a project row, or a row
 that cascades from it such as an API key, and then writes an audit event must take the
 organization first, because the audit insert needs a shared lock on the organization row.
-`lock_project_for_write` does that for a handler that changes a project or something under it.
+`lock_project_for_write` does that for a handler that changes a project or something under it,
+and `lock_org_for_write` for one that changes a row the organization owns (a provider credential,
+a price override).
 """
 
 import uuid
@@ -61,6 +63,20 @@ async def lock_project(db: AsyncSession, project_id: uuid.UUID) -> Project | Non
     )
 
 
+async def lock_org_for_write(db: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Key-share lock the organization for a write under it that is not a deletion.
+
+    Returns False when it is already gone (a concurrent deletion won), and the caller answers
+    404. Take it before the row the write changes and before the audit event, so the write
+    follows the lock order above: the lock conflicts with the exclusive one an organization
+    deletion takes, so either waits for the other instead of deadlocking.
+    """
+    org = await db.scalar(
+        select(Organization.id).where(Organization.id == org_id).with_for_update(key_share=True)
+    )
+    return org is not None
+
+
 async def lock_project_for_write(
     db: AsyncSession, org_id: uuid.UUID, project_id: uuid.UUID
 ) -> bool:
@@ -71,10 +87,7 @@ async def lock_project_for_write(
     for this transaction, and this one waits for a deletion that is already running; taking the
     organization first keeps both in the order described in the module docstring.
     """
-    org = await db.scalar(
-        select(Organization.id).where(Organization.id == org_id).with_for_update(key_share=True)
-    )
-    if org is None:
+    if not await lock_org_for_write(db, org_id):
         return False
     project = await db.scalar(
         select(Project.id).where(Project.id == project_id).with_for_update(key_share=True)

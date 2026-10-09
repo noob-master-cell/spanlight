@@ -14,3 +14,6 @@ services:
   web:
     environment:
       API_UPSTREAM: spanlight-api-1:8000 spanlight-api-2:8000
+      # The gateway is embedded in the api, so /gw/* is balanced the same way. With a standalone
+      # gateway, set GATEWAY_UPSTREAM in deploy/.env and it wins.
+      GATEWAY_UPSTREAM: ${GATEWAY_UPSTREAM:-spanlight-api-1:8000 spanlight-api-2:8000}

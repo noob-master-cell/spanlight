@@ -106,6 +106,19 @@ GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ("anthropic_api_key", "demo_enabled", "demo_monthly_budget_usd"),
     ),
     (
+        "LLM gateway",
+        "The gateway serves `/gw/v1/*` for OpenAI- and Anthropic-compatible clients. Provider "
+        "credentials are sealed with `CREDENTIALS_KEYS`; without it, saving a credential answers "
+        "`409 NOT_CONFIGURED`.",
+        (
+            "gateway_mode",
+            "gateway_allow_insecure_base_urls",
+            "gateway_org_rpm_ceiling",
+            "gateway_record_concurrency",
+            "gateway_record_backlog",
+        ),
+    ),
+    (
         "API request limits",
         "A request that would otherwise wait on a busy database fails fast with `503` and "
         "`Retry-After` instead of queueing behind slow work. The worker, exports and deleting an "
@@ -160,10 +173,11 @@ DESCRIPTIONS: dict[str, str] = {
         "Rotating it does not sign anyone out."
     ),
     "credentials_keys": (
-        "Master keys that encrypt stored secrets such as two-factor seeds, as "
-        "`<key_id>:<base64 of 32 bytes>`, comma-separated. The first entry encrypts new data; "
-        "keep older entries so existing data stays readable. Unset leaves two-factor "
-        "authentication unavailable. Back the value up: a lost key cannot be recovered."
+        "Master keys that encrypt stored secrets such as two-factor seeds and gateway provider "
+        "credentials, as `<key_id>:<base64 of 32 bytes>`, comma-separated. The first entry "
+        "encrypts new data; keep older entries so existing data stays readable. Unset leaves "
+        "two-factor authentication and the gateway's provider credentials unavailable. Back the "
+        "value up: a lost key cannot be recovered."
     ),
     "email_provider": (
         "How email is sent. `resend` needs `RESEND_API_KEY` and `EMAIL_FROM`; `smtp` needs "
@@ -234,6 +248,29 @@ DESCRIPTIONS: dict[str, str] = {
     "demo_monthly_budget_usd": (
         "Month-to-date spending cap for the demo's model calls, in US dollars. The demo job "
         "checks it before every provider call."
+    ),
+    "gateway_mode": (
+        "Where the gateway runs. `embedded` serves it from the API process, `standalone` leaves "
+        "it to a separate `python -m app.gateway` process (point `GATEWAY_UPSTREAM` at it) and "
+        "`disabled` turns it off. In the last two the API answers `/gw/*` with `404`."
+    ),
+    "gateway_allow_insecure_base_urls": (
+        "Allow provider credentials to use `http://` base URLs and private, loopback or "
+        "link-local addresses, for a local model server. Off, a base URL must be `https://` and "
+        "resolve only to public addresses. Keep it off on a shared deployment."
+    ),
+    "gateway_org_rpm_ceiling": (
+        "Requests per minute one organization may send through the gateway, across all its "
+        "keys, checked before each key's own limits. Unset means no ceiling. Set it on a shared "
+        "deployment so one organization cannot crowd out the others."
+    ),
+    "gateway_record_concurrency": (
+        "Most gateway spans written to the database at once. Spans are written after the answer "
+        "has been sent, and each write holds a connection."
+    ),
+    "gateway_record_backlog": (
+        "Most gateway spans waiting or being written. Past it a span is dropped and counted in "
+        "`spanlight_gateway_record_failures_total`; the call itself is never affected."
     ),
     "api_pool_timeout_seconds": (
         "Seconds an API request waits for a connection from the main pool. Past it the request "

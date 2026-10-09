@@ -28,7 +28,7 @@ import structlog
 from fastapi import Request
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import too_many_requests
 from app.core.observability import RATE_LIMIT_REJECTIONS, RATE_LIMIT_UNAVAILABLE
@@ -132,19 +132,23 @@ API_READ_LIMITER = PostgresTokenBucket(rate=20, burst=40)
 """Per access token or API key on bearer reads of `/api/v1`: 20 a second, bursts of 40."""
 
 
-async def enforce_rate_limit(
-    request: Request, limiter: AsyncRateLimiter, key: str, *, scope: str, detail: str
-) -> None:
-    """Take a token from `limiter` for `key`, or raise 429 `RATE_LIMITED` with `Retry-After`.
+async def take_token(
+    session_factory: async_sessionmaker[AsyncSession],
+    limiter: AsyncRateLimiter,
+    key: str,
+    *,
+    scope: str,
+) -> float | None:
+    """Take a token from `limiter` for `key`: None when taken, else the seconds to wait.
 
-    `scope` labels the rejection metric (`ingest`, `demo` or `api`). The token is taken in a
-    short transaction on the rate-limit pool, committed before this returns. If that fails (the
-    pool is exhausted, the database is down) the request is let through and a warning is logged.
+    The token is taken in a short transaction of its own from `session_factory` (the rate-limit
+    pool), committed before this returns. If that fails (the pool is exhausted, the database is
+    down) the check is skipped, so None, and a warning is logged. `scope` labels the metric and
+    the warning. Counting a refusal is the caller's job, since only the caller knows it refused.
     """
-    session_factory = request.app.state.rate_limit_session_factory
     try:
         async with session_factory() as db, db.begin():
-            retry_after = await limiter.acquire(db, key)
+            return await limiter.acquire(db, key)
     except SQLAlchemyError as exc:
         RATE_LIMIT_UNAVAILABLE.labels(scope).inc()
         now = time.monotonic()
@@ -152,7 +156,19 @@ async def enforce_rate_limit(
         if last is None or now - last >= _UNAVAILABLE_LOG_INTERVAL_SECONDS:
             _last_unavailable_log[scope] = now
             logger.warning("rate_limit_unavailable", scope=scope, error_type=type(exc).__name__)
-        return
+        return None
+
+
+async def enforce_rate_limit(
+    request: Request, limiter: AsyncRateLimiter, key: str, *, scope: str, detail: str
+) -> None:
+    """Take a token from `limiter` for `key`, or raise 429 `RATE_LIMITED` with `Retry-After`.
+
+    `scope` labels the rejection metric (`ingest`, `demo` or `api`). The token is taken as
+    `take_token` describes, so a limiter that cannot run lets the request through.
+    """
+    session_factory = request.app.state.rate_limit_session_factory
+    retry_after = await take_token(session_factory, limiter, key, scope=scope)
     if retry_after is not None:
         RATE_LIMIT_REJECTIONS.labels(scope).inc()
         raise too_many_requests(math.ceil(retry_after), detail)

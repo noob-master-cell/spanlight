@@ -9,10 +9,13 @@
 #      reference needs is sent on /api/docs and nowhere else among them
 #   4. the documentation site answers GET /docs/ with 200 and its own policy, which allows
 #      page scripts only by hash
-#   5. signup, organization, project and API key creation work through the web port with the
+#   5. the LLM gateway answers through the web port: a call without a key is refused with 401 in
+#      each provider's own error shape (OpenAI on /gw/v1/chat/completions, Anthropic on
+#      /gw/v1/messages), which also proves Caddy routes /gw/* to a gateway
+#   6. signup, organization, project and API key creation work through the web port with the
 #      same session cookie, CSRF header and Origin header the dashboard uses
-#   6. a span sent by the Python SDK shows up (onboarding reports has_traces within 20 s)
-#   7. a native POST /v1/traces is accepted (the SDK swallows errors by design, so this is the
+#   7. a span sent by the Python SDK shows up (onboarding reports has_traces within 20 s)
+#   8. a native POST /v1/traces is accepted (the SDK swallows errors by design, so this is the
 #      step that fails on a non-2xx from ingest)
 # and always tears the stack down with `down -v`, on success and on failure.
 #
@@ -53,6 +56,7 @@ ORIGIN=""        # the Origin header value the API allowlists (from APP_BASE_URL
 COOKIE_JAR=""
 BODY_FILE=""
 RESPONSE_BODY="" # body of the last successful http call
+GATEWAY_STATUS="" # HTTP status of the last gateway_refusal call
 CSP_VALUE=""     # the Content-Security-Policy of the last fetch_csp call
 ORG_ID=""
 PROJECT_ID=""
@@ -332,6 +336,36 @@ check_docs_site() {
   esac
 }
 
+# gateway_refusal PATH: POST an empty chat body to PATH on the gateway without any key and put the
+# status in GATEWAY_STATUS and the body in RESPONSE_BODY. `http` cannot be used: it treats every
+# non-2xx as a failure and here 401 is the answer being asked for.
+gateway_refusal() {
+  local curl_status=0
+  : >"$BODY_FILE"
+  GATEWAY_STATUS=$(curl --silent --show-error --connect-timeout 5 --max-time 30 \
+    --output "$BODY_FILE" --write-out '%{http_code}' \
+    --request POST --header 'Content-Type: application/json' --data '{}' \
+    "$BASE_URL$1") || curl_status=$?
+  [ "$curl_status" -eq 0 ] || fail "request to $1 failed (curl exit $curl_status)"
+  RESPONSE_BODY=$(<"$BODY_FILE")
+}
+
+# With no key the gateway refuses before it reads the body or touches a provider, so this needs no
+# credential and costs nothing. Each surface answers in the shape its official SDK expects.
+check_gateway_refuses_without_key() {
+  gateway_refusal /gw/v1/chat/completions
+  [ "$GATEWAY_STATUS" = "401" ] ||
+    fail "POST /gw/v1/chat/completions without a key is HTTP $GATEWAY_STATUS, expected 401: $RESPONSE_BODY"
+  jq -e '.error.type == "invalid_request_error"' <<<"$RESPONSE_BODY" >/dev/null ||
+    fail "the OpenAI-shaped refusal has no error.type invalid_request_error: $RESPONSE_BODY"
+
+  gateway_refusal /gw/v1/messages
+  [ "$GATEWAY_STATUS" = "401" ] ||
+    fail "POST /gw/v1/messages without a key is HTTP $GATEWAY_STATUS, expected 401: $RESPONSE_BODY"
+  jq -e '.type == "error"' <<<"$RESPONSE_BODY" >/dev/null ||
+    fail "the Anthropic-shaped refusal has no top-level type error: $RESPONSE_BODY"
+}
+
 sign_up() {
   local email password body
   email="smoke-$(random_hex 4)@example.com"
@@ -404,6 +438,7 @@ main() {
   run_step "check security headers on /" check_security_headers
   run_step "check the Content-Security-Policy on / and /api/docs" check_content_security_policy
   run_step "check the documentation site at /docs/" check_docs_site
+  run_step "check the gateway refuses a call without a key" check_gateway_refuses_without_key
   run_step "sign up" sign_up
   run_step "create an organization" create_organization
   run_step "create a project" create_project

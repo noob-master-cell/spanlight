@@ -28,6 +28,8 @@ class Permission(enum.StrEnum):
     ORG_DELETE = "org:delete"
     ORG_SECURITY = "org:security"
     EXPORT_CREATE = "export:create"
+    GATEWAY_WRITE = "gateway:write"
+    CREDENTIALS_MANAGE = "credentials:manage"
 
 
 PermissionClass = Literal["read", "write"]
@@ -50,6 +52,8 @@ PERMISSION_CLASSES: dict[Permission, PermissionClass] = {
     Permission.ORG_DELETE: "write",
     Permission.ORG_SECURITY: "write",
     Permission.EXPORT_CREATE: "write",
+    Permission.GATEWAY_WRITE: "write",
+    Permission.CREDENTIALS_MANAGE: "write",
 }
 
 
@@ -66,8 +70,9 @@ _ADMIN = _MEMBER | {
     Permission.MEMBER_MANAGE,
     Permission.ORG_UPDATE,
     Permission.AUDIT_READ,
+    Permission.GATEWAY_WRITE,
 }
-_OWNER = _ADMIN | {Permission.ORG_DELETE, Permission.ORG_SECURITY}
+_OWNER = _ADMIN | {Permission.ORG_DELETE, Permission.ORG_SECURITY, Permission.CREDENTIALS_MANAGE}
 
 ROLE_PERMISSIONS: dict[MembershipRole, frozenset[Permission]] = {
     MembershipRole.VIEWER: _VIEWER,

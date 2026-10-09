@@ -299,6 +299,209 @@
         "title": "AuditEventOut",
         "type": "object"
       },
+      "AuthExpiredParams": {
+        "additionalProperties": false,
+        "description": "401 `invalid_api_key`; takes no parameters.",
+        "properties": {},
+        "title": "AuthExpiredParams",
+        "type": "object"
+      },
+      "CredentialCheckOut": {
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checked_at",
+          "error"
+        ],
+        "title": "CredentialCheckOut",
+        "type": "object"
+      },
+      "CredentialCreate": {
+        "additionalProperties": false,
+        "description": "A new provider credential. `base_url` is only for `openai_compatible`, which needs it.",
+        "properties": {
+          "api_key": {
+            "format": "password",
+            "maxLength": 2048,
+            "title": "Api Key",
+            "type": "string",
+            "writeOnly": true
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderKind"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "api_key"
+        ],
+        "title": "CredentialCreate",
+        "type": "object"
+      },
+      "CredentialOut": {
+        "properties": {
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checked At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderKind"
+          },
+          "rotated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotated At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "base_url",
+          "created_by",
+          "created_at",
+          "rotated_at",
+          "last_used_at",
+          "last_checked_at",
+          "last_error"
+        ],
+        "title": "CredentialOut",
+        "type": "object"
+      },
+      "CredentialRotateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "format": "password",
+            "maxLength": 2048,
+            "title": "Api Key",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "api_key"
+        ],
+        "title": "CredentialRotateIn",
+        "type": "object"
+      },
       "EmailVerifyConfirmIn": {
         "properties": {
           "token": {
@@ -577,6 +780,361 @@
         "title": "ExportStatus",
         "type": "string"
       },
+      "FallbackCondition": {
+        "description": "A failure after which the gateway moves on to the route's next target.",
+        "enum": [
+          "status_5xx",
+          "rate_limited",
+          "timeout",
+          "connection_error"
+        ],
+        "title": "FallbackCondition",
+        "type": "string"
+      },
+      "FallbackPolicy": {
+        "additionalProperties": false,
+        "description": "The failures after which the gateway tries the next target. Empty means never.",
+        "properties": {
+          "on": {
+            "items": {
+              "$ref": "#/components/schemas/FallbackCondition"
+            },
+            "title": "On",
+            "type": "array"
+          }
+        },
+        "title": "FallbackPolicy",
+        "type": "object"
+      },
+      "FaultProfileCreate": {
+        "additionalProperties": false,
+        "description": "A new fault profile. Omitted `params` are the scenario's defaults.",
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthExpiredParams"
+              },
+              {
+                "$ref": "#/components/schemas/ScopeDeniedParams"
+              },
+              {
+                "$ref": "#/components/schemas/RateLimitedParams"
+              },
+              {
+                "$ref": "#/components/schemas/UnsupportedParameterParams"
+              },
+              {
+                "$ref": "#/components/schemas/Provider5xxParams"
+              },
+              {
+                "$ref": "#/components/schemas/MalformedJsonParams"
+              },
+              {
+                "$ref": "#/components/schemas/TruncatedStreamParams"
+              },
+              {
+                "$ref": "#/components/schemas/SlowResponseParams"
+              },
+              {
+                "$ref": "#/components/schemas/TimeoutParams"
+              }
+            ],
+            "default": {},
+            "title": "Params"
+          },
+          "probability": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability",
+            "type": "number"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/FaultScenario"
+          }
+        },
+        "required": [
+          "name",
+          "scenario"
+        ],
+        "title": "FaultProfileCreate",
+        "type": "object"
+      },
+      "FaultProfileOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "attached_key_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Attached Key Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthExpiredParams"
+              },
+              {
+                "$ref": "#/components/schemas/ScopeDeniedParams"
+              },
+              {
+                "$ref": "#/components/schemas/RateLimitedParams"
+              },
+              {
+                "$ref": "#/components/schemas/UnsupportedParameterParams"
+              },
+              {
+                "$ref": "#/components/schemas/Provider5xxParams"
+              },
+              {
+                "$ref": "#/components/schemas/MalformedJsonParams"
+              },
+              {
+                "$ref": "#/components/schemas/TruncatedStreamParams"
+              },
+              {
+                "$ref": "#/components/schemas/SlowResponseParams"
+              },
+              {
+                "$ref": "#/components/schemas/TimeoutParams"
+              }
+            ],
+            "title": "Params"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/FaultScenario"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scenario",
+          "params",
+          "probability",
+          "enabled",
+          "expires_at",
+          "active",
+          "attached_key_ids",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FaultProfileOut",
+        "type": "object"
+      },
+      "FaultProfileUpdate": {
+        "additionalProperties": false,
+        "description": "A partial edit: only the fields sent change.\n\n`params` must be sent with `scenario` (they are only meaningful together); a `scenario`\nsent without `params` resets the params to that scenario's defaults. `expires_at` is cleared\nby sending `null`; every other field must have a value when it is sent. `changes()` tells an\nabsent field from one sent as `null`.",
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthExpiredParams"
+              },
+              {
+                "$ref": "#/components/schemas/ScopeDeniedParams"
+              },
+              {
+                "$ref": "#/components/schemas/RateLimitedParams"
+              },
+              {
+                "$ref": "#/components/schemas/UnsupportedParameterParams"
+              },
+              {
+                "$ref": "#/components/schemas/Provider5xxParams"
+              },
+              {
+                "$ref": "#/components/schemas/MalformedJsonParams"
+              },
+              {
+                "$ref": "#/components/schemas/TruncatedStreamParams"
+              },
+              {
+                "$ref": "#/components/schemas/SlowResponseParams"
+              },
+              {
+                "$ref": "#/components/schemas/TimeoutParams"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          },
+          "probability": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaultScenario"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "FaultProfileUpdate",
+        "type": "object"
+      },
+      "FaultScenario": {
+        "description": "A failure the gateway can inject (the Integration Lab); each has its own params.",
+        "enum": [
+          "auth_expired",
+          "scope_denied",
+          "rate_limited",
+          "unsupported_parameter",
+          "provider_5xx",
+          "malformed_json",
+          "truncated_stream",
+          "slow_response",
+          "timeout"
+        ],
+        "title": "FaultScenario",
+        "type": "string"
+      },
+      "FaultScenarioCountOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/FaultScenario"
+          }
+        },
+        "required": [
+          "scenario",
+          "count"
+        ],
+        "title": "FaultScenarioCountOut",
+        "type": "object"
+      },
       "FiltersOut": {
         "properties": {
           "environments": {
@@ -615,6 +1173,763 @@
           "tags"
         ],
         "title": "FiltersOut",
+        "type": "object"
+      },
+      "GatewayCacheOut": {
+        "properties": {
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "hits": {
+            "title": "Hits",
+            "type": "integer"
+          },
+          "misses": {
+            "title": "Misses",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hits",
+          "misses",
+          "hit_rate"
+        ],
+        "title": "GatewayCacheOut",
+        "type": "object"
+      },
+      "GatewayKeyCreate": {
+        "additionalProperties": false,
+        "description": "A new gateway key. Without `route_id` it uses the project's default route.\n\nA `None` limit means no limit; a `None` `cache_ttl_seconds` leaves the cache off.",
+        "properties": {
+          "allowed_models": {
+            "items": {
+              "pattern": "^[A-Za-z0-9._:/-]{1,128}$",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Allowed Models",
+            "type": "array"
+          },
+          "cache_ttl_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Ttl Seconds"
+          },
+          "default_tags": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Default Tags",
+            "type": "array"
+          },
+          "environment": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Environment",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "route_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Id"
+          },
+          "rpm_limit": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpm Limit"
+          },
+          "tpm_limit": {
+            "anyOf": [
+              {
+                "maximum": 100000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpm Limit"
+          }
+        },
+        "required": [
+          "name",
+          "environment"
+        ],
+        "title": "GatewayKeyCreate",
+        "type": "object"
+      },
+      "GatewayKeyCreatedOut": {
+        "properties": {
+          "allowed_models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Models",
+            "type": "array"
+          },
+          "cache_ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Ttl Seconds"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Default Tags",
+            "type": "array"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "fault_profile_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fault Profile Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "route_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Id"
+          },
+          "rpm_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpm Limit"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "tpm_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpm Limit"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "route_id",
+          "environment",
+          "rpm_limit",
+          "tpm_limit",
+          "allowed_models",
+          "default_tags",
+          "cache_ttl_seconds",
+          "fault_profile_id",
+          "created_by",
+          "created_at",
+          "last_used_at",
+          "revoked_at",
+          "secret"
+        ],
+        "title": "GatewayKeyCreatedOut",
+        "type": "object"
+      },
+      "GatewayKeyOut": {
+        "properties": {
+          "allowed_models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Models",
+            "type": "array"
+          },
+          "cache_ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Ttl Seconds"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Default Tags",
+            "type": "array"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "fault_profile_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fault Profile Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "route_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Id"
+          },
+          "rpm_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpm Limit"
+          },
+          "tpm_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpm Limit"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "route_id",
+          "environment",
+          "rpm_limit",
+          "tpm_limit",
+          "allowed_models",
+          "default_tags",
+          "cache_ttl_seconds",
+          "fault_profile_id",
+          "created_by",
+          "created_at",
+          "last_used_at",
+          "revoked_at"
+        ],
+        "title": "GatewayKeyOut",
+        "type": "object"
+      },
+      "GatewayKeyUpdate": {
+        "additionalProperties": false,
+        "description": "A partial edit: only the fields sent change.\n\nThe four nullable settings (`rpm_limit`, `tpm_limit`, `cache_ttl_seconds`, `fault_profile_id`)\nare cleared by sending `null`; every other field must have a value when it is sent.\n`changes()` tells an absent field from one sent as `null`.",
+        "properties": {
+          "allowed_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "pattern": "^[A-Za-z0-9._:/-]{1,128}$",
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Models"
+          },
+          "cache_ttl_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Ttl Seconds"
+          },
+          "default_tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Tags"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
+          "fault_profile_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fault Profile Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "route_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Id"
+          },
+          "rpm_limit": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpm Limit"
+          },
+          "tpm_limit": {
+            "anyOf": [
+              {
+                "maximum": 100000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpm Limit"
+          }
+        },
+        "title": "GatewayKeyUpdate",
+        "type": "object"
+      },
+      "GatewayKeyUsageOut": {
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "key_id": {
+            "format": "uuid",
+            "title": "Key Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key_id",
+          "name",
+          "environment",
+          "requests",
+          "errors",
+          "cost_usd"
+        ],
+        "title": "GatewayKeyUsageOut",
+        "type": "object"
+      },
+      "GatewayOverviewOut": {
+        "description": "Gateway traffic of a window of at most 7 days.\n\n`errors` includes calls failed on purpose by Lab faults; `faults` says how many of the\nrequests carried one. `fallbacks` and `retries` are event counts, not request counts: the\nswitches to another target, and the repeated tries on one target, summed over all requests.\nA latency is `null` when no request measured it.",
+        "properties": {
+          "by_key": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayKeyUsageOut"
+            },
+            "title": "By Key",
+            "type": "array"
+          },
+          "by_target": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayTargetUsageOut"
+            },
+            "title": "By Target",
+            "type": "array"
+          },
+          "cache": {
+            "$ref": "#/components/schemas/GatewayCacheOut"
+          },
+          "error_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Rate"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "fallbacks": {
+            "title": "Fallbacks",
+            "type": "integer"
+          },
+          "faults": {
+            "items": {
+              "$ref": "#/components/schemas/FaultScenarioCountOut"
+            },
+            "title": "Faults",
+            "type": "array"
+          },
+          "p95_overhead_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Overhead Ms"
+          },
+          "p95_ttft_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ttft Ms"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "retries": {
+            "title": "Retries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "requests",
+          "errors",
+          "error_rate",
+          "cache",
+          "fallbacks",
+          "retries",
+          "p95_overhead_ms",
+          "p95_ttft_ms",
+          "by_target",
+          "by_key",
+          "faults"
+        ],
+        "title": "GatewayOverviewOut",
+        "type": "object"
+      },
+      "GatewayTargetUsageOut": {
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Id"
+          },
+          "credential_name": {
+            "title": "Credential Name",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "credential_id",
+          "credential_name",
+          "provider",
+          "requests",
+          "errors",
+          "p95_ms"
+        ],
+        "title": "GatewayTargetUsageOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -975,6 +2290,21 @@
           "expires_at"
         ],
         "title": "LoginTotpRequiredOut",
+        "type": "object"
+      },
+      "MalformedJsonParams": {
+        "additionalProperties": false,
+        "description": "A 200 whose body is cut to `keep_fraction` of its length; non-streaming calls only.",
+        "properties": {
+          "keep_fraction": {
+            "default": 0.6,
+            "maximum": 0.9,
+            "minimum": 0.1,
+            "title": "Keep Fraction",
+            "type": "number"
+          }
+        },
+        "title": "MalformedJsonParams",
         "type": "object"
       },
       "MeOut": {
@@ -1759,6 +3089,156 @@
         "title": "PriceOut",
         "type": "object"
       },
+      "PriceOverrideCreate": {
+        "properties": {
+          "cached_input_per_mtok": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,6}|(?=[\\d.]{1,13}0*$)\\d{0,6}\\.\\d{0,6}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached Input Per Mtok"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "input_per_mtok": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,6}|(?=[\\d.]{1,13}0*$)\\d{0,6}\\.\\d{0,6}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Input Per Mtok"
+          },
+          "model_pattern": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model Pattern",
+            "type": "string"
+          },
+          "output_per_mtok": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,6}|(?=[\\d.]{1,13}0*$)\\d{0,6}\\.\\d{0,6}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Output Per Mtok"
+          },
+          "provider": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model_pattern",
+          "input_per_mtok",
+          "output_per_mtok"
+        ],
+        "title": "PriceOverrideCreate",
+        "type": "object"
+      },
+      "PriceOverrideOut": {
+        "properties": {
+          "cached_input_per_mtok": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached Input Per Mtok"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_from": {
+            "format": "date-time",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_per_mtok": {
+            "title": "Input Per Mtok",
+            "type": "string"
+          },
+          "model_pattern": {
+            "title": "Model Pattern",
+            "type": "string"
+          },
+          "output_per_mtok": {
+            "title": "Output Per Mtok",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "model_pattern",
+          "input_per_mtok",
+          "output_per_mtok",
+          "cached_input_per_mtok",
+          "effective_from",
+          "created_by",
+          "created_at"
+        ],
+        "title": "PriceOverrideOut",
+        "type": "object"
+      },
       "ProjectCreateIn": {
         "properties": {
           "name": {
@@ -1877,6 +3357,49 @@
         "title": "ProjectUpdateIn",
         "type": "object"
       },
+      "Provider5xxParams": {
+        "additionalProperties": false,
+        "description": "The provider's error at `status`.",
+        "properties": {
+          "status": {
+            "default": 500,
+            "enum": [
+              500,
+              502,
+              503,
+              529
+            ],
+            "title": "Status",
+            "type": "integer"
+          }
+        },
+        "title": "Provider5xxParams",
+        "type": "object"
+      },
+      "ProviderKind": {
+        "enum": [
+          "openai",
+          "anthropic",
+          "openai_compatible"
+        ],
+        "title": "ProviderKind",
+        "type": "string"
+      },
+      "RateLimitedParams": {
+        "additionalProperties": false,
+        "description": "429 with `Retry-After: retry_after_s`.",
+        "properties": {
+          "retry_after_s": {
+            "default": 2,
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Retry After S",
+            "type": "integer"
+          }
+        },
+        "title": "RateLimitedParams",
+        "type": "object"
+      },
       "RejectedSpan": {
         "properties": {
           "index": {
@@ -1905,6 +3428,231 @@
           "reason"
         ],
         "title": "RejectedSpan",
+        "type": "object"
+      },
+      "RetryPolicy": {
+        "additionalProperties": false,
+        "description": "How often a target is tried, the first try included, and how long to wait in between.\n\nThe wait before retry *n* is `min(backoff_ms * 2 ** (n - 1), max_backoff_ms)`, replaced by a\nprovider's `Retry-After` when `honour_retry_after` is set.",
+        "properties": {
+          "backoff_ms": {
+            "default": 200,
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Backoff Ms",
+            "type": "integer"
+          },
+          "honour_retry_after": {
+            "default": true,
+            "title": "Honour Retry After",
+            "type": "boolean"
+          },
+          "max_attempts": {
+            "default": 2,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_backoff_ms": {
+            "default": 2000,
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Max Backoff Ms",
+            "type": "integer"
+          },
+          "on_statuses": {
+            "items": {
+              "maximum": 599.0,
+              "minimum": 400.0,
+              "type": "integer"
+            },
+            "maxItems": 16,
+            "title": "On Statuses",
+            "type": "array"
+          }
+        },
+        "title": "RetryPolicy",
+        "type": "object"
+      },
+      "RouteConfig": {
+        "additionalProperties": false,
+        "description": "Which credentials serve the route's calls, in fallback order, and how failures are handled.\n\n`timeout_ms` is the whole budget for every attempt, wait and fallback of one call; for a\nstream it bounds the time to the first byte.",
+        "properties": {
+          "fallback": {
+            "$ref": "#/components/schemas/FallbackPolicy"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/RetryPolicy"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/Target"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Targets",
+            "type": "array"
+          },
+          "timeout_ms": {
+            "default": 60000,
+            "maximum": 600000.0,
+            "minimum": 1000.0,
+            "title": "Timeout Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "targets",
+          "retry",
+          "fallback"
+        ],
+        "title": "RouteConfig",
+        "type": "object"
+      },
+      "RouteCreateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/RouteConfig"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "config"
+        ],
+        "title": "RouteCreateIn",
+        "type": "object"
+      },
+      "RouteOut": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/RouteConfig"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "is_default",
+          "config",
+          "version",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "RouteOut",
+        "type": "object"
+      },
+      "RouteRevertIn": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "RouteRevertIn",
+        "type": "object"
+      },
+      "RouteUpdateIn": {
+        "additionalProperties": false,
+        "description": "A new config, and the version the client last read, which must still be the current one.",
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/RouteConfig"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "config",
+          "expected_version"
+        ],
+        "title": "RouteUpdateIn",
+        "type": "object"
+      },
+      "RouteVersionOut": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/RouteConfig"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "config",
+          "updated_by",
+          "created_at"
+        ],
+        "title": "RouteVersionOut",
+        "type": "object"
+      },
+      "ScopeDeniedParams": {
+        "additionalProperties": false,
+        "description": "403 `insufficient_permissions`; takes no parameters.",
+        "properties": {},
+        "title": "ScopeDeniedParams",
         "type": "object"
       },
       "SessionOut": {
@@ -2035,6 +3783,21 @@
           "name"
         ],
         "title": "SignupIn",
+        "type": "object"
+      },
+      "SlowResponseParams": {
+        "additionalProperties": false,
+        "description": "The first byte of the response delayed by `delay_ms`.",
+        "properties": {
+          "delay_ms": {
+            "default": 5000,
+            "maximum": 60000.0,
+            "minimum": 100.0,
+            "title": "Delay Ms",
+            "type": "integer"
+          }
+        },
+        "title": "SlowResponseParams",
         "type": "object"
       },
       "SpanKind": {
@@ -2239,6 +4002,55 @@
         ],
         "title": "SpanStatus",
         "type": "string"
+      },
+      "Target": {
+        "additionalProperties": false,
+        "description": "One provider credential the route can send a call to.",
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "model_aliases": {
+            "maxProperties": 32,
+            "patternProperties": {
+              "^[A-Za-z0-9._:/-]{1,128}$": {
+                "pattern": "^[A-Za-z0-9._:/-]{1,128}$",
+                "type": "string"
+              }
+            },
+            "title": "Model Aliases",
+            "type": "object"
+          },
+          "weight": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "credential_id"
+        ],
+        "title": "Target",
+        "type": "object"
+      },
+      "TimeoutParams": {
+        "additionalProperties": false,
+        "description": "The call held for `hold_ms`, or what is left of the route's budget, then timed out.",
+        "properties": {
+          "hold_ms": {
+            "default": 30000,
+            "maximum": 120000.0,
+            "minimum": 1000.0,
+            "title": "Hold Ms",
+            "type": "integer"
+          }
+        },
+        "title": "TimeoutParams",
+        "type": "object"
       },
       "TimeseriesPointOut": {
         "properties": {
@@ -2727,6 +4539,21 @@
         "title": "TraceSummaryOut",
         "type": "object"
       },
+      "TruncatedStreamParams": {
+        "additionalProperties": false,
+        "description": "A stream closed after `after_chunks` frames, without its end marker.",
+        "properties": {
+          "after_chunks": {
+            "default": 3,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "After Chunks",
+            "type": "integer"
+          }
+        },
+        "title": "TruncatedStreamParams",
+        "type": "object"
+      },
       "UnpricedModelOut": {
         "properties": {
           "input_tokens": {
@@ -2765,6 +4592,22 @@
           "output_tokens"
         ],
         "title": "UnpricedModelOut",
+        "type": "object"
+      },
+      "UnsupportedParameterParams": {
+        "additionalProperties": false,
+        "description": "400 naming `param` as unsupported by the model.",
+        "properties": {
+          "param": {
+            "default": "temperature",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z_][a-z0-9_.]*$",
+            "title": "Param",
+            "type": "string"
+          }
+        },
+        "title": "UnsupportedParameterParams",
         "type": "object"
       },
       "UserOut": {
@@ -4231,6 +6074,271 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/credentials": {
+      "get": {
+        "description": "Newest first. Never includes a key.",
+        "operationId": "list_credentials_api_v1_orgs__org_id__credentials_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialOut"
+                  },
+                  "title": "Response List Credentials Api V1 Orgs  Org Id  Credentials Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List provider credentials",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "post": {
+        "description": "Seal and store the key. `base_url` is required for `openai_compatible`, refused otherwise.\n\n`409 NOT_CONFIGURED` without CREDENTIALS_KEYS; `422` on `base_url` for a URL that is not\n`https://`, has userinfo, a query or a fragment, or resolves to a private address.",
+        "operationId": "create_credential_api_v1_orgs__org_id__credentials_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add a provider credential",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/credentials/{credential_id}": {
+      "delete": {
+        "description": "`409 CREDENTIAL_IN_USE` while a gateway route sends calls through it.",
+        "operationId": "delete_credential_api_v1_orgs__org_id__credentials__credential_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a provider credential",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/credentials/{credential_id}/check": {
+      "post": {
+        "description": "List the provider's models with the key and record the outcome as the last check.\n\nA failing key is a `200` with `status: \"error\"` and a short reason such as `401 Unauthorized`.",
+        "operationId": "check_credential_api_v1_orgs__org_id__credentials__credential_id__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check a credential",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/credentials/{credential_id}/rotate": {
+      "post": {
+        "description": "Seal a new key in place of the old one. Clears the last check, which was of the old key.",
+        "operationId": "rotate_credential_api_v1_orgs__org_id__credentials__credential_id__rotate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialRotateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace a credential's key",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/invites": {
       "get": {
         "operationId": "list_invites_api_v1_orgs__org_id__invites_get",
@@ -4527,6 +6635,153 @@
         "summary": "Update Member",
         "tags": [
           "orgs"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/price-overrides": {
+      "get": {
+        "description": "Ordered by provider, pattern and start time.",
+        "operationId": "list_price_overrides_api_v1_orgs__org_id__price_overrides_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriceOverrideOut"
+                  },
+                  "title": "Response List Price Overrides Api V1 Orgs  Org Id  Price Overrides Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List price overrides",
+        "tags": [
+          "prices"
+        ]
+      },
+      "post": {
+        "description": "Rates are USD per million tokens. `effective_from` defaults to now.\n\nThe pattern matches a model exactly or with a snapshot suffix, like the seed prices.\n`409 PRICE_OVERRIDE_EXISTS` when the organization already has one for the same provider,\npattern and start time.",
+        "operationId": "create_price_override_api_v1_orgs__org_id__price_overrides_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceOverrideCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceOverrideOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add a price override",
+        "tags": [
+          "prices"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/price-overrides/{override_id}": {
+      "delete": {
+        "description": "Spans ingested from now on fall back to the next price; stored costs are not rewritten.",
+        "operationId": "delete_price_override_api_v1_orgs__org_id__price_overrides__override_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "override_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Override Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a price override",
+        "tags": [
+          "prices"
         ]
       }
     },
@@ -5032,6 +7287,992 @@
         "summary": "List Filter Values",
         "tags": [
           "traces"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/cache/purge": {
+      "post": {
+        "description": "Delete every cached response of the project, whatever key stored it.\n\nIdempotent: purging an empty cache succeeds. The audit event records how many entries went.",
+        "operationId": "purge_cache_api_v1_projects__project_id__gateway_cache_purge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Purge the gateway response cache",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/fault-profiles": {
+      "get": {
+        "description": "By name. `active` says whether a profile can fire now: enabled and not expired.",
+        "operationId": "list_profiles_api_v1_projects__project_id__gateway_fault_profiles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FaultProfileOut"
+                  },
+                  "title": "Response List Profiles Api V1 Projects  Project Id  Gateway Fault Profiles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List fault profiles",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "post": {
+        "description": "Omitted `params` are the scenario's defaults; a param that does not belong to the scenario\nis `422` on `params.<name>`. `409 FAULT_PROFILE_NAME_TAKEN` for a name already used in the\nproject, and `422` on `expires_at` for a time that is not in the future.",
+        "operationId": "create_profile_api_v1_projects__project_id__gateway_fault_profiles_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FaultProfileCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaultProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a fault profile",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/fault-profiles/{profile_id}": {
+      "delete": {
+        "description": "Delete the profile. Keys that ran it are detached and run no fault.",
+        "operationId": "delete_profile_api_v1_projects__project_id__gateway_fault_profiles__profile_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a fault profile",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "patch": {
+        "description": "Change the fields sent; send `null` for `expires_at` to remove the expiry.\n\n`params` must be sent with `scenario`; a `scenario` sent alone resets the params to that\nscenario's defaults.",
+        "operationId": "update_profile_api_v1_projects__project_id__gateway_fault_profiles__profile_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FaultProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaultProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit a fault profile",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/keys": {
+      "get": {
+        "description": "Newest first, revoked keys included. Unpaginated: a project keeps a handful of keys.",
+        "operationId": "list_keys_api_v1_projects__project_id__gateway_keys_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GatewayKeyOut"
+                  },
+                  "title": "Response List Keys Api V1 Projects  Project Id  Gateway Keys Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List gateway keys",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "post": {
+        "description": "Create the key and return it with its `secret`, which is never shown again.\n\nWithout `route_id` the key uses the project's default route: `422 NO_DEFAULT_ROUTE` when the\nproject has none, and `422` on `route_id` for a route that is not the project's.",
+        "operationId": "create_key_api_v1_projects__project_id__gateway_keys_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GatewayKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayKeyCreatedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a gateway key",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/keys/{key_id}": {
+      "delete": {
+        "description": "Revoke the key. Apps using it get `401` from the next call. Revoking twice is a no-op.",
+        "operationId": "revoke_key_api_v1_projects__project_id__gateway_keys__key_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke a gateway key",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "patch": {
+        "description": "Change the fields sent; send `null` to clear a limit or the cache TTL.\n\n`404` for a revoked key: it can no longer be edited.",
+        "operationId": "update_key_api_v1_projects__project_id__gateway_keys__key_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GatewayKeyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayKeyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit a gateway key",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/overview": {
+      "get": {
+        "description": "Requests, errors, cache, fallbacks, latency and usage per target and key.\n\nCounts every call that came through a gateway key, Lab faults included (`faults` says how\nmany). At most 7 days; longer is `422`.",
+        "operationId": "overview_api_v1_projects__project_id__gateway_overview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Environment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayOverviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Gateway traffic overview",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/routes": {
+      "get": {
+        "description": "By name. Unpaginated: a project keeps a handful of routes.",
+        "operationId": "list_routes_api_v1_projects__project_id__gateway_routes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RouteOut"
+                  },
+                  "title": "Response List Routes Api V1 Projects  Project Id  Gateway Routes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List gateway routes",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "post": {
+        "description": "Save the route as version 1. The project's first route becomes its default.\n\n`422` on `config.targets.<i>.credential_id` for a credential that is not the organization's;\n`409 ROUTE_NAME_TAKEN` for a name already used in the project.",
+        "operationId": "create_route_api_v1_projects__project_id__gateway_routes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a route",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/routes/{route_id}": {
+      "delete": {
+        "description": "Delete the route and its history. `409 ROUTE_IN_USE` while a gateway key uses it.",
+        "operationId": "delete_route_api_v1_projects__project_id__gateway_routes__route_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a route",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "get": {
+        "operationId": "get_route_api_v1_projects__project_id__gateway_routes__route_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a route",
+        "tags": [
+          "gateway"
+        ]
+      },
+      "put": {
+        "description": "Replace the config, if the route is still at `expected_version`; bumps `version`.\n\n`409 ROUTE_VERSION_CONFLICT` when another save came first: reload and apply the change again.",
+        "operationId": "update_route_api_v1_projects__project_id__gateway_routes__route_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save a new version of a route",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/routes/{route_id}/default": {
+      "post": {
+        "description": "Gateway keys created without a route use the default one. Not a new version.",
+        "operationId": "set_default_route_api_v1_projects__project_id__gateway_routes__route_id__default_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Make a route the default",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/routes/{route_id}/revert": {
+      "post": {
+        "description": "Save the config of `version` again as a new version; the history is never rewritten.\n\n`404` for a version the route never had; `422` when that config names a credential deleted\nsince.",
+        "operationId": "revert_route_api_v1_projects__project_id__gateway_routes__route_id__revert_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRevertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revert a route",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/gateway/routes/{route_id}/versions": {
+      "get": {
+        "description": "Every saved config, newest first. `404` for an unknown route.",
+        "operationId": "list_route_versions_api_v1_projects__project_id__gateway_routes__route_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RouteVersionOut"
+                  },
+                  "title": "Response List Route Versions Api V1 Projects  Project Id  Gateway Routes  Route Id  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List a route's versions",
+        "tags": [
+          "gateway"
         ]
       }
     },
@@ -6006,6 +9247,152 @@
         "summary": "Get Unpriced Models",
         "tags": [
           "prices"
+        ]
+      }
+    },
+    "/gw/v1/chat/completions": {
+      "post": {
+        "description": "OpenAI Chat Completions through the key's route; streams when `stream` is true.",
+        "operationId": "chat_completions_gw_v1_chat_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "model"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Chat Completions",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/gw/v1/messages": {
+      "post": {
+        "description": "Anthropic Messages through the key's route; streams when `stream` is true.",
+        "operationId": "messages_gw_v1_messages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "model"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Messages",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/gw/v1/models": {
+      "get": {
+        "description": "The models the key can ask for, in the OpenAI shape or, with `anthropic-version`, the\nAnthropic one. Records no span and counts no tokens.",
+        "operationId": "models_gw_v1_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models",
+        "tags": [
+          "gateway"
+        ]
+      }
+    },
+    "/gw/v1/responses": {
+      "post": {
+        "description": "OpenAI Responses through the key's route; streams when `stream` is true.",
+        "operationId": "responses_gw_v1_responses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "model"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Responses",
+        "tags": [
+          "gateway"
         ]
       }
     },

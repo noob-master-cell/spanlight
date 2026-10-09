@@ -1,13 +1,17 @@
-"""Read queries over prices and the spans that found none."""
+"""Reads over prices, the organization's price overrides, and the spans that found no price.
+
+Nothing here writes; adding and deleting overrides is `app.pricing.overrides_service`.
+"""
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import ModelPrice
+from app.db.models import ModelPrice, PriceOverride, User
 
 # Models listed at most; a project cannot make the answer unbounded by sending arbitrary names.
 UNPRICED_MODELS_LIMIT = 100
@@ -76,3 +80,25 @@ async def list_unpriced_models(
         )
         for row in rows
     ]
+
+
+async def list_overrides(
+    db: AsyncSession, org_id: uuid.UUID
+) -> Sequence[tuple[PriceOverride, User | None]]:
+    """The organization's overrides with the user who added each, in a stable order.
+
+    Unpaginated: an organization keeps a handful of overrides, not thousands. `price_overrides`
+    has no row-level security, so the `org_id` condition is the tenancy boundary.
+    """
+    rows = await db.execute(
+        select(PriceOverride, User)
+        .outerjoin(User, User.id == PriceOverride.created_by)
+        .where(PriceOverride.org_id == org_id)
+        .order_by(
+            PriceOverride.provider,
+            PriceOverride.model_pattern,
+            PriceOverride.effective_from,
+            PriceOverride.id,
+        )
+    )
+    return [(override, creator) for override, creator in rows.tuples()]

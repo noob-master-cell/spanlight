@@ -48,11 +48,41 @@ ROLLUP_DURATION = Histogram(
 )
 RATE_LIMIT_UNAVAILABLE = Counter(
     "spanlight_rate_limit_unavailable_total",
-    "Rate-limit checks skipped because the limiter could not run, by scope (ingest, demo, api).",
+    "Rate-limit checks skipped because the limiter could not run, by scope "
+    "(ingest, demo, api, gateway).",
     ["scope"],
 )
 RATE_LIMIT_REJECTIONS = Counter(
     "spanlight_rate_limit_rejections_total",
-    "Requests refused with 429 by a rate limit, by scope (ingest, demo, api).",
+    "Requests refused with 429 by a rate limit, by scope (ingest, demo, api, gateway).",
     ["scope"],
+)
+GATEWAY_REQUESTS = Counter(
+    "spanlight_gateway_requests_total",
+    "Gateway calls, by surface and outcome "
+    "(ok, upstream_error, gateway_error, cache_hit, fault, budget_blocked).",
+    ["surface", "outcome"],
+)
+GATEWAY_OVERHEAD = Histogram(
+    "spanlight_gateway_overhead_seconds",
+    "Time a gateway call spent in the gateway itself, without upstream time and waits, by surface.",
+    ["surface"],
+    buckets=(0.001, 0.0025, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0),
+)
+GATEWAY_UPSTREAM_DURATION = Histogram(
+    "spanlight_gateway_upstream_duration_seconds",
+    "Duration of one upstream attempt (to the full body, or to the first byte of a stream), "
+    "by provider.",
+    ["provider"],
+)
+GATEWAY_ATTEMPTS = Counter(
+    "spanlight_gateway_attempts_total",
+    "Upstream attempts, by provider and status (an HTTP status, timeout, connection_error "
+    "or blocked).",
+    ["provider", "status"],
+)
+GATEWAY_RECORD_FAILURES = Counter(
+    "spanlight_gateway_record_failures_total",
+    "Gateway spans not written, by reason (error, rejected, overflow); the call was answered.",
+    ["reason"],
 )

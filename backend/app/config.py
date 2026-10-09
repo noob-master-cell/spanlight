@@ -113,6 +113,25 @@ class Settings(BaseSettings):
     rate_limit_pool_size: int = Field(default=5, ge=1)
     rate_limit_pool_timeout_seconds: float = Field(default=0.25, gt=0)
 
+    # Where the LLM gateway (`/gw/v1/*`) runs. `embedded` serves it from the api process;
+    # `standalone` leaves it to a separate `python -m app.gateway` process (same image) and
+    # `disabled` turns it off. In both of those the api answers `/gw/*` with 404.
+    gateway_mode: Literal["embedded", "standalone", "disabled"] = "embedded"
+    # Whether provider credentials may point at `http://` base URLs and at private, loopback or
+    # link-local addresses. Off, a base URL must be `https://` and resolve only to public
+    # addresses, so a credential cannot turn the gateway into a way into the private network.
+    # Meant for a self-hosted instance with a local model server; keep it off on a shared one.
+    gateway_allow_insecure_base_urls: bool = False
+    # Requests per minute one organization may send through the gateway, across all its keys,
+    # checked before each key's own limits. Blank means no ceiling. A shared deployment sets it
+    # so one organization's traffic cannot crowd out the others'.
+    gateway_org_rpm_ceiling: int | None = Field(default=None, ge=1, le=100_000)
+    # Gateway spans are written after the answer, in the background. At most this many writes
+    # run at once (each holds a database connection), and at most `gateway_record_backlog` wait
+    # or run; past that a span is dropped and counted, so a burst cannot drain the pool.
+    gateway_record_concurrency: int = Field(default=16, ge=1, le=256)
+    gateway_record_backlog: int = Field(default=1000, ge=1, le=100_000)
+
     sentry_dsn: str | None = None
 
     # Tracing of the app's own requests, queries and outbound calls. Set the base URL of an OTLP
@@ -127,6 +146,7 @@ class Settings(BaseSettings):
     @field_validator(
         "metrics_token",
         "worker_metrics_port",
+        "gateway_org_rpm_ceiling",
         "anthropic_api_key",
         "demo_enabled",
         "sentry_dsn",
@@ -168,6 +188,10 @@ class Settings(BaseSettings):
         "s3_force_path_style",
         "backups_enabled",
         "worker_required",
+        "gateway_mode",
+        "gateway_allow_insecure_base_urls",
+        "gateway_record_concurrency",
+        "gateway_record_backlog",
         "otel_service_name",
         mode="before",
     )

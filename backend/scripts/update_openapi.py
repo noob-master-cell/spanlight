@@ -24,11 +24,12 @@ UPDATE_COMMAND = "uv run python scripts/update_openapi.py"
 def build_app() -> FastAPI:
     """The app with fixed settings, so the rendered document never depends on the environment.
 
-    No route is registered conditionally today, so no setting changes the document. Pinning
-    them anyway keeps that true if one ever does: a local `.env` or a stray variable must not
-    produce a snapshot that differs from CI's.
+    The gateway routes (`/gw/v1/*`) are mounted only with `GATEWAY_MODE=embedded`, so the mode
+    is pinned to it: the document always describes them. The other settings are pinned too, so
+    a local `.env` or a stray variable never produces a snapshot that differs from CI's.
     """
     settings = Settings(
+        gateway_mode="embedded",
         sentry_dsn=None,
         anthropic_api_key=None,
         demo_enabled=False,

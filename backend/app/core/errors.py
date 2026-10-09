@@ -34,7 +34,12 @@ class FieldError(TypedDict):
 
 
 class ProblemError(Exception):
-    """An error that maps directly onto a problem+json response."""
+    """An error that maps directly onto a problem+json response.
+
+    `extensions` are RFC 9457 extension members: extra top-level fields a client can read
+    without parsing `detail`, such as the current version in a version conflict. They never
+    replace a standard member.
+    """
 
     def __init__(
         self,
@@ -44,6 +49,7 @@ class ProblemError(Exception):
         *,
         errors: Sequence[FieldError] | None = None,
         headers: Mapping[str, str] | None = None,
+        extensions: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(detail or code)
         self.status = status
@@ -51,6 +57,7 @@ class ProblemError(Exception):
         self.detail = detail
         self.errors = list(errors) if errors else None
         self.headers = dict(headers) if headers else None
+        self.extensions = dict(extensions) if extensions else None
 
 
 def not_found(detail: str = "The requested resource was not found.") -> ProblemError:
@@ -162,8 +169,11 @@ def problem_response(
     *,
     errors: Sequence[FieldError] | None = None,
     headers: Mapping[str, str] | None = None,
+    extensions: Mapping[str, Any] | None = None,
 ) -> JSONResponse:
-    body: dict[str, Any] = {
+    # Extension members first, so a standard member below always wins over one of the same name.
+    body: dict[str, Any] = dict(extensions) if extensions else {}
+    body |= {
         "type": "about:blank",
         "title": _title_for(status),
         "status": status,
@@ -216,7 +226,12 @@ def _validation_field(location: Sequence[int | str]) -> str:
 async def _handle_problem(_: Request, exc: Exception) -> JSONResponse:
     problem = cast(ProblemError, exc)
     return problem_response(
-        problem.status, problem.code, problem.detail, errors=problem.errors, headers=problem.headers
+        problem.status,
+        problem.code,
+        problem.detail,
+        errors=problem.errors,
+        headers=problem.headers,
+        extensions=problem.extensions,
     )
 
 

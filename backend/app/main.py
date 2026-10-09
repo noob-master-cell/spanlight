@@ -7,10 +7,11 @@ import httpx
 import structlog
 from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.api import health, ingest, v1
+from app.api import gw, health, ingest, v1
 from app.api.deps import Clock, utcnow
+from app.api.gw_errors import install_gateway_error_handlers
 from app.config import Settings, get_settings
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import install_error_handlers
@@ -24,6 +25,9 @@ from app.core.middleware import (
 from app.core.sentry import init_sentry
 from app.core.tracing import configure_tracing, shutdown_tracing
 from app.db.session import create_engine, create_session_factory
+from app.gateway.egress import Resolver
+from app.gateway.http import build_http_client
+from app.gateway.runtime import GatewayRuntime, build_runtime, close_runtime
 from app.pricing.cost import sync_seed_prices
 
 logger = structlog.get_logger(__name__)
@@ -33,21 +37,23 @@ def create_app(
     settings: Settings | None = None,
     *,
     oauth_transport: httpx.AsyncBaseTransport | None = None,
+    gateway_transport: httpx.AsyncBaseTransport | None = None,
+    gateway_resolver: Resolver | None = None,
     clock: Clock | None = None,
 ) -> FastAPI:
     """Build the app.
 
-    Both keyword arguments exist for tests: `oauth_transport` replaces the network for sign-in
-    provider calls, and `clock` replaces the time that one-time codes and login challenges are
-    judged against, so a test decides which code is valid.
+    The keyword arguments exist for tests: `oauth_transport` replaces the network for sign-in
+    provider calls, `gateway_transport` for calls to LLM providers (gateway traffic and
+    credential checks), `gateway_resolver` the DNS that those calls are vetted against, and
+    `clock` replaces the time that one-time codes and login challenges are judged against, so a
+    test decides which code is valid.
     """
     settings = settings or get_settings()
     configure_logging(settings.log_level, json=settings.log_json)
     init_sentry(settings)
 
-    # A request waits only briefly for a connection: a pool that is full means the database is
-    # behind, and an early 503 lets the client back off instead of piling up behind it.
-    engine = create_engine(settings.database_url, pool_timeout=settings.api_pool_timeout_seconds)
+    engine = _request_engine(settings)
     session_factory = create_session_factory(engine)
     # Idempotency keys get a pool of their own: they take a second connection while the request
     # still holds one from the main pool. No overflow, and a short wait before giving up.
@@ -57,23 +63,26 @@ def create_app(
         max_overflow=0,
         pool_timeout=settings.idempotency_pool_timeout_seconds,
     )
-    # Rate-limit checks run on their own connections too, outside the request's transaction (see
-    # `app.core.ratelimit`). A pool apart from the idempotency one, so a burst of requests being
-    # limited cannot starve idempotency reservations, which fail the request when they time out.
-    rate_limit_engine = create_engine(
-        settings.database_url,
-        pool_size=settings.rate_limit_pool_size,
-        max_overflow=0,
-        pool_timeout=settings.rate_limit_pool_timeout_seconds,
-        # A stale connection fails one check, which fails open and is logged; a ping on every
-        # checkout would add a round trip to every ingest and bearer read.
-        pre_ping=False,
-    )
+    rate_limit_engine = _rate_limit_engine(settings)
+    rate_limit_session_factory = create_session_factory(rate_limit_engine)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         await _sync_prices(session_factory)
+        # Built whatever GATEWAY_MODE says: credential checks use the client, and in-process
+        # callers the runtime, even when `/gw/*` is served by a standalone gateway.
+        runtime = _start_gateway(
+            application,
+            settings,
+            session_factory,
+            rate_limit_session_factory,
+            transport=gateway_transport,
+            resolver=gateway_resolver,
+        )
         yield
+        # The server has stopped taking requests and let in-flight ones finish (each stream's
+        # `aclose()` queues its span), so the spans are drained while the engine is still open.
+        await close_runtime(runtime)
         await engine.dispose()
         await idempotency_engine.dispose()
         await rate_limit_engine.dispose()
@@ -95,9 +104,13 @@ def create_app(
     app.state.oauth_transport = oauth_transport
     app.state.clock = clock or utcnow
     app.state.rate_limit_engine = rate_limit_engine
-    app.state.rate_limit_session_factory = create_session_factory(rate_limit_engine)
+    app.state.rate_limit_session_factory = rate_limit_session_factory
 
     install_error_handlers(app)
+    embedded_gateway = settings.gateway_mode == "embedded"
+    if embedded_gateway:
+        # After the dashboard's handlers, which it wraps: problem+json everywhere but `/gw/`.
+        install_gateway_error_handlers(app)
     # First, so it is the innermost middleware: it sees the response a route's error became.
     install_idempotency(app)
     # Before the middleware below: its attribute middleware must be inside the request-id one.
@@ -113,7 +126,118 @@ def create_app(
 
     for router in (v1.router, ingest.router, health.router):
         app.include_router(router)
+    # In `standalone` and `disabled` mode `/gw/*` stays unmounted and answers 404 problem+json.
+    if embedded_gateway:
+        app.include_router(gw.router)
     return app
+
+
+def create_gateway_app(
+    settings: Settings | None = None,
+    *,
+    gateway_transport: httpx.AsyncBaseTransport | None = None,
+    gateway_resolver: Resolver | None = None,
+    clock: Clock | None = None,
+) -> FastAPI:
+    """The standalone gateway (`python -m app.gateway`): `/gw/v1/*`, `/health/*` and `/metrics`.
+
+    Same image and settings as the api, run with `GATEWAY_MODE=standalone` on the api so the
+    two do not both serve `/gw/*`. None of the dashboard's middleware is installed: no
+    cookies, CSRF, Origin check or idempotency keys, which the gateway has no use for. The
+    keyword arguments are the test seams of `create_app`.
+    """
+    settings = settings or get_settings()
+    configure_logging(settings.log_level, json=settings.log_json)
+    init_sentry(settings)
+
+    engine = _request_engine(settings)
+    session_factory = create_session_factory(engine)
+    rate_limit_engine = _rate_limit_engine(settings)
+    rate_limit_session_factory = create_session_factory(rate_limit_engine)
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        runtime = _start_gateway(
+            application,
+            settings,
+            session_factory,
+            rate_limit_session_factory,
+            transport=gateway_transport,
+            resolver=gateway_resolver,
+        )
+        yield
+        await close_runtime(runtime)  # spans first, while the engine is open
+        await engine.dispose()
+        await rate_limit_engine.dispose()
+        await shutdown_tracing(getattr(application.state, "tracer_provider", None))
+
+    # No OpenAPI or docs pages: the api serves the one OpenAPI document, gateway routes included.
+    app = FastAPI(
+        title="Spanlight Gateway",
+        version="0.1.0",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
+    )
+    app.state.settings = settings
+    app.state.engine = engine
+    app.state.session_factory = session_factory
+    app.state.rate_limit_engine = rate_limit_engine
+    app.state.rate_limit_session_factory = rate_limit_session_factory
+    app.state.clock = clock or utcnow
+
+    install_error_handlers(app)  # `/health/*` and `/metrics` answer problem+json, as on the api
+    install_gateway_error_handlers(app)
+    # Its own service name (`spanlight-gateway`), so its spans are told apart from the api's.
+    configure_tracing(settings, app, engine, role="gateway")
+    app.add_middleware(RequestContextMiddleware)
+
+    for router in (gw.router, health.router):
+        app.include_router(router)
+    return app
+
+
+def _request_engine(settings: Settings) -> AsyncEngine:
+    # A request waits only briefly for a connection: a pool that is full means the database is
+    # behind, and an early 503 lets the client back off instead of piling up behind it.
+    return create_engine(settings.database_url, pool_timeout=settings.api_pool_timeout_seconds)
+
+
+def _rate_limit_engine(settings: Settings) -> AsyncEngine:
+    # Rate-limit checks run on their own connections, outside the request's transaction (see
+    # `app.core.ratelimit`). A pool apart from the idempotency one, so a burst of requests being
+    # limited cannot starve idempotency reservations, which fail the request when they time out.
+    return create_engine(
+        settings.database_url,
+        pool_size=settings.rate_limit_pool_size,
+        max_overflow=0,
+        pool_timeout=settings.rate_limit_pool_timeout_seconds,
+        # A stale connection fails one check, which fails open and is logged; a ping on every
+        # checkout would add a round trip to every ingest and bearer read.
+        pre_ping=False,
+    )
+
+
+def _start_gateway(
+    application: FastAPI,
+    settings: Settings,
+    sessions: async_sessionmaker[AsyncSession],
+    rate_limit_sessions: async_sessionmaker[AsyncSession],
+    *,
+    transport: httpx.AsyncBaseTransport | None,
+    resolver: Resolver | None,
+) -> GatewayRuntime:
+    """Build the upstream client and the gateway runtime, and keep both on `application.state`.
+
+    The one client for all traffic to LLM providers (see `app.gateway.http`). Built per
+    lifespan, so a second startup of the same app does not get the closed one.
+    """
+    http = build_http_client(settings, transport=transport, resolver=resolver)
+    runtime = build_runtime(settings, sessions, http=http, rate_limit_sessions=rate_limit_sessions)
+    application.state.gateway_http = http
+    application.state.gateway_runtime = runtime
+    return runtime
 
 
 async def _sync_prices(session_factory: async_sessionmaker[AsyncSession]) -> None:

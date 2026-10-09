@@ -1,5 +1,6 @@
-// Shared by ingest.js, overview.js and traces.js: turns what k6 hands to handleSummary into a
-// Markdown table (printed, and kept beside the JSON) and the full JSON summary.
+// Shared by ingest.js, overview.js, traces.js and gateway.js: turns what k6 hands to
+// handleSummary into a Markdown table (printed, and kept beside the JSON) and the full JSON
+// summary.
 //
 // The data object (k6 2.3.0, `summarizeMetricsToObject`) holds, for each metric name:
 //   { type, contains, values: { <stat>: number }, thresholds?: { <expression>: { ok: boolean } } }
@@ -21,8 +22,9 @@ export function formatValue(value, contains) {
   return contains === 'time' ? `${value.toFixed(1)} ms` : String(Number(value.toFixed(4)));
 }
 
+// A sub-metric such as `http_req_duration{scenario:gateway}` sorts with its metric.
 function rank(name) {
-  const index = THRESHOLD_ORDER.indexOf(name);
+  const index = THRESHOLD_ORDER.indexOf(name.split('{')[0]);
   return index === -1 ? THRESHOLD_ORDER.length : index;
 }
 
@@ -48,14 +50,14 @@ function thresholdRows(data) {
   return rows;
 }
 
-function latencyLine(data) {
-  const metric = data.metrics.http_req_duration;
-  if (!metric || !metric.values) return 'No request time was recorded.';
+function latencyLine(data, { label, metric: name }) {
+  const metric = data.metrics[name];
+  if (!metric || !metric.values) return `No ${label.toLowerCase()} was recorded.`;
   const parts = TREND_STATS.map((stat) => {
     const value = metric.values[stat];
     return `${stat} ${value === undefined ? UNKNOWN : value.toFixed(1)}`;
   });
-  return `Request time in ms: ${parts.join(', ')}.`;
+  return `${label} in ms: ${parts.join(', ')}.`;
 }
 
 function sentLine(data) {
@@ -64,14 +66,27 @@ function sentLine(data) {
   return `Sent ${sent.count} requests (${sent.rate.toFixed(2)} a second).`;
 }
 
+const OVERALL_LATENCY = [{ label: 'Request time', metric: 'http_req_duration' }];
+
 // The value for handleSummary. `name` names the files (<name>.json and <name>.md in `resultsDir`)
-// and `extraLines` are Markdown lines added after the threshold table.
-export function summarize({ name, title, description, data, resultsDir, extraLines = [] }) {
+// and `extraLines` are Markdown lines added after the threshold table. A script that sends
+// requests of more than one kind sets `latencies`, a list of { label, metric } with one line each
+// instead of the line for all requests, and `sent`, the sentence that replaces the request count.
+export function summarize({
+  name,
+  title,
+  description,
+  data,
+  resultsDir,
+  extraLines = [],
+  latencies = OVERALL_LATENCY,
+  sent = sentLine(data),
+}) {
   const markdown = [
     `### ${title}`,
     '',
-    `${description} ${sentLine(data)}`,
-    latencyLine(data),
+    `${description} ${sent}`,
+    ...latencies.map((latency) => latencyLine(data, latency)),
     '',
     '| Metric | Threshold | Observed | Result |',
     '|---|---|---|---|',

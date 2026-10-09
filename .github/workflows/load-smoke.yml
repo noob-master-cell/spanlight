@@ -2,9 +2,11 @@ name: Load test
 
 # Run by hand only. A run builds the self-host stack from the dispatched commit, fills it with
 # spans through the real ingestion pipeline and drives it with k6 at the thresholds in
-# docs/performance.md. The result tables are on the run's summary page and the raw k6 summaries are
-# an artifact. `realistic` (the default) is a run at the size of a small production team, about
-# 1 million spans. `smoke` is a small run that checks the setup. `full` is the stress run with 10
+# docs/performance.md. After the three scenarios on the seeded data it measures the overhead of the
+# LLM gateway against a fake provider (the same in every profile, it needs no big seed). The result
+# tables are on the run's summary page and the raw k6 summaries are an artifact. `realistic` (the
+# default) is a run at the size of a small production team, about 1 million spans. `smoke` is a
+# small run that checks the setup. `full` is the stress run with 10
 # million spans and takes several hours, almost all of it seeding. The profile's settings are in
 # the "Set the profile" step.
 on:
@@ -39,6 +41,8 @@ jobs:
       K6_IMAGE: grafana/k6:2.3.0
       WEB_PORT: "8080"
       LOAD_POSTGRES_PORT: "55433"
+      # Where the fake provider of the gateway scenario is published on the runner.
+      FAKE_PROVIDER_PORT: "9000"
       COMPOSE_PROJECT_NAME: spanlight-load
       COMPOSE_FILE: deploy/compose.yaml:backend/load/compose.load.yaml
     steps:
@@ -60,7 +64,7 @@ jobs:
 
       # The one place that says what each profile means. SEED_MAX_MINUTES: the seeder stops early
       # when the seed is projected to take longer; what is left of the job limit after it has to
-      # cover the build, the rollups, VACUUM and the three scenarios. The thresholds do not depend
+      # cover the build, the rollups, VACUUM and the scenarios. The thresholds do not depend
       # on the profile: they are in the k6 scripts and are the same for all three.
       - name: Set the profile
         run: |
@@ -95,10 +99,12 @@ jobs:
           echo "APP_BASE_URL=http://localhost:$WEB_PORT" >> "$env_file"
           echo "WEB_PORT=$WEB_PORT" >> "$env_file"
           echo "LOAD_POSTGRES_PORT=$LOAD_POSTGRES_PORT" >> "$env_file"
+          echo "LOAD_FAKE_PROVIDER_PORT=$FAKE_PROVIDER_PORT" >> "$env_file"
           mkdir -p "$RUNNER_TEMP/load-results" "$RUNNER_TEMP/load-credentials"
           echo "LOAD_ENV_FILE=$env_file" >> "$GITHUB_ENV"
           echo "RESULTS_DIR=$RUNNER_TEMP/load-results" >> "$GITHUB_ENV"
           echo "CREDENTIALS_FILE=$RUNNER_TEMP/load-credentials/credentials.json" >> "$GITHUB_ENV"
+          echo "GATEWAY_CREDENTIALS_FILE=$RUNNER_TEMP/load-credentials/gateway-credentials.json" >> "$GITHUB_ENV"
 
       - name: Start the stack
         run: docker compose --env-file "$LOAD_ENV_FILE" up -d --build
@@ -126,12 +132,25 @@ jobs:
             --credentials-file "$CREDENTIALS_FILE"
           df -h
 
+      # The gateway scenario's pieces: a credential on the fake provider (sealed with the throwaway
+      # keyring that compose.load.yaml gives the api and the worker), a route and a gateway key
+      # without limits. Writes the key to $GATEWAY_CREDENTIALS_FILE (mode 600), prints nothing
+      # secret. The profile does not matter: this needs no spans.
+      - name: Seed the gateway
+        working-directory: backend
+        run: |
+          postgres_password=$(sed -n 's/^POSTGRES_PASSWORD=//p' "$LOAD_ENV_FILE")
+          export LOAD_DATABASE_URL="postgresql+psycopg://postgres:${postgres_password}@127.0.0.1:${LOAD_POSTGRES_PORT}/spanlight"
+          uv run --frozen --no-dev python load/seed_gateway.py \
+            --credentials-file "$GATEWAY_CREDENTIALS_FILE"
+
       # Before any step that could print them.
       - name: Mask the API keys
         run: |
           jq -r '.ingest_key, .read_keys[]' "$CREDENTIALS_FILE" | while IFS= read -r key; do
             echo "::add-mask::$key"
           done
+          echo "::add-mask::$(jq -r '.gateway_key' "$GATEWAY_CREDENTIALS_FILE")"
 
       - name: Record the environment
         run: |
@@ -173,14 +192,17 @@ jobs:
           EOF
 
       # Every script runs even when an earlier one misses its thresholds, so one run records all
-      # three. The step, and with it the job, still ends red if any of them did, or if a script
+      # four. The step, and with it the job, still ends red if any of them did, or if a script
       # did not write its results: when handleSummary throws, k6 prints its default summary and
       # exits 0, so the exit status alone cannot tell. Before each script the database is given up
       # to two minutes to finish the work of the one before (see backend/load/settle.sh).
+      # The gateway script holds its own durations (60 s a scenario in every profile) and ignores
+      # DURATION. k6 cannot compare two thresholds, so the script stores the overhead (gateway p95
+      # minus direct p95) in gateway.json and this step fails the job when it is not under the limit.
       - name: Run the k6 scenarios
         run: |
           status=0
-          for script in overview traces ingest; do
+          for script in overview traces ingest gateway; do
             duration=$READ_DURATION
             if [ "$script" = ingest ]; then duration=$INGEST_DURATION; fi
             bash backend/load/settle.sh
@@ -188,7 +210,10 @@ jobs:
             docker run --rm --network host --user "$(id -u):$(id -g)" \
               -e K6_NO_USAGE_REPORT=true \
               -e BASE_URL="http://localhost:$WEB_PORT" -e DURATION="$duration" \
-              -e CREDENTIALS_FILE=/creds/credentials.json -e RESULTS_DIR=/results \
+              -e FAKE_PROVIDER_URL="http://localhost:$FAKE_PROVIDER_PORT" \
+              -e CREDENTIALS_FILE=/creds/credentials.json \
+              -e GATEWAY_CREDENTIALS_FILE=/creds/gateway-credentials.json \
+              -e RESULTS_DIR=/results \
               -v "$GITHUB_WORKSPACE/backend/load:/load:ro" \
               -v "$(dirname "$CREDENTIALS_FILE"):/creds:ro" \
               -v "$RESULTS_DIR:/results" \
@@ -200,6 +225,11 @@ jobs:
                 status=1
               fi
             done
+            if [ "$script" = gateway ] && [ -s "$RESULTS_DIR/gateway.json" ] \
+              && ! jq -e '.overhead.ok == true' "$RESULTS_DIR/gateway.json" > /dev/null; then
+              echo "::error::the gateway overhead is not under 20 ms; see the table in gateway.md"
+              status=1
+            fi
           done
           exit "$status"
 
@@ -209,7 +239,7 @@ jobs:
         if: always()
         run: |
           status=0
-          for name in environment overview traces ingest; do
+          for name in environment overview traces ingest gateway; do
             if [ -s "$RESULTS_DIR/$name.md" ]; then
               cat "$RESULTS_DIR/$name.md" >> "$GITHUB_STEP_SUMMARY"
               echo >> "$GITHUB_STEP_SUMMARY"

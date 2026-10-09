@@ -40,6 +40,22 @@ class AuditAction(enum.StrEnum):
     USER_TOTP_ENABLE = "user.totp_enable"
     USER_TOTP_DISABLE = "user.totp_disable"
     ORG_UPDATE = "org.update"
+    CREDENTIAL_CREATE = "credential.create"
+    CREDENTIAL_ROTATE = "credential.rotate"
+    CREDENTIAL_DELETE = "credential.delete"
+    GATEWAY_ROUTE_CREATE = "gateway_route.create"
+    GATEWAY_ROUTE_UPDATE = "gateway_route.update"
+    GATEWAY_ROUTE_REVERT = "gateway_route.revert"
+    GATEWAY_ROUTE_DELETE = "gateway_route.delete"
+    GATEWAY_KEY_CREATE = "gateway_key.create"
+    GATEWAY_KEY_UPDATE = "gateway_key.update"
+    GATEWAY_KEY_REVOKE = "gateway_key.revoke"
+    FAULT_PROFILE_CREATE = "fault_profile.create"
+    FAULT_PROFILE_UPDATE = "fault_profile.update"
+    FAULT_PROFILE_DELETE = "fault_profile.delete"
+    PRICE_OVERRIDE_CREATE = "price_override.create"
+    PRICE_OVERRIDE_DELETE = "price_override.delete"
+    GATEWAY_CACHE_PURGE = "gateway_cache.purge"
 
 
 class User(Base):

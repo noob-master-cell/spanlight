@@ -19,6 +19,17 @@ from app.db.models.auth import (
 )
 from app.db.models.base import Base
 from app.db.models.exports import Export, ExportFormat, ExportKind, ExportStatus
+from app.db.models.gateway import (
+    FaultProfile,
+    FaultScenario,
+    GatewayCacheEntry,
+    GatewayKey,
+    GatewayKeyMinute,
+    GatewayRoute,
+    GatewayRouteVersion,
+    ProviderCredential,
+    ProviderKind,
+)
 from app.db.models.identity import (
     AuditAction,
     AuditEvent,
@@ -38,7 +49,7 @@ from app.db.models.platform import (
     RateLimitBucket,
     WorkerHeartbeat,
 )
-from app.db.models.pricing import ModelPrice
+from app.db.models.pricing import ModelPrice, PriceOverride
 from app.db.models.projects import ApiKey, Project
 from app.db.models.rollups import SpanRollupHourly, TraceRollupHourly
 from app.db.models.telemetry import Span, SpanKind, SpanStatus, Trace
@@ -54,6 +65,13 @@ __all__ = [
     "ExportFormat",
     "ExportKind",
     "ExportStatus",
+    "FaultProfile",
+    "FaultScenario",
+    "GatewayCacheEntry",
+    "GatewayKey",
+    "GatewayKeyMinute",
+    "GatewayRoute",
+    "GatewayRouteVersion",
     "IdempotencyKey",
     "Invite",
     "Job",
@@ -67,7 +85,10 @@ __all__ = [
     "OAuthIdentity",
     "Organization",
     "PersonalAccessToken",
+    "PriceOverride",
     "Project",
+    "ProviderCredential",
+    "ProviderKind",
     "RateLimitBucket",
     "RecoveryCode",
     "Session",

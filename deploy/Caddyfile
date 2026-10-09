@@ -11,7 +11,10 @@
 }
 
 :{$PORT:8080} {
-	encode zstd gzip
+	# Not on /gw/*: the gateway hands provider answers through as they came, and a compressing
+	# layer would buffer a stream and change its bytes.
+	@compressible not path /gw/*
+	encode @compressible zstd gzip
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -36,6 +39,26 @@
 	# Everything else, the dashboard included, gets the strict policy.
 	@notApiDocs not path /api/docs /docs /docs/*
 	header @notApiDocs Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+	# The LLM gateway (OpenAI- and Anthropic-compatible, JSON and server-sent events). It runs
+	# inside the api by default; GATEWAY_UPSTREAM points it at a standalone gateway process.
+	# flush_interval -1 sends every chunk on as it arrives, so streamed answers are not held
+	# back, and a body far over the gateway's 10 MiB limit is refused here before it is proxied.
+	# The security headers above still apply; the CSP is moot for JSON and event streams.
+	@gateway path /gw/*
+	handle @gateway {
+		request_body {
+			# A little above the gateway's own 10 MiB limit, so a body just over it reaches the
+			# gateway and gets its provider-shaped 413 instead of Caddy's bare one. Caddy still
+			# stops anything far larger before it is proxied.
+			max_size 11MiB
+		}
+		reverse_proxy {$GATEWAY_UPSTREAM:api:8000} {
+			flush_interval -1
+			# The gateway's per-key and per-organization limits key on this address.
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
 
 	# /metrics stays internal: scrape it on the api service directly (api:8000/metrics).
 	@backend path /api/* /v1/* /health/*

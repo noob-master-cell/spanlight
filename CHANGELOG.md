@@ -2,6 +2,38 @@
 
 All notable changes to Spanlight are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project is pre-1.0, so minor versions may change behaviour; breaking changes are called out.
 
+## [0.3.0] - Unreleased
+
+The LLM gateway and the Integration Lab: point the official OpenAI or Anthropic client at Spanlight with one base URL and every call is traced, priced, limited and, if you configure it, routed, retried, cached and fault-injected.
+
+### Added
+
+- **LLM gateway.** `POST /gw/v1/chat/completions`, `POST /gw/v1/responses`, `POST /gw/v1/messages` and `GET /gw/v1/models` accept OpenAI and Anthropic requests, streaming and tool calls included, and forward the provider's answer unchanged. Errors come back in the provider's own shape with a stable `spanlight_code`. Each call becomes one `llm` span with the gateway's route, target, attempts and overhead, and can join a trace you already started with the `x-spanlight-*` headers.
+- **Provider credentials.** Organization owners store OpenAI, Anthropic and OpenAI-compatible API keys. Keys are encrypted with `CREDENTIALS_KEYS`, never returned, and can be checked, rotated and re-sealed under a new master key with `spanlight reseal-credentials`. The gateway refuses to connect to private, loopback, link-local and other reserved addresses, on every connection, unless `GATEWAY_ALLOW_INSECURE_BASE_URLS` is set for a local model server.
+- **Routes.** Weighted targets, per-target model aliases, retries with backoff and `Retry-After`, fallbacks to the next target, and a time budget for the whole call. Every save is a numbered version with revert, and a stale edit is refused with `409 ROUTE_VERSION_CONFLICT`.
+- **Gateway keys and limits.** Project-scoped `spl_gw_…` keys, accepted as a bearer token or `x-api-key`, with a route, an environment, requests and tokens per minute, an allowed-model list and default tags. `GATEWAY_ORG_RPM_CEILING` caps an organization across its keys.
+- **Response cache.** Opt-in per key with a time to live. Exact match on the surface, route, route version and request body, for non-streaming `200` answers up to 1 MB. `X-Spanlight-Cache` reports `hit`, `miss`, `off` or `bypass`, and a project's cache can be purged.
+- **Budget guard hook.** The gateway asks a budget guard before every provider call and answers `402 BUDGET_EXCEEDED` when it says no. The guard that ships allows every call; budget rules arrive in a later release.
+- **Price overrides.** An organization can set its own per-model prices (`/api/v1/orgs/{org_id}/price-overrides`). They win over the built-in table for spans ingested afterwards, and such spans record `pricing_version` `override:<id>`.
+- **Integration Lab.** Fault profiles inject nine provider failures into non-production keys: expired or denied keys, rate limits, an unsupported parameter, server errors, a cut-off JSON body, a stream that ends early, a slow first byte and a timeout. Faulted calls are marked by `X-Spanlight-Fault`, a `FAULT_<SCENARIO>` code and a `lab:<scenario>` trace tag.
+- **Standalone gateway.** `GATEWAY_MODE=standalone` runs the gateway as its own process (`python -m app.gateway`, same image) behind the `standalone-gateway` Compose profile, so LLM traffic can scale and fail apart from the dashboard API. `disabled` turns it off. There is a new runbook for it.
+- **Demo through the gateway.** The demo project's LLM calls now go through the gateway with the demo project's own key, so the demo exercises the same path as a real application.
+- **Gateway load test.** The k6 load tests gain a scenario that measures the time a call spends in Spanlight against a fake provider, with a target of under 20 ms at p95, and `docs/performance.md` explains the method.
+- **Dashboard screens.** A Gateway section with Overview (traffic, errors, cache hit rate, fallbacks and retries per target), Keys, Routes with a versioned editor, Credentials and Lab. New Prometheus metrics cover gateway requests, overhead, upstream time and attempts; Grafana panels show requests, overhead, attempts, cache hits and spans not recorded.
+- **Documentation.** Gateway guides for the quickstart, routing, the cache, the Lab, credentials and error responses.
+
+### Changed
+
+- **`CREDENTIALS_KEYS` now also protects provider credentials.** Rotate it in two phases and run `spanlight reseal-credentials` before dropping an old key (see the rotate-secrets runbook).
+- **Audit log.** Gateway configuration changes (credentials, routes, keys, fault profiles, cache purges and price overrides) are recorded as audit events.
+
+### Security
+
+- Provider API keys are write-only: they are never returned by the API, written to a log or kept in an `Idempotency-Key` record, and responses that describe a credential carry `Cache-Control: no-store`.
+- Gateway keys are stored as hashes, compared in constant time, and redacted from logs and spans.
+- The gateway never forwards the client's `Authorization`, `x-api-key`, cookies or `x-spanlight-*` headers to a provider, does not follow redirects, and sends no CORS headers.
+- Fault injection cannot run on a key whose environment is `production`, checked when a profile is attached and again on every call.
+
 ## [0.2.0] - Unreleased
 
 Production hardening: accounts and access control, a versioned API, durable background work, backups and exports, observability of Spanlight itself, and documentation.

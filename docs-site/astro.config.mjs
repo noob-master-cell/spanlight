@@ -26,6 +26,21 @@ export default defineConfig({
       expressiveCode: { shiki: { langAlias: { promql: 'txt' } } },
       sidebar: [
         { label: 'Start here', items: ['quickstart', 'python-sdk', 'otlp'] },
+        {
+          label: 'Guides',
+          items: ['guides/accounts', 'guides/access', 'guides/data'],
+        },
+        {
+          label: 'Gateway',
+          items: [
+            'gateway/quickstart',
+            'gateway/routing',
+            'gateway/cache',
+            'gateway/lab',
+            'gateway/credentials',
+            'gateway/errors',
+          ],
+        },
         { label: 'Self-hosting', items: ['self-hosting', 'configuration', 'deploy/railway'] },
         { label: 'API', items: [{ autogenerate: { directory: 'api' } }] },
         { label: 'Security', items: [{ autogenerate: { directory: 'security' } }] },

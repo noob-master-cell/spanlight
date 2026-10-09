@@ -10,6 +10,10 @@ where `cached_rate` falls back to `input_rate` when no cache-read price is known
 Cache *writes* are billed by providers at a premium we do not model; the SDK
 reports them as an attribute only, so they are priced at the input rate here.
 
+An organization's price overrides are loaded next to the seed prices. For the same model the
+longest matching pattern wins whatever its source; between equal patterns an override beats the
+seed row. An override's `version` is `override:<id>`, so a stored cost says which rate made it.
+
 A cost is only produced when the model has a known price at the span's start
 time and both input and output token counts are present. Otherwise it is
 NULL: unknown is never reported as zero.
@@ -20,13 +24,15 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import new_id
-from app.db.models import ModelPrice
+from app.db.models import ModelPrice, PriceOverride
 from app.pricing.prices import EFFECTIVE_FROM, PRICING_VERSION, SEED_PRICES
 
 _PER_MILLION = Decimal(1_000_000)
@@ -38,6 +44,8 @@ _COST_QUANTUM = Decimal("0.00000001")  # numeric(14, 8)
 # Plain prefix matching would wrongly price e.g. `gpt-4.1-nano` as `gpt-4.1`.
 _SNAPSHOT_SUFFIX = re.compile(r"^-(?:\d{8}|\d{4}-\d{2}-\d{2}|latest)$")
 
+OVERRIDE_VERSION_PREFIX = "override:"
+
 
 @dataclass(frozen=True)
 class Price:
@@ -48,6 +56,7 @@ class Price:
     cached_input_per_mtok: Decimal | None
     effective_from: datetime
     version: str
+    source: Literal["seed", "override"] = "seed"
 
     def matches(self, model: str) -> bool:
         if model == self.model_pattern:
@@ -81,7 +90,14 @@ class PriceBook:
         ]
         if not candidates:
             return None
-        return max(candidates, key=lambda price: (len(price.model_pattern), price.effective_from))
+        return max(
+            candidates,
+            key=lambda price: (
+                len(price.model_pattern),
+                price.source == "override",
+                price.effective_from,
+            ),
+        )
 
     def cost(
         self,
@@ -118,9 +134,12 @@ class PriceBook:
         )
 
 
-async def load_price_book(session: AsyncSession) -> PriceBook:
-    rows = (await session.scalars(select(ModelPrice))).all()
-    return PriceBook(
+async def load_price_book(session: AsyncSession, org_id: UUID | None = None) -> PriceBook:
+    """The seed prices, plus the overrides of `org_id` when one is given.
+
+    Two queries per batch: the seed table and the organization's own override rows.
+    """
+    prices = [
         Price(
             provider=row.provider,
             model_pattern=row.model_pattern,
@@ -130,8 +149,26 @@ async def load_price_book(session: AsyncSession) -> PriceBook:
             effective_from=row.effective_from,
             version=row.version,
         )
-        for row in rows
-    )
+        for row in (await session.scalars(select(ModelPrice))).all()
+    ]
+    if org_id is not None:
+        overrides = await session.scalars(
+            select(PriceOverride).where(PriceOverride.org_id == org_id)
+        )
+        prices.extend(
+            Price(
+                provider=row.provider,
+                model_pattern=row.model_pattern,
+                input_per_mtok=row.input_per_mtok,
+                output_per_mtok=row.output_per_mtok,
+                cached_input_per_mtok=row.cached_input_per_mtok,
+                effective_from=row.effective_from,
+                version=f"{OVERRIDE_VERSION_PREFIX}{row.id}",
+                source="override",
+            )
+            for row in overrides
+        )
+    return PriceBook(prices)
 
 
 async def sync_seed_prices(session: AsyncSession) -> int:

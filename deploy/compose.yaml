@@ -18,6 +18,11 @@ x-backend: &backend
     SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
     METRICS_TOKEN: ${METRICS_TOKEN:-}
     CREDENTIALS_KEYS: ${CREDENTIALS_KEYS:-}
+    GATEWAY_MODE: ${GATEWAY_MODE:-}
+    GATEWAY_ALLOW_INSECURE_BASE_URLS: ${GATEWAY_ALLOW_INSECURE_BASE_URLS:-}
+    GATEWAY_ORG_RPM_CEILING: ${GATEWAY_ORG_RPM_CEILING:-}
+    GATEWAY_RECORD_CONCURRENCY: ${GATEWAY_RECORD_CONCURRENCY:-}
+    GATEWAY_RECORD_BACKLOG: ${GATEWAY_RECORD_BACKLOG:-}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     DEMO_MONTHLY_BUDGET_USD: ${DEMO_MONTHLY_BUDGET_USD:-1.00}
     SENTRY_DSN: ${SENTRY_DSN:-}
@@ -109,6 +114,49 @@ services:
     healthcheck:
       disable: true
 
+  # The LLM gateway as its own process, for deployments that scale or isolate it apart from the
+  # dashboard API. Off by default (the api serves /gw/* itself). To use it, set
+  # GATEWAY_MODE=standalone and GATEWAY_UPSTREAM=gateway:8000 in deploy/.env and start the
+  # stack with `--profile standalone-gateway` (or COMPOSE_PROFILES=standalone-gateway).
+  gateway:
+    <<: *backend
+    profiles: ["standalone-gateway"]
+    command: ["python", "-m", "app.gateway"]
+    # Only what the gateway reads: no email, object storage, sign-in provider or demo secrets.
+    environment:
+      DATABASE_URL: postgresql+psycopg://spanlight_app:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@postgres:5432/spanlight
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      CREDENTIALS_KEYS: ${CREDENTIALS_KEYS:-}
+      GATEWAY_MODE: ${GATEWAY_MODE:-}
+      GATEWAY_ALLOW_INSECURE_BASE_URLS: ${GATEWAY_ALLOW_INSECURE_BASE_URLS:-}
+      GATEWAY_ORG_RPM_CEILING: ${GATEWAY_ORG_RPM_CEILING:-}
+      GATEWAY_RECORD_CONCURRENCY: ${GATEWAY_RECORD_CONCURRENCY:-}
+      GATEWAY_RECORD_BACKLOG: ${GATEWAY_RECORD_BACKLOG:-}
+      API_POOL_TIMEOUT_SECONDS: ${API_POOL_TIMEOUT_SECONDS:-}
+      API_STATEMENT_TIMEOUT_SECONDS: ${API_STATEMENT_TIMEOUT_SECONDS:-}
+      RATE_LIMIT_POOL_SIZE: ${RATE_LIMIT_POOL_SIZE:-}
+      RATE_LIMIT_POOL_TIMEOUT_SECONDS: ${RATE_LIMIT_POOL_TIMEOUT_SECONDS:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-true}
+      # The image's own healthcheck and the web service's default upstream expect port 8000.
+      PORT: "8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   web:
     build:
       context: ..
@@ -117,6 +165,7 @@ services:
     restart: unless-stopped
     environment:
       API_UPSTREAM: api:8000
+      GATEWAY_UPSTREAM: ${GATEWAY_UPSTREAM:-api:8000}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
     ports:
       - "${WEB_PORT:-8080}:8080"

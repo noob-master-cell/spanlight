@@ -223,8 +223,22 @@ original design; everything else is a clarification.
 
 ## Worker / demo
 
-- **Deviation (directed by the coordinator):** the demo job writes spans by calling the ingestion
-  pipeline function directly instead of going through the Python SDK and the HTTP API.
+- **The demo job's LLM calls go through the gateway, in process.** It calls `execute` directly (no
+  HTTP hop) with the demo project's own gateway key `demo` (environment `demo`, default tag `demo`),
+  so its `llm` spans carry `spanlight.gateway.key_id` like any keyed call. That key has no rate
+  limits, cache TTL or fault profile, and the in-process call checks no limits; its route `demo`
+  sends every call once to the credential `demo-anthropic` (one attempt, no fallback, 20 s). The job
+  creates all three on first run and seals `ANTHROPIC_API_KEY` into the credential, sealing it again
+  (a `credential.rotate`) only when the configured key differs from the stored one. Those audit
+  events have no actor. The root `chain` span and the `faq-lookup` retrieval span are still written
+  by calling the ingestion pipeline function, into the same trace; the gateway spans are named
+  `messages <model>`, as every gateway span is.
+- The demo job skips (`skipped_not_configured`, reason "credentials key not configured") without
+  `CREDENTIALS_KEYS`, as it does without `ANTHROPIC_API_KEY`. An existing `demo` route and key are
+  reused as they are, so before any provider call the job checks them: one attempt, no fallback,
+  a single target on `demo-anthropic`, the key on that route, no cache TTL and no fault profile.
+  Anything else skips the run (`skipped_not_configured`, reason "demo gateway configuration
+  changed") without calling the provider.
 - The demo job also skips (with a warning) if any billed demo LLM call this month is unpriced, since
   the budget could not be enforced. It runs at most one attempt per period (no paid retries).
 - `cleanup_sessions` also prunes login attempts and throttle events older than a day, email tokens that
@@ -250,6 +264,32 @@ card and the trace list. Computed with a correlated subquery on the spans primar
   counts and a NULL cost: the model matched no price at ingestion. Spans missing a model or a
   token count are NULL-cost for another reason and are not listed, so the list can be shorter
   than the overview's `unpriced_calls`. Most-called first, at most 100 models.
+
+## Price overrides (added 2026-10-09)
+
+An organization can set its own rates for a model. The routes are under
+`/api/v1/orgs/{org_id}/price-overrides`: `GET` (`org:read`) lists them ordered by provider,
+`model_pattern` and `effective_from`, `POST` (`gateway:write`, owners and admins) adds one and
+returns 201, `DELETE /{override_id}` returns 204. Non-members get 404, and so does an override of
+another organization.
+
+- Body: `provider`, `model_pattern`, `input_per_mtok`, `output_per_mtok`, optional
+  `cached_input_per_mtok` (USD per million tokens, not negative, below 1,000,000, at most six
+  decimals) and optional `effective_from` (defaults to now; a time without an offset is UTC).
+  `provider` and `model_pattern` are trimmed and stored lower-case, as in the price table.
+- The same provider, pattern and `effective_from` twice in one organization is
+  `409 PRICE_OVERRIDE_EXISTS`.
+- Matching follows the seed prices: a pattern matches a model exactly or with a snapshot suffix
+  (`-YYYYMMDD`, `-YYYY-MM-DD`, `-latest`), never by prefix. The longest matching pattern wins
+  whatever its source; for equal patterns an override beats the seed row. An override applies to a
+  span whose start time is at or after its `effective_from`.
+- A span priced by an override stores `pricing_version` `override:<id>`. Spans already stored keep
+  the cost they were priced with; adding or deleting an override affects spans ingested afterwards.
+  Replaying a span (sending the same span id again through native ingestion) re-prices it with the
+  overrides in force at replay time. A span the gateway recorded is never replayed over (see Span
+  attribution under Gateway keys), so its cost stays as the gateway priced it.
+- Audit events `price_override.create` and `price_override.delete` have target type
+  `price_override` and the provider and pattern in their metadata.
 
 ## Email verification (added 2026-10-08)
 
@@ -802,3 +842,170 @@ the OpenAPI document; on any other route the header is ignored.
   `metadata` as JSON), newest first, under the same formula protection. More than 50 000 matching events are
   `422 EXPORT_TOO_LARGE`, answered before anything is sent; narrow the filters. Like the other audit routes it
   needs `audit:read`.
+
+## Provider credentials (added 2026-10-09)
+
+- **Routes.** `GET /api/v1/orgs/{id}/credentials` needs `org:read` (any member). Adding (`POST`), rotating
+  (`POST .../{credential_id}/rotate`), checking (`POST .../{credential_id}/check`) and deleting (`DELETE
+  .../{credential_id}`) need `credentials:manage`, which only owners hold; an admin is `403`, a non-member `404`.
+  The check calls the provider with the organization's key, so it is an owner action too.
+- **The key is write-only.** `api_key` is accepted in the create and rotate bodies, trimmed of surrounding
+  whitespace, and never returned. Responses that describe a credential carry `Cache-Control: no-store`. The routes
+  take no `Idempotency-Key`, so that no copy of a request body with a key in it is kept anywhere.
+- **Base URL.** `base_url` is required for `openai_compatible` and refused for `openai` and `anthropic` (`422`,
+  field `base_url`). It must be `https://`, without a user name, password, query or fragment, and its host must
+  resolve to public addresses only; trailing slashes are removed. Any failure is `422 VALIDATION_ERROR` with
+  `errors[].field` `base_url`, including a host that does not resolve. With `GATEWAY_ALLOW_INSECURE_BASE_URLS=true`
+  `http://` and private addresses are accepted. Rotating re-checks the stored base URL against the current policy.
+- **Errors.** `409 NOT_CONFIGURED` when `CREDENTIALS_KEYS` is not set (create, rotate and check); `409
+  CREDENTIAL_NAME_TAKEN` for a name already used in the organization (names are compared exactly, after trimming);
+  `409 CREDENTIAL_IN_USE` when deleting a credential that a gateway route targets.
+- **Check.** `POST .../check` lists the provider's models with the key (`GET /v1/models`) without following
+  redirects, with a 10 second timeout. It answers `200` either way: `{"status": "ok", "checked_at", "error": null}`
+  or `{"status": "error", "checked_at", "error": "401 Unauthorized"}`. `error` is a short status line (the HTTP
+  status and its standard phrase, `timeout`, `connection error`, `host not found`, `blocked address` or `key
+  cannot be decrypted`), never the provider's response body. The outcome is stored as `last_checked_at` and
+  `last_error`; both are `null` for a credential never checked. Rotating clears them, since they described the old
+  key. `last_used_at` is `null` until the gateway uses the credential, then moves at most once a minute, like a
+  key's. A call uses the credential of every attempt it sent upstream; an attempt refused by the egress rules sent
+  nothing and does not count.
+- **In use.** Only a route's current config counts when deleting a credential. An older version may still name a
+  deleted credential; reverting to it is then `422` on `config.targets.<i>.credential_id`.
+
+## Gateway routes (added 2026-10-09)
+
+- **Routes.** Under `/api/v1/projects/{id}/gateway/routes`: `GET` (list, by name, unpaginated), `GET /{route_id}`
+  and `GET /{route_id}/versions` (newest first, unpaginated) need `project:read`; `POST`, `PUT /{route_id}`, `POST
+  /{route_id}/revert`, `POST /{route_id}/default` and `DELETE /{route_id}` need `gateway:write` (owners and
+  admins).
+- **Config.** Unknown fields anywhere in `config` are `422`. Counts and times are strict integers: `true` or `2.0`
+  is refused. `retry` and `fallback` are required objects, but every field inside them has a default, so `{}`
+  takes the defaults. `max_backoff_ms` must be at least `backoff_ms` even when it is left at its default, so
+  `{"backoff_ms": 5000}` alone is `422`. Every field path is relative to the request body: schema errors and the
+  organization check on credentials alike (`config.targets.<i>.credential_id`; the spec writes it relative to
+  the config, `targets.<i>.credential_id`). A revert, whose body has no config, reports the same `config.` paths
+  for the saved config it would restore.
+- **Reading stored configs.** Responses return a stored config as it was saved, without applying today's bounds
+  again, so a rule tightened later never makes a route unreadable; saving it again (a revert) meets the new rules.
+- **Versions.** Creating a route stores version 1; each `PUT` and each revert stores the next version, so the
+  history is never rewritten. `PUT` carries `expected_version`; when the route has moved on it is `409
+  ROUTE_VERSION_CONFLICT`, and the problem body carries the current version as an extension member,
+  `current_version`, as well as naming it in `detail`. A revert to a version the route never had is
+  `404`; a revert whose old config no longer validates (a credential deleted since, or a tightened rule) is `422`.
+- **Default.** The project's first route becomes its default. `POST .../default` moves the default and is not a
+  new version: `version`, `updated_by` and `updated_at` describe the last config save. It is audited as
+  `gateway_route.update` with `{"is_default": true}`. Deleting the default route leaves the project with no
+  default until another route is made default.
+- **Errors.** `409 ROUTE_NAME_TAKEN` for a name already used in the project (compared exactly, after trimming);
+  `409 ROUTE_IN_USE` when deleting a route a gateway key uses.
+- **Revoked keys.** Only an active gateway key makes a route in use. Deleting a route clears it from the revoked
+  keys that still name it, so their `route_id` reads `null` from then on.
+
+## Gateway keys (added 2026-10-09)
+
+- **Routes.** Under `/api/v1/projects/{id}/gateway/keys`: `GET` (list, newest first, revoked keys included,
+  unpaginated) needs `project:read`; `POST`, `PATCH /{key_id}` and `DELETE /{key_id}` need `gateway:write` (owners
+  and admins).
+- **The key is shown once.** The `POST` response is the only one with `secret`, the full `spl_gw_…` key, and it
+  carries `Cache-Control: no-store`. Every other response shows `prefix` (`spl_gw_` and the key's 12 character id),
+  which is not secret.
+- **Fields.** `name` 1–100 characters and `environment` 1–64, both trimmed; `rpm_limit` 1–100 000 and `tpm_limit`
+  1–100 000 000, `null` for no limit; `cache_ttl_seconds` 1–86 400, `null` for no cache; `allowed_models` at most
+  100 model names, empty for any model; `default_tags` at most 20 tags of 1–64 characters, the bounds of
+  `x-spanlight-tags`. Numbers are strict integers; repeated models or tags are `422`. `fault_profile_id` is the
+  fault profile the key runs (see Gateway Lab below), `null` for none.
+- **Bounds differ from the plan.** `allowed_models` holds at most 100 names and `default_tags` at most 20 tags;
+  the plan said 64 and 10. The backend's values stand: 20 tags is also the bound of `x-spanlight-tags`, which
+  default tags are merged into.
+- **Route.** Without `route_id` a new key uses the project's default route, and the request is `422
+  NO_DEFAULT_ROUTE` when the project has none. A `route_id` that is not one of the project's routes is `422
+  VALIDATION_ERROR` on `route_id`. The key keeps its route when the default moves later.
+- **Edits.** `PATCH` changes only the fields sent. `rpm_limit`, `tpm_limit` and `cache_ttl_seconds` are cleared by
+  sending `null`, and so is `fault_profile_id` (detach); `null` for any other field is `422`. An edit that changes
+  nothing is not audited. A revoked key cannot be edited (`404`).
+- **Revoking.** `DELETE` revokes the key (`204`); revoking a revoked key is a `204` that changes nothing. The key
+  stays listed with `revoked_at` set, so the spans sent with it keep their attribution.
+- **On `/api/v1`.** A gateway key authenticates the gateway only. Sent as a bearer to an `/api/v1` route it is an
+  unknown credential: `401 UNAUTHORIZED`, like any credential that is not a project API key or an access token.
+- **Span attribution.** Spans written by the gateway record the key in `spans.source_key_id`. Native and OTLP
+  ingestion leave it `null`: a project API key is not a gateway key. A span the gateway recorded belongs to the
+  gateway: native or OTLP ingestion of a span with the same trace and span id is accepted (counted in `accepted`,
+  so a replay stays idempotent) but never overwrites it, so its cost, tokens and key cannot be rewritten from an
+  SDK.
+
+## Gateway cache (added 2026-10-09)
+
+- **Cache key covers the route.** The key is the SHA-256 of the surface, the route id, the route's saved version and the canonical body, not the surface and body alone as the design listed. Routes carry the model aliases and credentials that decide which model answers, so two routes never share an answer, and saving or reverting a route (a new version) leaves its earlier entries unreachable until they expire. Entries stay scoped by project as well.
+- **Answers without usage are not stored.** A `200` whose body reports no token usage (some OpenAI-compatible servers omit it) is never cached: a hit must report the original usage of the answer it replays. Such calls always reach the provider.
+- **Purge.** `POST /api/v1/projects/{id}/gateway/cache/purge` (`gateway:write`, owners and admins) answers `204` and deletes every cache entry of the project, expired or not. Purging an empty cache succeeds. The audit event `gateway_cache.purge` targets the project and records `{"deleted": n}`.
+
+## Gateway Lab: fault profiles (added 2026-10-09)
+
+- **Routes.** Under `/api/v1/projects/{id}/gateway/fault-profiles`: `GET` (by name, unpaginated) needs
+  `project:read`; `POST`, `PATCH /{profile_id}` and `DELETE /{profile_id}` need `gateway:write`. Audit events
+  `fault_profile.create|update|delete` target the profile.
+- **Fields.** `name` 1–100 characters, trimmed, unique per project (`409 FAULT_PROFILE_NAME_TAKEN`); `scenario` one of
+  the nine of the design; `probability` a JSON number from 0 to 1 with at most three decimals (default 1, a float in
+  the response); `enabled` (default `true`); `expires_at` optional, timezone-aware, `422` on `expires_at` when it is
+  not in the future (an unchanged `expires_at` echoed back in a `PATCH` is not re-checked); `null` removes it.
+- **Params.** Validated per scenario with the design's bounds; omitted `params` are the scenario's defaults, and the
+  response always shows every param. A param that does not belong to the scenario, or a value out of bounds, is `422`
+  on `params.<name>`. In a `PATCH`, `params` must be sent with `scenario` (`422` on `params` otherwise), and a
+  different `scenario` sent without `params` resets them to that scenario's defaults.
+- **Output.** `active` is `enabled` and not expired at the time of the request; `attached_key_ids` lists the active
+  (not revoked) keys that run the profile, newest first.
+- **Production guard.** Attaching a profile (`PATCH` of a key with `fault_profile_id`) to a key whose `environment`
+  is `production`, or setting `environment` to `production` on a key that has a profile, is
+  `422 FAULT_PROFILE_ON_PRODUCTION_KEY`. A `fault_profile_id` that is not a profile of the project is `422` on
+  `fault_profile_id`. The check runs under the key's row lock.
+- **Production means any casing.** The guard compares `environment` trimmed and case-insensitively, so
+  `Production`, ` PRODUCTION ` and `production` all count as production, at attach time and again when the gateway
+  decides a fault.
+- **Reads are lenient.** Stored params are loaded without validation, so a bound tightened later never fails a `GET`;
+  a `PATCH` or `POST` meets the current bounds.
+- **Delete.** Deleting a profile is `204`; the keys that ran it are detached by the database (`ON DELETE SET NULL`
+  on the profile column), and the audit event lists their ids.
+
+## Gateway overview (added 2026-10-09)
+
+- **Route.** `GET /api/v1/projects/{id}/gateway/overview?from&to&environment` (`project:read`). The window is at most 7 days, else `422 VALIDATION_ERROR` on field `from`. It is always read from the raw spans of gateway keys (spans with `source_key_id`), never the hourly rollups.
+- **Cache hit rate.** `cache.hit_rate` is `hits / (hits + misses)`, not hits over all requests as the plan's example had it. Calls of keys with the cache off and streams never look in the cache, so they are not in the denominator; when `hits + misses` is zero the rate is `null` (the UI shows "—"), so a project without caching does not read as 0 %.
+- **Errors include Lab faults.** `errors` and `error_rate` count calls failed by a Lab fault; `faults` lists the per-scenario counts so a client can show how many.
+- **Fallbacks and retries are event counts.** `fallbacks` sums the switches to another target and `retries` the repeated tries on one target, over all requests. A request with two fallbacks adds 2.
+- **Targets.** `by_target` groups by the credential name recorded on the span and finds the credential id by organization and name (names are unique and cannot change). `credential_id` is `null` once the credential was deleted. Calls that never chose a target (blocked by a budget, rejected before routing) count in the totals but appear in no target.
+- **Unknown values.** A ratio is `null` when its denominator is zero, `cost_usd` is `null` when no call of the key was priced, and a latency is `null` when no call measured it.
+
+## Gateway HTTP layer: `/gw/` (added 2026-10-09)
+
+Every error under `/gw/` uses the provider envelope of the path (OpenAI, or Anthropic for `/messages` and for `/models` with `anthropic-version`), with `X-Request-ID` and `X-Spanlight-Code`, never problem+json. The design's error table covers the gateway's own checks; these cover the HTTP layer around them.
+
+- **Unknown path.** `404`, `spanlight_code: "NOT_FOUND"`, message `Invalid URL (<METHOD> <path>).` with the path cut to 200 characters. OpenAI type `invalid_request_error`, Anthropic type `not_found_error`.
+- **Wrong method.** `405`, `spanlight_code: "METHOD_NOT_ALLOWED"`, with an `Allow` header. Type `invalid_request_error` in both envelopes.
+- **Database too busy.** A pool timeout or a statement timeout while the key is checked is `503`, `spanlight_code: "SERVICE_UNAVAILABLE"`, with `Retry-After: 5`. OpenAI type `server_error`, Anthropic type `overloaded_error`. Both SDKs retry it.
+- **Other HTTP statuses.** Any other status the framework raises is rendered with `spanlight_code: "ERROR"` (type `invalid_request_error` below 500, `server_error` / `api_error` from 500). A dashboard `ProblemError` raised under `/gw/` keeps its own code as the `spanlight_code`. An unexpected exception is `500 INTERNAL_ERROR` with the request id in the message.
+- **`Retry-After`.** Whole seconds, rounded up, at least 1.
+- **`/models`.** No `X-Spanlight-Cache` header: listing models is never cached and is not a model call. A passed-through answer carries `X-Spanlight-Attempts: 1`.
+- **Compressed bodies.** A request body may be sent with `Content-Encoding: gzip` or `deflate`; the 10 MB limit applies to the decompressed size as well (`413 PAYLOAD_TOO_LARGE`). Another encoding, or a body that does not decompress, is `400 INVALID_REQUEST` with `param: null`.
+- **Streams.** Streamed answers add `Cache-Control: no-cache` and `X-Accel-Buffering: no`, so no cache keeps them and no proxy buffers them. A `truncated_stream` fault ends the response with a clean end of stream after the last forwarded frame (the connection is not aborted); the stream lacks its final event (`[DONE]` or `message_stop`).
+- **Usage chunk the client did not ask for.** A streaming chat completion without `stream_options` is sent upstream
+  with `stream_options.include_usage: true`, so its span has tokens and a cost. OpenAI then ends the stream with a
+  chunk whose `choices` is empty and which carries `usage`. The gateway reads that chunk for the span and does not
+  forward it, so the client gets the stream it asked for (code that reads `chunk.choices[0]` keeps working). A
+  client that sets `stream_options` itself, with or without `include_usage`, gets the stream unchanged.
+- **Provider answers over 10 MB.** A non-streaming provider answer longer than 10 MB ends the attempt with `502
+  UPSTREAM_UNREACHABLE` (message: the answer exceeds the gateway's 10 MB limit), never retried or fallen back from.
+- **Non-strict JSON.** A request body with `NaN` or an infinite number is `400 INVALID_REQUEST` (`param: null`),
+  with no upstream attempt: it cannot be sent as strict JSON.
+- **`NO_COMPATIBLE_TARGET` names the surface.** The message names the surface (`chat_completions`, `responses`,
+  `messages` or `models`), not the request path: `Route 'support' has no target that serves messages.`
+- **Rate limiter fails open.** When the gateway's rate-limit buckets cannot be read (their pool is exhausted or the
+  database refuses), the call is let through rather than refused, as for the dashboard's limiters; the failure is
+  logged and counted in the rate-limit metrics.
+- **Overhead counts from authentication.** `spanlight.gateway.overhead_ms`, the overhead metric and the span's
+  start time count from when the gateway started checking the key, so authentication, limits and reading the body
+  are part of the overhead. `time_to_first_token_ms` counts from the same moment. The route's `timeout_ms` budget
+  still starts when the call is routed.
+- **Spans can be lost under overload.** The gateway writes spans after the answer, with at most
+  `GATEWAY_RECORD_BACKLOG` waiting. A span past that backlog is dropped and counted as
+  `spanlight_gateway_record_failures_total{reason="overflow"}`; the client's answer is not affected.
+- **No CORS.** `/gw/` sends no CORS headers and answers a preflight `OPTIONS` with `405`, so browsers cannot call the gateway from another origin. On purpose: a gateway key is a server-side secret and does not belong in a browser.

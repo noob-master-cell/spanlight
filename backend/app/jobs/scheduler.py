@@ -25,6 +25,8 @@ class PeriodicJob:
 
 RETENTION = PeriodicJob("retention", timedelta(hours=1))
 CLEANUP_SESSIONS = PeriodicJob("cleanup_sessions", timedelta(hours=1))
+# Deletes expired gateway cache entries and old per-key minute counters.
+PRUNE_GATEWAY_CACHE = PeriodicJob("prune_gateway_cache", timedelta(hours=1))
 # Sends every due notification; the outbox does its own per-row retries.
 DELIVER_NOTIFICATIONS = PeriodicJob("deliver_notifications", timedelta(seconds=30))
 # Rebuilds the last 48 hours of rollups; a run that fails is simply replaced by the next one.
@@ -53,7 +55,14 @@ def period_key(job: PeriodicJob, now: datetime) -> str:
 
 
 def periodic_jobs(settings: Settings) -> list[PeriodicJob]:
-    jobs = [RETENTION, CLEANUP_SESSIONS, DELIVER_NOTIFICATIONS, ROLLUP_HOURLY, BACKUP_DATABASE]
+    jobs = [
+        RETENTION,
+        CLEANUP_SESSIONS,
+        PRUNE_GATEWAY_CACHE,
+        DELIVER_NOTIFICATIONS,
+        ROLLUP_HOURLY,
+        BACKUP_DATABASE,
+    ]
     if settings.is_demo_enabled:
         jobs.append(DEMO_TRAFFIC)
     return jobs

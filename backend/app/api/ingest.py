@@ -4,8 +4,6 @@ Authenticated with a project API key (`Authorization: Bearer spl_live_…`) that
 `ingest:write` scope, rate limited per key, and bounded in body size and span count.
 """
 
-import gzip
-import zlib
 from typing import Annotated, Any
 
 import structlog
@@ -15,6 +13,7 @@ from sqlalchemy import select
 
 from app.api.deps import DbSession, require_key_scope
 from app.api.principals import ApiKeyPrincipal
+from app.core.body import BodyTooLarge, UndecodableBody, UnsupportedEncoding, read_bounded_body
 from app.core.errors import ProblemError, unauthorized
 from app.core.observability import INGESTED_SPANS, REJECTED_SPANS
 from app.core.ratelimit import INGEST_LIMITER, enforce_rate_limit
@@ -69,45 +68,20 @@ def _payload_too_large() -> ProblemError:
     )
 
 
-async def read_bounded_body(request: Request) -> bytes:
-    """Read the body, refusing (413) to buffer more than MAX_BODY_BYTES.
-
-    Gzip/deflate bodies are decompressed with the same bound applied to the
-    decompressed size, which defuses decompression bombs.
-    """
-    declared = request.headers.get("content-length")
-    if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
-        raise _payload_too_large()
-
-    chunks: list[bytes] = []
-    received = 0
-    async for chunk in request.stream():
-        received += len(chunk)
-        if received > MAX_BODY_BYTES:
-            raise _payload_too_large()
-        chunks.append(chunk)
-    body = b"".join(chunks)
-
-    encoding = request.headers.get("content-encoding", "identity").lower()
-    if encoding in {"", "identity"}:
-        return body
-    if encoding in {"gzip", "deflate"}:
-        return _decompress(body, gzip_wrapped=encoding == "gzip")
-    raise ProblemError(415, "UNSUPPORTED_MEDIA_TYPE", f"Unsupported content-encoding {encoding!r}.")
-
-
-def _decompress(body: bytes, *, gzip_wrapped: bool) -> bytes:
-    window_bits = 16 + zlib.MAX_WBITS if gzip_wrapped else zlib.MAX_WBITS
-    decompressor = zlib.decompressobj(window_bits)
+async def _read_body(request: Request) -> bytes:
+    """The body (decompressed), at most MAX_BODY_BYTES, with failures as problem+json."""
     try:
-        output = decompressor.decompress(body, MAX_BODY_BYTES + 1)
-    except (zlib.error, gzip.BadGzipFile) as exc:
+        return await read_bounded_body(request, MAX_BODY_BYTES)
+    except BodyTooLarge as exc:
+        raise _payload_too_large() from exc
+    except UnsupportedEncoding as exc:
+        raise ProblemError(
+            415, "UNSUPPORTED_MEDIA_TYPE", f"Unsupported content-encoding {exc.encoding!r}."
+        ) from exc
+    except UndecodableBody as exc:
         raise ProblemError(
             400, "BAD_REQUEST", "The request body could not be decompressed."
         ) from exc
-    if len(output) > MAX_BODY_BYTES or decompressor.unconsumed_tail:
-        raise _payload_too_large()
-    return output
 
 
 def _check_span_count(count: int) -> None:
@@ -129,12 +103,16 @@ def _parse_json(body: bytes) -> Any:
 async def _store(
     db: DbSession, key: ApiKeyPrincipal, raw_spans: list[Any], source: str
 ) -> IngestOutcome:
-    capture_payloads = await db.scalar(
-        select(Project.capture_payloads).where(Project.id == key.project_id)
-    )
-    if capture_payloads is None:  # the project was deleted after the key was checked
+    project = (
+        await db.execute(
+            select(Project.capture_payloads, Project.org_id).where(Project.id == key.project_id)
+        )
+    ).one_or_none()
+    if project is None:  # the project was deleted after the key was checked
         raise unauthorized("Missing, invalid or revoked API key.")
-    target = IngestTarget(project_id=key.project_id, capture_payloads=capture_payloads)
+    target = IngestTarget(
+        project_id=key.project_id, capture_payloads=project.capture_payloads, org_id=project.org_id
+    )
     try:
         outcome = await ingest_spans(db, target, raw_spans)
     except ProjectGoneError:  # deleted while this request waited for the project's lock
@@ -155,7 +133,7 @@ async def _store(
 
 @router.post("/v1/traces", response_model=IngestResponse)
 async def ingest_native(request: Request, key: AuthenticatedKey, db: DbSession) -> IngestResponse:
-    document = _parse_json(await read_bounded_body(request))
+    document = _parse_json(await _read_body(request))
     try:
         batch = IngestBatchIn.model_validate(document)
     except ValueError as exc:
@@ -171,7 +149,7 @@ async def ingest_native(request: Request, key: AuthenticatedKey, db: DbSession) 
 @router.post("/v1/otlp/traces")
 async def ingest_otlp(request: Request, key: AuthenticatedKey, db: DbSession) -> Response:
     content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
-    body = await read_bounded_body(request)
+    body = await _read_body(request)
 
     try:
         if content_type == PROTOBUF_CONTENT_TYPE:

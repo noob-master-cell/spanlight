@@ -29,6 +29,24 @@ from app.api.schemas.auth import (
     TotpVerifyIn,
 )
 from app.api.schemas.common import ApiModel, Money, Name, Page, UserOut
+from app.api.schemas.gateway import (
+    CredentialCheckOut,
+    CredentialCreate,
+    CredentialOut,
+    CredentialRotateIn,
+    FaultProfileCreate,
+    FaultProfileOut,
+    FaultProfileUpdate,
+    GatewayKeyCreate,
+    GatewayKeyCreatedOut,
+    GatewayKeyOut,
+    GatewayKeyUpdate,
+    RouteCreateIn,
+    RouteOut,
+    RouteRevertIn,
+    RouteUpdateIn,
+    RouteVersionOut,
+)
 from app.api.schemas.keys import ApiKeyCreatedOut, ApiKeyCreateIn, ApiKeyOut
 from app.api.schemas.metrics import KpisOut, ModelMetricsOut, OverviewOut, TimeseriesPointOut
 from app.api.schemas.orgs import (
@@ -47,7 +65,12 @@ from app.api.schemas.orgs import (
     OrgUpdateIn,
     OrgWithRoleOut,
 )
-from app.api.schemas.prices import PriceOut, UnpricedModelOut
+from app.api.schemas.prices import (
+    PriceOut,
+    PriceOverrideCreate,
+    PriceOverrideOut,
+    UnpricedModelOut,
+)
 from app.api.schemas.projects import (
     OnboardingOut,
     ProjectCreateIn,
@@ -75,8 +98,19 @@ __all__ = [
     "ApiKeyOut",
     "ApiModel",
     "AuditEventOut",
+    "CredentialCheckOut",
+    "CredentialCreate",
+    "CredentialOut",
+    "CredentialRotateIn",
     "EmailVerifyConfirmIn",
+    "FaultProfileCreate",
+    "FaultProfileOut",
+    "FaultProfileUpdate",
     "FiltersOut",
+    "GatewayKeyCreate",
+    "GatewayKeyCreatedOut",
+    "GatewayKeyOut",
+    "GatewayKeyUpdate",
     "InviteAcceptIn",
     "InviteCreateIn",
     "InviteCreatedOut",
@@ -111,10 +145,17 @@ __all__ = [
     "PersonalAccessTokenCreatedOut",
     "PersonalAccessTokenOut",
     "PriceOut",
+    "PriceOverrideCreate",
+    "PriceOverrideOut",
     "ProjectCreateIn",
     "ProjectDeleteIn",
     "ProjectOut",
     "ProjectUpdateIn",
+    "RouteCreateIn",
+    "RouteOut",
+    "RouteRevertIn",
+    "RouteUpdateIn",
+    "RouteVersionOut",
     "SessionOut",
     "SessionSummaryOut",
     "SignupIn",

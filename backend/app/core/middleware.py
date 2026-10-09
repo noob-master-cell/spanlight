@@ -14,6 +14,7 @@ from app.core.request_context import set_request_id
 from app.core.security import is_bearer
 
 REQUEST_ID_HEADER = "x-request-id"
+_REQUEST_ID_HEADER_BYTES = REQUEST_ID_HEADER.encode()
 _VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
@@ -77,7 +78,10 @@ class RequestContextMiddleware:
             if message["type"] == "http.response.start":
                 status_code = message["status"]
                 headers = list(message.get("headers", []))
-                headers.append((REQUEST_ID_HEADER.encode(), request_id.encode()))
+                # The gateway sets the same id itself (it is in its error bodies too); a second
+                # copy would read as "id, id" to clients that join repeated headers.
+                if not any(name.lower() == _REQUEST_ID_HEADER_BYTES for name, _ in headers):
+                    headers.append((_REQUEST_ID_HEADER_BYTES, request_id.encode()))
                 message["headers"] = headers
             await send(message)
 

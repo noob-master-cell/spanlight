@@ -179,10 +179,11 @@ async def _worker(
 async def store_spans(
     session_factory: async_sessionmaker[AsyncSession],
     project_id: uuid.UUID,
+    org_id: uuid.UUID,
     options: Options,
     now: datetime,
 ) -> None:
-    target = IngestTarget(project_id=project_id, capture_payloads=True)
+    target = IngestTarget(project_id=project_id, capture_payloads=True, org_id=org_id)
     progress = Progress(
         total=options.spans, started=time.monotonic(), max_minutes=options.max_minutes
     )
@@ -268,7 +269,7 @@ async def run(options: Options, database_url: str) -> None:
     try:
         workspace = await create_workspace(session_factory)
         say(f"project {workspace.project_id} created; storing {options.spans:,} spans")
-        await store_spans(session_factory, workspace.project_id, options, now)
+        await store_spans(session_factory, workspace.project_id, workspace.org_id, options, now)
         await build_rollups(session_factory, workspace.project_id, now)
         await vacuum_analyze(engine)
         await verify_and_report(engine, workspace.project_id, options.spans)

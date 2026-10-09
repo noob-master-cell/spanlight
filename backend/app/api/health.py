@@ -46,8 +46,9 @@ async def ready(request: Request, settings: SettingsDep) -> JSONResponse:
             heartbeat_age is None or heartbeat_age > WORKER_HEARTBEAT_MAX_AGE_SECONDS
         )
         healthy = healthy and not worker_stale and background.overdue <= OUTBOX_STALLED_LIMIT
-    # Numbers only: this endpoint is unauthenticated. `outbox_backlog` stops counting at
-    # OUTBOX_BACKLOG_CAP, so a runaway backlog cannot make the probe slow.
+    # Numbers and fixed words only: this endpoint is unauthenticated. `outbox_backlog` stops
+    # counting at OUTBOX_BACKLOG_CAP, so a runaway backlog cannot make the probe slow.
+    # `gateway_mode` says where /gw/* is served from (embedded, standalone or disabled).
     return JSONResponse(
         {
             "status": "ok" if healthy else "unavailable",
@@ -55,6 +56,7 @@ async def ready(request: Request, settings: SettingsDep) -> JSONResponse:
             "migrations": migrations,
             "worker_heartbeat_age_s": heartbeat_age,
             "outbox_backlog": outbox_backlog,
+            "gateway_mode": settings.gateway_mode,
         },
         status_code=200 if healthy else 503,
     )
