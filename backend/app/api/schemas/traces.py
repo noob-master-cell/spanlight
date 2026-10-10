@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from app.api.schemas.common import Money
 from app.db.models import SpanKind, SpanStatus
+from app.ingest.error_class import ErrorClass
 
 
 class TraceSummaryOut(BaseModel):
@@ -29,6 +30,8 @@ class TraceSummaryOut(BaseModel):
     models: list[str]
     error_message: str | None
     """Earliest failed span's status message; null if nothing failed or no message was sent."""
+    error_class: ErrorClass | None
+    """The same span's error class; null if nothing failed or it failed before classification."""
 
 
 class SpanOut(BaseModel):
@@ -38,6 +41,7 @@ class SpanOut(BaseModel):
     name: str
     status: SpanStatus
     status_message: str | None
+    error_class: ErrorClass | None
     started_at: datetime
     ended_at: datetime
     duration_ms: float
@@ -53,6 +57,9 @@ class SpanOut(BaseModel):
     output: Any
     attributes: dict[str, Any]
     truncated: bool
+    finish_reason: str | None
+    """Canonical: `stop`, `length`, `tool_calls`, `content_filter` or `other`; the raw value is
+    the `finish_reason` attribute (or the provider's own attribute)."""
 
 
 class TraceDetailOut(TraceSummaryOut):

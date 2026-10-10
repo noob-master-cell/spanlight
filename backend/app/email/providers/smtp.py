@@ -15,6 +15,8 @@ from pydantic import SecretStr
 from app.email.message import EmailDeliveryError, EmailMessage
 
 TIMEOUT_SECONDS = 10.0
+# The SMTPS port: the connection is TLS from the start instead of upgraded with STARTTLS.
+IMPLICIT_TLS_PORT = 465
 
 
 class SmtpEmailSender:
@@ -63,8 +65,8 @@ class SmtpEmailSender:
         return mime, mailboxes[0]
 
     def _submit(self, mime: MimeMessage, recipient: str) -> None:
-        with smtplib.SMTP(self._host, self._port, timeout=TIMEOUT_SECONDS) as connection:
-            if self._starttls:
+        with self._connect() as connection:
+            if self._starttls and not self._implicit_tls:
                 # An explicit context: smtplib's default one does not check the certificate.
                 connection.starttls(context=ssl.create_default_context())
             if self._username is not None:
@@ -72,6 +74,22 @@ class SmtpEmailSender:
                 connection.login(self._username, password)
             # The envelope recipient is the validated address, not whatever the headers parse to.
             connection.send_message(mime, to_addrs=[recipient])
+
+    @property
+    def _implicit_tls(self) -> bool:
+        return self._port == IMPLICIT_TLS_PORT
+
+    def _connect(self) -> smtplib.SMTP:
+        # Port 465 (SMTPS) speaks TLS from the first byte; some networks block 587 and leave it
+        # as the only way out. The certificate is checked the same way as with STARTTLS.
+        if self._implicit_tls:
+            return smtplib.SMTP_SSL(
+                self._host,
+                self._port,
+                timeout=TIMEOUT_SECONDS,
+                context=ssl.create_default_context(),
+            )
+        return smtplib.SMTP(self._host, self._port, timeout=TIMEOUT_SECONDS)
 
     def _describe(self, exc: Exception) -> str:
         # The class and, when the server gave one, its numeric code. The server's reply text is

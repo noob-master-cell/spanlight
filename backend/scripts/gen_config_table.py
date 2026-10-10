@@ -133,6 +133,19 @@ GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ),
     ),
     (
+        "Doctor",
+        "Detectors read each project's recent spans every 15 minutes and turn what they find "
+        'into insights with a cause and a fix. "Explain with Claude" sends one insight\'s '
+        "evidence to Claude through the organization's own Anthropic gateway credential, so it "
+        "is real spend in that organization, capped by the monthly budget.",
+        (
+            "detectors_enabled",
+            "explain_model",
+            "explain_monthly_budget_usd",
+            "user_stats_enabled",
+        ),
+    ),
+    (
         "API request limits",
         "A request that would otherwise wait on a busy database fails fast with `503` and "
         "`Retry-After` instead of queueing behind slow work. The worker, exports and deleting an "
@@ -203,7 +216,7 @@ DESCRIPTIONS: dict[str, str] = {
     ),
     "resend_api_key": "API key of the Resend account. Required for `resend`.",
     "smtp_host": "SMTP server host name. Required for `smtp`.",
-    "smtp_port": "SMTP server port.",
+    "smtp_port": "SMTP server port. `465` uses implicit TLS (SMTPS); any other port uses STARTTLS.",
     "smtp_username": "SMTP user name. Optional.",
     "smtp_password": "SMTP password. Optional.",
     "smtp_starttls": (
@@ -301,6 +314,22 @@ DESCRIPTIONS: dict[str, str] = {
         "the organization with a verified email. Keep it off on a shared deployment."
     ),
     "pagerduty_events_url": "Where PagerDuty channels send events (Events API v2).",
+    "detectors_enabled": (
+        "Schedule the detector job, which looks for problems in every project with traffic "
+        "every 15 minutes. Off, no new insights appear."
+    ),
+    "explain_model": (
+        "Claude model that explains an insight. It must have a price, or explanations answer "
+        "`409 EXPLAIN_MODEL_UNPRICED`."
+    ),
+    "explain_monthly_budget_usd": (
+        "Most an organization may spend on explanations per UTC month, in US dollars. `0` turns "
+        "explanations off (`409 NOT_CONFIGURED`)."
+    ),
+    "user_stats_enabled": (
+        "Schedule the refresh of per-user daily statistics behind the Users page. Off, the page "
+        "stops updating."
+    ),
     "api_pool_timeout_seconds": (
         "Seconds an API request waits for a connection from the main pool. Past it the request "
         "answers `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`. Blank keeps the default."

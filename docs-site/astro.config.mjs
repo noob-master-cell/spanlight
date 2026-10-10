@@ -31,6 +31,7 @@ export default defineConfig({
           items: ['guides/accounts', 'guides/access', 'guides/data'],
         },
         { label: 'Alerts', items: ['alerts', 'budgets', 'webhooks'] },
+        { label: 'Doctor', items: ['doctor', 'releases-and-users'] },
         {
           label: 'Gateway',
           items: [

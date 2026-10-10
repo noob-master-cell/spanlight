@@ -29,6 +29,7 @@ from app.core.tracing import configure_tracing, shutdown_tracing
 from app.db.session import create_engine, create_session_factory
 from app.gateway.http import build_http_client
 from app.gateway.runtime import GatewayRuntime, build_runtime, close_runtime
+from app.insights.explain_settle import drain_settling
 from app.notifications.defaults import register_default_deliverers
 from app.pricing.cost import sync_seed_prices
 
@@ -86,6 +87,8 @@ def create_app(
             resolver=gateway_resolver,
         )
         yield
+        # Explanations whose request went away settle in the background; they need the engine.
+        await drain_settling()
         # The server has stopped taking requests and let in-flight ones finish (each stream's
         # `aclose()` queues its span), so the spans are drained while the engine is still open.
         await close_runtime(runtime)

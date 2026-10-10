@@ -20,6 +20,7 @@ from pydantic import (
 )
 
 from app.db.models import SpanKind, SpanStatus
+from app.ingest.request_hash import REQUEST_HASH
 
 MAX_SPANS_PER_BATCH = 1000
 MAX_BODY_BYTES = 5 * 1024 * 1024
@@ -77,6 +78,20 @@ SpanId = Annotated[
 TokenCount = Annotated[StrictInt, Field(ge=0, le=MAX_TOKEN_COUNT)]
 
 
+def _valid_hash_or_none(value: object) -> str | None:
+    """A client's request hash, lowercased, or None when it is malformed.
+
+    The hash is an optional hint: a bad one is dropped and the server computes its own, rather
+    than the span being rejected.
+    """
+    if isinstance(value, str) and REQUEST_HASH.fullmatch(value.lower()):
+        return value.lower()
+    return None
+
+
+RequestHash = Annotated[str | None, BeforeValidator(_valid_hash_or_none)]
+
+
 Text64 = Annotated[StrictStr, StringConstraints(min_length=1, max_length=64)]
 Text128 = Annotated[StrictStr, StringConstraints(min_length=1, max_length=128)]
 Text256 = Annotated[StrictStr, StringConstraints(min_length=1, max_length=256)]
@@ -121,6 +136,10 @@ class SpanIn(BaseModel):
     output: Any = None
     attributes: dict[str, Any] = Field(default_factory=dict, max_length=256)
     trace: TraceIn | None = None
+    # Computed client side by the SDK (`app.ingest.request_hash`); wins over the server's.
+    request_hash: RequestHash = None
+    # The provider's raw value; the server stores its canonical form (`app.ingest.finish_reason`).
+    finish_reason: Text64 | None = None
 
 
 class IngestBatchIn(BaseModel):

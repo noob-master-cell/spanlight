@@ -11,6 +11,11 @@ with severity `info` (whatever the channel is set to) and `dedup_key = spanlight
 then a `resolve` with the same key. A failed resolve is logged and does not fail the delivery, so
 a retry cannot trigger a second time.
 
+An opened insight sends `trigger` with `dedup_key = spanlight-insight-<fingerprint>`, severity
+`critical` (whatever the channel is set to: only critical insights notify) and the insight's title
+as the summary. Insights never send `resolve`: an insight resolves after 24 quiet hours, which is
+not a recovery signal, so the incident is closed by a person.
+
 An alert's `trigger` is skipped when its event has already resolved. A trigger that was retried
 after a PagerDuty outage can reach PagerDuty after the `resolve` that followed it, and would open
 an incident nothing closes.
@@ -26,8 +31,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.alerts.channels.http import SharedClient, post_checked
 from app.alerts.channels.target import BAD_PAYLOAD, resolve_target, summary_event
-from app.alerts.payload import AlertPayload, ChannelTestPayload, parse_payload
-from app.alerts.subject import alert_subject
+from app.alerts.payload import AlertPayload, ChannelTestPayload, InsightPayload, parse_payload
+from app.alerts.subject import alert_subject, subject_safe
 from app.db.models import AlertChannelKind, AlertEvent
 from app.db.rls import bind_project
 from app.notifications.registry import DeliveryError, PermanentDeliveryError
@@ -38,6 +43,7 @@ if TYPE_CHECKING:
 NO_ROUTING_KEY = "The PagerDuty channel has no routing key"
 DEFAULT_SEVERITY = "error"
 TEST_SEVERITY = "info"
+INSIGHT_SEVERITY = "critical"
 logger = structlog.get_logger(__name__)
 
 LINK_TEXT = "Open in Spanlight"
@@ -46,22 +52,28 @@ MAX_SUMMARY_CHARS = 1024
 
 
 def build_event(
-    payload: AlertPayload | ChannelTestPayload,
+    payload: AlertPayload | InsightPayload | ChannelTestPayload,
     *,
     routing_key: str,
     channel_id: str,
     severity: str,
 ) -> dict[str, Any]:
-    """The Events v2 request body for one alert (or test) payload."""
+    """The Events v2 request body for one alert, insight or test payload."""
+    summary = alert_subject(payload)
     if isinstance(payload, AlertPayload):
         action = "resolve" if payload.event == "alert.resolved" else "trigger"
         dedup_key = f"spanlight-rule-{payload.rule.id}"
         source = payload.project.name
+    elif isinstance(payload, InsightPayload):
+        action = "trigger"
+        dedup_key = f"spanlight-insight-{payload.insight.fingerprint}"
+        source = payload.project.name
+        summary = subject_safe(payload.insight.title)
     else:
         action = "trigger"
         dedup_key = f"spanlight-test-{channel_id}"
         source = payload.org.name
-    summary = alert_subject(payload)[:MAX_SUMMARY_CHARS]
+    summary = summary[:MAX_SUMMARY_CHARS]
     return {
         "routing_key": routing_key,
         "event_action": action,
@@ -108,7 +120,7 @@ class PagerDutyDeliverer:
             parsed,
             routing_key=channel.secret,
             channel_id=str(channel.id),
-            severity=TEST_SEVERITY if is_test else _severity(channel.config),
+            severity=_event_severity(parsed, channel.config),
         )
         if (
             event["event_action"] == "trigger"
@@ -131,7 +143,9 @@ class PagerDutyDeliverer:
         except DeliveryError as error:
             logger.warning("pagerduty_test_resolve_failed", error=str(error))
 
-    async def _already_resolved(self, payload: AlertPayload | ChannelTestPayload) -> bool:
+    async def _already_resolved(
+        self, payload: AlertPayload | InsightPayload | ChannelTestPayload
+    ) -> bool:
         """True when the event this trigger announces has resolved (or no longer exists).
 
         Sending the trigger would open an incident the resolve already sent cannot close.
@@ -158,3 +172,14 @@ class PagerDutyDeliverer:
 
 def _severity(config: dict[str, Any]) -> str:
     return str(config.get("severity") or DEFAULT_SEVERITY)
+
+
+def _event_severity(
+    payload: AlertPayload | InsightPayload | ChannelTestPayload, config: dict[str, Any]
+) -> str:
+    """A test pages no one; an insight is critical; an alert uses the channel's severity."""
+    if isinstance(payload, ChannelTestPayload):
+        return TEST_SEVERITY
+    if isinstance(payload, InsightPayload):
+        return INSIGHT_SEVERITY
+    return _severity(config)

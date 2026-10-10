@@ -110,6 +110,22 @@ class Span(Base):
             "started_at",
             postgresql_where=text("source_key_id IS NOT NULL"),
         ),
+        # Failed spans by class (explorer filter, detectors). Migration 0400 creates it.
+        Index(
+            "spans_project_error_class_started_idx",
+            "project_id",
+            "error_class",
+            text("started_at DESC"),
+            postgresql_where=text("error_class IS NOT NULL"),
+        ),
+        # Repeated requests (retry storms, cache opportunities). Migration 0401 creates it.
+        Index(
+            "spans_project_request_hash_started_idx",
+            "project_id",
+            "request_hash",
+            "started_at",
+            postgresql_where=text("request_hash IS NOT NULL"),
+        ),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
@@ -122,6 +138,9 @@ class Span(Base):
     name: Mapped[str] = mapped_column(Text)
     status: Mapped[SpanStatus] = mapped_column(_pg_enum(SpanStatus, "span_status"))
     status_message: Mapped[str | None] = mapped_column(Text)
+    # `app.ingest.error_class.ErrorClass`; null exactly when the span did not fail. Migration 0400
+    # holds the CHECK on its values.
+    error_class: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     duration_ms: Mapped[float] = mapped_column(
@@ -141,6 +160,11 @@ class Span(Base):
     output: Mapped[Any | None] = mapped_column(JSONB(none_as_null=True))
     attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     truncated: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # 32 hex of what the model was asked (`app.ingest.request_hash`), set even when the payload
+    # is not stored. The canonical finish reason (`app.ingest.finish_reason`); the raw one stays
+    # in `attributes`. Migration 0401 holds the CHECK on its values.
+    request_hash: Mapped[str | None] = mapped_column(Text)
+    finish_reason: Mapped[str | None] = mapped_column(Text)
     # The gateway key the call came through; None for spans from native or OTLP ingestion.
     # A plain uuid without a foreign key (migration 0202 says why).
     source_key_id: Mapped[uuid.UUID | None] = mapped_column(UUID)

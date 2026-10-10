@@ -117,7 +117,13 @@ class ChatCompletionsEndpoint(Endpoint):
         finish_reasons = [get_field(choice, "finish_reason") for choice in choices]
         if finish_reasons:
             span.set_attribute("response.finish_reasons", finish_reasons)
+            span.set_finish_reason(_first_str(finish_reasons))
         span.set_output(messages[0] if len(messages) == 1 else messages)
+
+
+def _first_str(values: list[Any]) -> str | None:
+    """Return the first value if it is a string (the first choice's reason)."""
+    return values[0] if values and isinstance(values[0], str) else None
 
 
 def _record_chat_usage(span: Span, usage: Any) -> None:
@@ -234,7 +240,9 @@ class _ChatStreamAccumulator(StreamAccumulator):
         states = [self._choices[index] for index in sorted(self._choices)]
         if not states:
             return
-        span.set_attribute("response.finish_reasons", [state.finish_reason for state in states])
+        finish_reasons = [state.finish_reason for state in states]
+        span.set_attribute("response.finish_reasons", finish_reasons)
+        span.set_finish_reason(_first_str(finish_reasons[:1]))
         messages = [state.to_message() for state in states]
         span.set_output(messages[0] if len(messages) == 1 else messages)
 

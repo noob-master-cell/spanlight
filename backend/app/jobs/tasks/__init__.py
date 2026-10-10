@@ -3,9 +3,11 @@
 from app.alerts.digest_job import run_weekly_digest
 from app.alerts.jobs import run_evaluate_alerts
 from app.backups.jobs import run_backup_database
+from app.end_users.jobs import run_refresh_user_stats
 from app.exports.jobs import run_create_export
 from app.exports.purge import PURGE_JOB, run_purge_project_objects
 from app.gateway.jobs import run_prune_gateway_cache
+from app.insights.jobs import run_detectors
 from app.jobs.context import TaskHandler
 from app.jobs.tasks.cleanup import run_cleanup_sessions
 from app.jobs.tasks.demo_traffic import run_demo_traffic
@@ -24,5 +26,7 @@ TASKS: dict[str, TaskHandler] = {
     "create_export": run_create_export,
     "evaluate_alerts": run_evaluate_alerts,
     "weekly_digest": run_weekly_digest,
+    "run_detectors": run_detectors,
+    "refresh_user_stats": run_refresh_user_stats,
     PURGE_JOB: run_purge_project_objects,
 }

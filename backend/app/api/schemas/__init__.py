@@ -48,6 +48,13 @@ from app.api.schemas.auth import (
 )
 from app.api.schemas.budgets import BudgetOut, BudgetPatch, BudgetSpec, BudgetStateOut
 from app.api.schemas.common import ApiModel, Money, Name, Page, UserOut
+from app.api.schemas.end_users import (
+    DayStats,
+    StatsWindow,
+    UserDetailOut,
+    UserListOut,
+    UserStats,
+)
 from app.api.schemas.gateway import (
     CredentialCheckOut,
     CredentialCreate,
@@ -97,6 +104,7 @@ from app.api.schemas.projects import (
     ProjectOut,
     ProjectUpdateIn,
 )
+from app.api.schemas.releases import Comparison, ReleaseStats
 from app.api.schemas.tokens import (
     PersonalAccessTokenCreatedOut,
     PersonalAccessTokenCreateIn,
@@ -129,10 +137,12 @@ __all__ = [
     "ChannelCreate",
     "ChannelTestOut",
     "ChannelUpdate",
+    "Comparison",
     "CredentialCheckOut",
     "CredentialCreate",
     "CredentialOut",
     "CredentialRotateIn",
+    "DayStats",
     "DeliveryOut",
     "DeliverySummaryOut",
     "EmailVerifyConfirmIn",
@@ -185,6 +195,7 @@ __all__ = [
     "ProjectDeleteIn",
     "ProjectOut",
     "ProjectUpdateIn",
+    "ReleaseStats",
     "RouteCreateIn",
     "RouteOut",
     "RouteRevertIn",
@@ -198,6 +209,7 @@ __all__ = [
     "SessionSummaryOut",
     "SignupIn",
     "SpanOut",
+    "StatsWindow",
     "TimeseriesPointOut",
     "TotpCodeIn",
     "TotpEnabledOut",
@@ -207,5 +219,8 @@ __all__ = [
     "TraceDetailOut",
     "TraceSummaryOut",
     "UnpricedModelOut",
+    "UserDetailOut",
+    "UserListOut",
     "UserOut",
+    "UserStats",
 ]

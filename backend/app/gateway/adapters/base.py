@@ -12,7 +12,7 @@ Header rules, both ways, are allowlists:
   The provider key goes in the adapter's auth header. The client's `authorization`,
   `x-api-key`, `cookie`, `x-spanlight-*`, `host`, `content-length` and everything else stay
   behind (and the upstream client keeps no cookie jar, so it adds no `cookie` of its own).
-- Back to the client, only `content-type`, `retry-after`, `x-ratelimit-*`,
+- Back to the client, only `content-type`, `retry-after`, `retry-after-ms`, `x-ratelimit-*`,
   `anthropic-ratelimit-*` and `openai-processing-ms` are kept, and the provider's
   `request-id` or `x-request-id` becomes `x-upstream-request-id`.
 """
@@ -27,7 +27,9 @@ import httpx
 from app.db.models import ProviderKind
 from app.gateway.errors import Surface
 
-_RESPONSE_HEADERS = frozenset({"content-type", "retry-after", "openai-processing-ms"})
+_RESPONSE_HEADERS = frozenset(
+    {"content-type", "retry-after", "retry-after-ms", "openai-processing-ms"}
+)
 _RESPONSE_HEADER_PREFIXES = ("x-ratelimit-", "anthropic-ratelimit-")
 _REQUEST_ID_HEADERS = frozenset({"request-id", "x-request-id"})
 UPSTREAM_REQUEST_ID_HEADER = "x-upstream-request-id"

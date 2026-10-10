@@ -3,8 +3,9 @@
 The scheduler enqueues one job per period (see `jobs/scheduler.py`); it becomes runnable on
 Monday 08:00 UTC and summarises the seven whole UTC days that ended at Monday 00:00. One query,
 with row-level security bypassed, lists the projects that have the digest on and had traffic that
-week. Each project is then handled in its own transaction, bound to it alone: its figures are
-read, the message is rendered once, and one `email` outbox row per verified member is queued.
+week. Each project is then handled in its own transaction, bound to it alone: its figures and
+its Doctor insights (`app.insights.digest`) are read, the message is rendered once, and one
+`email` outbox row per verified member is queued.
 
 Idempotency: a job that is retried (it has three attempts) or runs twice must not mail anyone
 twice. Every row carries `summary.digest_key = weekly_digest:<project>:<week start>`, which the
@@ -17,7 +18,7 @@ exactly those.
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -36,6 +37,7 @@ from app.alerts.digest_queries import (
 )
 from app.api.window import TimeWindow
 from app.db.rls import bind_project
+from app.insights.digest import insights_digest_section
 from app.jobs.context import TaskContext
 from app.jobs.outcome import JobOutcome
 from app.notifications.outbox import NotificationKind, enqueue
@@ -207,6 +209,9 @@ async def _queue_project(
     data = await digest_data(
         db, target, shared.week, now=shared.now, app_base_url=shared.app_base_url
     )
+    insights = await insights_digest_section(db, target.project_id, shared.week)
+    if insights is not None:
+        data = replace(data, sections=[*data.sections, insights])
     message = render_digest(data)
     summary = {"event": "weekly_digest", "digest_key": key, "project_id": str(target.project_id)}
     for address in recipients:

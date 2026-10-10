@@ -52,6 +52,11 @@ WEEKLY_DIGEST = PeriodicJob(
     run_after_offset=timedelta(days=4, hours=8),
 )
 
+# Runs every detector over every active project. A single attempt: the next pass is the retry.
+RUN_DETECTORS = PeriodicJob("run_detectors", timedelta(minutes=15), max_attempts=1)
+# Recomputes yesterday's and today's per-user daily stats. A single attempt, like the detectors.
+REFRESH_USER_STATS = PeriodicJob("refresh_user_stats", timedelta(minutes=15), max_attempts=1)
+
 
 def period_start(job: PeriodicJob, now: datetime) -> datetime:
     seconds = int(job.every.total_seconds())
@@ -81,6 +86,10 @@ def periodic_jobs(settings: Settings) -> list[PeriodicJob]:
         jobs.append(EVALUATE_ALERTS)
     if settings.weekly_digest_enabled:
         jobs.append(WEEKLY_DIGEST)
+    if settings.detectors_enabled:
+        jobs.append(RUN_DETECTORS)
+    if settings.user_stats_enabled:
+        jobs.append(REFRESH_USER_STATS)
     return jobs
 
 

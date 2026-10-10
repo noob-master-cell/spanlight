@@ -1,10 +1,10 @@
-"""Turn one alert payload into outbox rows for a channel, and queue them.
+"""Turn one alert or insight payload into outbox rows for a channel, and queue them.
 
 `outbox_rows_for` is pure: it says which rows a channel gets. An email channel gets one `email`
 row per allowed recipient, carrying the rendered message; every other kind gets one row whose
-target is `{"channel_id"}` and whose payload is the alert payload (its deliverer renders it
-and opens the channel's secret at send time). Every row's payload carries the `summary` the
-delivery log shows after the row is settled, and every row is tied to its channel.
+target is `{"channel_id"}` and whose payload is the alert or insight payload (its deliverer
+renders it and opens the channel's secret at send time). Every row's payload carries the
+`summary` the delivery log shows after the row is settled, and every row is tied to its channel.
 
 `enqueue_for_channel` is the async shell that evaluation and the channel code call inside their
 transaction. It never commits.
@@ -17,11 +17,12 @@ from typing import TYPE_CHECKING, Any
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.alerts.channels.email_render import render_alert_email
+from app.alerts.channels.email_render import render_alert_email, render_insight_email
 from app.alerts.channels.resolve import ResolvedChannel
-from app.alerts.payload import AlertPayload
+from app.alerts.payload import AlertPayload, InsightPayload, NotifyPayload
 from app.alerts.service import allowed_recipients
 from app.db.models import AlertChannel, AlertChannelKind
+from app.email.message import EmailMessage
 from app.notifications.outbox import NotificationKind, enqueue
 
 if TYPE_CHECKING:
@@ -48,6 +49,29 @@ def alert_summary(payload: AlertPayload) -> dict[str, Any]:
     }
 
 
+def insight_summary(payload: InsightPayload) -> dict[str, Any]:
+    """The delivery log's description of an insight row."""
+    return {
+        "event": payload.event,
+        "event_id": str(payload.event_id),
+        "project_id": str(payload.project.id),
+        "insight_id": str(payload.insight.id),
+        "title": payload.insight.title,
+    }
+
+
+def _summary(payload: NotifyPayload) -> dict[str, Any]:
+    if isinstance(payload, InsightPayload):
+        return insight_summary(payload)
+    return alert_summary(payload)
+
+
+def _render_email(payload: NotifyPayload, *, channel_name: str) -> EmailMessage:
+    if isinstance(payload, InsightPayload):
+        return render_insight_email(payload, channel_name=channel_name)
+    return render_alert_email(payload, channel_name=channel_name)
+
+
 def _recipients(channel: ResolvedChannel) -> list[str]:
     return [str(address) for address in channel.config.get("to", [])]
 
@@ -63,7 +87,7 @@ def skipped_recipients(
 
 def outbox_rows_for(
     channel: ResolvedChannel,
-    payload: AlertPayload,
+    payload: NotifyPayload,
     *,
     allowed_emails: frozenset[str] | None,
 ) -> list[OutboxRowSpec]:
@@ -73,9 +97,9 @@ def outbox_rows_for(
     members), or None when any address may (`ALERT_EMAIL_ANY_RECIPIENT`). Recipients outside it
     get no row; `skipped_recipients` lists them.
     """
-    summary = alert_summary(payload)
+    summary = _summary(payload)
     if channel.kind is AlertChannelKind.EMAIL:
-        message = render_alert_email(payload, channel_name=channel.name)
+        message = _render_email(payload, channel_name=channel.name)
         body = {
             "subject": message.subject,
             "text": message.text,
@@ -98,7 +122,7 @@ def outbox_rows_for(
 
 
 async def enqueue_for_channel(
-    db: AsyncSession, channel: AlertChannel, payload: AlertPayload, *, settings: "Settings"
+    db: AsyncSession, channel: AlertChannel, payload: NotifyPayload, *, settings: "Settings"
 ) -> int:
     """Queue `payload` for `channel` in the caller's transaction; returns how many rows.
 

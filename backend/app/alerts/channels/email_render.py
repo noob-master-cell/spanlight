@@ -1,4 +1,4 @@
-"""The alert emails, built from an `AlertPayload`. Pure.
+"""The alert and insight emails, built from an `AlertPayload` or an `InsightPayload`. Pure.
 
 Built with the shared email composer, which escapes every value in the HTML part. The message is
 returned with `to=""`; the fan-out fills in each recipient.
@@ -14,8 +14,8 @@ from app.alerts.formatting import (
     format_metric_value,
     format_money,
 )
-from app.alerts.payload import AlertPayload, BudgetPayload
-from app.alerts.subject import TEST_SUBJECT, alert_subject
+from app.alerts.payload import AlertPayload, BudgetPayload, InsightPayload
+from app.alerts.subject import TEST_SUBJECT, alert_subject, insight_subject
 from app.email.message import EmailMessage
 from app.email.templates import _compose
 
@@ -46,6 +46,22 @@ def render_alert_email(payload: AlertPayload, *, channel_name: str) -> EmailMess
     else:
         body = _fired_paragraphs(payload)
     return _compose(subject=alert_subject(payload), paragraphs=[*body, footer])
+
+
+def render_insight_email(payload: InsightPayload, *, channel_name: str) -> EmailMessage:
+    """The email for an insight the Doctor opened: summary, fix, how to verify, link."""
+    insight = payload.insight
+    return _compose(
+        subject=insight_subject(payload),
+        paragraphs=[
+            insight.summary,
+            f"Suggested fix: {insight.suggested_fix}",
+            f"How to verify: {insight.verification}",
+            ("Open the insight:", payload.url),
+            f"You get this email because you are a recipient of the {channel_name} channel "
+            f"in {payload.org.name}.",
+        ],
+    )
 
 
 def _filters_text(payload: AlertPayload) -> str:

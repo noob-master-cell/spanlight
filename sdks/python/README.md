@@ -212,7 +212,8 @@ with spanlight.span("rerank", kind="retrieval") as span:
 
 `Span` methods: `set_input`, `set_output`, `set_attribute`, `set_attributes`,
 `set_model(model, provider=...)`, `set_usage(input_tokens=, output_tokens=,
-cached_tokens=)`, `mark_first_token()` and `record_error(exc_or_message)`. An
+cached_tokens=)`, `set_finish_reason(reason)`, `set_request_hash(hash)`,
+`mark_first_token()` and `record_error(exc_or_message)`. An
 exception that escapes the block marks the span as failed and is re-raised
 unchanged.
 

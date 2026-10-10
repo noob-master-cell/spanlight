@@ -143,6 +143,7 @@ def _record_message_metadata(span: Span, message_id: Any, stop_reason: Any) -> N
         span.set_attribute("response.id", message_id)
     if isinstance(stop_reason, str):
         span.set_attribute("response.stop_reason", stop_reason)
+        span.set_finish_reason(stop_reason)
 
 
 class _MessagesStreamAccumulator(StreamAccumulator):

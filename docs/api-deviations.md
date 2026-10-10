@@ -47,6 +47,10 @@ original design; everything else is a clarification.
   `INTERNAL_ERROR` (500), `SERVICE_UNAVAILABLE` (503, with `Retry-After`, the database could not take or
   finish the request in time).
 - Validation `errors[].field` is the dotted path without the `body.`/`query.` prefix (e.g. `password`).
+- **NUL in a text parameter is a 422** (added 2026-10-10). Postgres text cannot hold NUL, so a query or path value with
+  one could not be bound. The insights, releases and users parameters refuse it as `422 VALIDATION_ERROR` with the
+  field named; any other text value that reaches the database with NUL also answers `422 VALIDATION_ERROR` (without
+  `errors`) instead of a 500.
 - **A busy database is a 503, not a 500** (added 2026-10-09). A request answers `503 SERVICE_UNAVAILABLE` with
   `Retry-After: 5` in two cases: it waited longer than `API_POOL_TIMEOUT_SECONDS` (default 5) for a database
   connection, or one of its statements ran longer than `API_STATEMENT_TIMEOUT_SECONDS` (default 10) and the
@@ -613,7 +617,8 @@ key can read its own project through the dashboard API.
   and a revoked key is `401 UNAUTHORIZED` even if it has also expired.
 - **Reading with a key.** A key with `traces:read` may call these routes, and only for its own project:
   `GET /api/v1/projects/{project_id}/traces`, `…/traces/{trace_id}`, `…/sessions`, `…/filters`,
-  `…/metrics/overview`, `…/metrics/timeseries` and `…/metrics/models`. Responses are the same as for a session.
+  `…/metrics/overview`, `…/metrics/timeseries`, `…/metrics/models`, `…/releases`, `…/releases/compare`, `…/users` and
+  `…/users/{external_user_id}`. Responses are the same as for a session.
   - The project in the path must be the key's. Any other project, existing or not, is `404 NOT_FOUND`, the same
     answer a non-member gets, and the check comes before the scope check. Row-level security is bound to the
     key's project for the request, as it is for a member.
@@ -818,7 +823,8 @@ the OpenAPI document; on any other route the header is ignored.
   Like any answer to a keyed request, a `409 NOT_CONFIGURED` is kept for 24 hours and replayed for the same key and
   body, so after turning object storage on, retry with a new key.
 - **Filters.** `filters` takes the trace-list filters under the same names (`from`, `to`, `environment`, `release`,
-  `model`, `status`, `user_id`, `session_id`, `tag`, `q`) with the same meaning. `from` and `to` are required and
+  `model`, `status`, `error_class`, `user_id`, `session_id`, `tag`, `q`) with the same meaning (`error_class` is one of
+  the nine classes and keeps traces with at least one span of that class). `from` and `to` are required and
   `to - from` is at most 90 days; a time without an offset is UTC. An unknown filter is `422`.
 - **Size limit.** More than 100 000 matching traces end the export as `failed` with `error_code`
   `EXPORT_TOO_LARGE`, and the job does not retry. The `error_code` values are `EXPORT_TOO_LARGE`, `NOT_CONFIGURED`
@@ -1155,3 +1161,176 @@ Every error under `/gw/` uses the provider envelope of the path (OpenAI, or Anth
   (`weekly_digest:<project>:<week start>`) makes a retried run skip projects already queued. A run handles about 40
   seconds of projects per attempt and has three attempts; projects left after the last attempt are logged as
   `weekly_digest_incomplete` and wait for the next week.
+
+## Span error class, request hash and finish reason (added 2026-10-10)
+
+- **Error class.** Spans carry `error_class` (`SpanOut.error_class`): one of `auth`, `rate_limit`, `timeout`,
+  `context_length`, `content_filter`, `provider_5xx`, `network`, `client`, `unknown`, and `null` exactly when the span
+  did not fail. Ingestion computes it. A numeric status decides first, read from the first of the attributes
+  `spanlight.gateway.upstream_status`, `http.status_code`, `error.status` that holds a whole number (an integer, a
+  whole float or a string of digits): 401 and 403 are `auth`, 429 `rate_limit`, 408, 499 and 504 `timeout`, 413
+  `context_length`, any 5xx (529 included) `provider_5xx`, any other 4xx `client` unless the message says the context
+  was too long or the content was filtered, which wins. Otherwise case-insensitive message patterns decide, in the
+  order auth, rate limit, timeout (which includes "client disconnected" and "aborted"), context length, content
+  filter, network, provider 5xx; anything else is `unknown`. The message matched is the stored (redacted) one. Spans
+  ingested before the column existed keep `null` even when they failed.
+- **Trace summaries.** `TraceSummary` gains `error_class`: the class of the span that supplies `error_message` (the
+  earliest failed span, ties broken by span id). `null` when no span failed or that span has no class.
+- **Filter.** `GET /projects/{id}/traces?error_class=<class>` keeps traces with at least one span of that class
+  (not only the earliest). Any other value is `422 VALIDATION_ERROR`.
+- **Request hash.** Spans carry `request_hash` (32 lowercase hex), stored but not returned by the explorer. A span
+  may send its own (`SpanIn.request_hash`, 32 hex; uppercase is lowercased) and it is stored as sent. A malformed
+  value is ignored, never a reason to reject the span: the server computes its own instead. Otherwise the server
+  computes it from the span's `model` and `input` as received, before payload capture drops the input, so projects
+  that store no payloads still get it: the first 32 hex characters of the SHA-256 of the canonical JSON (sorted
+  keys, `,` and `:` separators, non-ASCII kept) of `{"model": model, "input": cleaned}`, where `cleaned` is `input`
+  without the top-level keys `stream`, `stream_options`, `user`, `metadata`, `idempotency_key`, `extra_headers`,
+  `extra_query`, `extra_body`, `timeout`, `api_key`, `http_client` when `input` is an object. `null` when the span
+  has no input.
+- **Finish reason.** `SpanOut.finish_reason` is canonical: `stop`, `length`, `tool_calls`, `content_filter` or
+  `other` (`null` when the span reported none). The raw value comes from the first present of `SpanIn.finish_reason`
+  (at most 64 characters), the attribute `finish_reason`, `response.finish_reasons[0]`, `response.stop_reason` and
+  `gen_ai.response.finish_reasons[0]` (OTLP spans keep that attribute as sent). OpenAI `stop`, `length`,
+  `tool_calls`/`function_call`, `content_filter` and Anthropic `end_turn`/`stop_sequence` (`stop`), `max_tokens`
+  (`length`), `tool_use` (`tool_calls`), `refusal` (`content_filter`) map as named; `pause_turn` and every other
+  value are `other`. Matching ignores case and padding. The raw value stays in `attributes`; a span that sent it only
+  as `SpanIn.finish_reason` gets it as the `finish_reason` attribute.
+- **Gateway spans.** A fault that answers before the upstream call (`auth_expired`, `scope_denied`, `rate_limited`,
+  `unsupported_parameter`, `provider_5xx`, `timeout`) now sets `spanlight.gateway.upstream_status` to the status the
+  gateway answered with, and `spanlight.gateway.retry_after_s` to its `Retry-After` (`rate_limited` only).
+  `spanlight.gateway.attempts` stays `0`, which tells a simulated status from a provider's. The gateway computes the
+  span's `request_hash` from the client's body and the requested model (not the model that answered, so a fallback
+  keeps the hash). A provider's `Retry-After` is read from `retry-after-ms` (divided by 1000) when present and valid,
+  else from `retry-after`; both headers are passed back to the client. A `malformed_json` fault answers `200`, but
+  its span is recorded as failed (`status = error`, message `200 FAULT_MALFORMED_JSON: …`, error class `unknown`): the
+  client received a body it cannot parse.
+- **`x-spanlight-release`.** The gateway reads the header into the trace's `release`: 1 to 128 characters after
+  trimming, as `TraceIn.release`; a value outside those bounds is dropped, not rejected.
+
+## Releases
+
+- **Scope.** A release is the `release` of a trace. `GET /projects/{id}/releases` and `GET /projects/{id}/releases/compare`
+  read the raw traces that started inside `from`/`to` (default last 24 h) and all spans of those traces, for any
+  window up to 30 days; a longer window is `422 RELEASE_WINDOW_TOO_LARGE` (a window over 90 days is still
+  `422 VALIDATION_ERROR` first). There is no rollup path, so percentiles are always exact. `environment` filters on the
+  trace's environment. Both routes are also readable by an API key with `traces:read`, for its own project.
+- **`ReleaseStats`.** `traces` counts the release's traces in the window; `first_seen_at`/`last_seen_at` are the
+  earliest and latest trace start. `llm_calls`, `unpriced_calls`, `error_rate` (`null` without calls), `p50_ms` and
+  `p95_ms` are over spans of kind `llm`; `cost_usd` and token totals are over all spans of those traces, the same
+  definitions as the metrics overview. `cost_usd` (a decimal string) is the sum of the priced spans: `null` only when
+  nothing was priced, and a lower bound while `unpriced_calls` is above 0. `unpriced_calls` is an addition to the
+  spec's field list. The list holds at most 200 releases, the one seen last first.
+- **`compare`.** `a` is the baseline and `b` the candidate; `a == b` is `422 SAME_RELEASE` (checked before the lookup)
+  and a release with no traces in the window is `404 UNKNOWN_RELEASE`. `deltas` has one entry per headline figure
+  (`traces`, `llm_calls`, `error_rate`, `p50_ms`, `p95_ms`, `cost_usd`, `input_tokens`, `output_tokens`) with
+  `absolute = b - a` and `relative = absolute / a` (rounded to four places), both decimal strings; the entry is `null`
+  when either side is unknown and `relative` is `null` when `a` is 0.
+- **`model_mix`.** Each model's share of each side's LLM calls (`llm_calls` of that release; at most the 100 busiest
+  models per side are listed); a side without calls has `null` shares, and a model absent from a side has share `0`.
+  A span without a model is the entry with `model: null`.
+- **`error_classes`.** Exact counts of failed spans (any kind) per `error_class`, `null` for failed spans that carry no
+  class (ingested before the column existed).
+- **`new_errors`.** Every failed span's status message of the two releases is normalised in the database (UUIDs and hex
+  ids of 12 or more digits become `…`, other digit runs `#`, whitespace collapsed, at most 200 characters). The top 10
+  messages that at least one failed span of `b` has and no failed span of `a` has are returned, most frequent first,
+  with the number of `b` spans as `count` and the id of one `b` trace as `example_trace_id`.
+
+## Insight notifications (added 2026-10-10)
+
+- **Payload.** `insight.opened` follows the alert payload's conventions (`version`, `event_id`, `occurred_at`, `org`,
+  `project`, `url`; datetimes `YYYY-MM-DDTHH:MM:SSZ`). `insight` carries one addition to the spec's field list:
+  `fingerprint`, the stable 32-hex name of the problem within the project, which PagerDuty's `dedup_key`
+  (`spanlight-insight-<fingerprint>`) needs at send time. `evidence.metrics` values are decimal strings, integers or
+  `null`. `occurred_at` is the detection that opened the insight (its `last_seen_at`).
+- **Link.** `url` is `<APP_BASE_URL>/<org_id>/<project_id>/doctor/<insight_id>`: the app's routes are keyed by ids, as
+  the alert payload's links are, not by slugs.
+- **Who is told.** Only an insight that opens (new, reopened, or a mute that ended) with severity `critical` notifies,
+  once per channel in the project's `insight_channel_ids`; a channel deleted since is skipped. PagerDuty gets
+  `trigger` with severity `critical` whatever the channel's severity, and never `resolve`.
+- **Delivery log.** `summary` gains `insight_id`, `project_id` and `title` for `insight.opened` rows (`rule_id` and
+  `rule_name` are `null` on them). A channel belongs to the organization, so its log lists rows from every project
+  that uses it; `project_id` lets a client link to the insight in the right project. Rows queued before it was kept
+  lack it (`null`).
+- **Weekly digest.** "Open" in the Insights section means status `open` or `acknowledged`, as in the health score
+  (muted and resolved insights are not counted). Listed insights are critical first, then the most recently seen. The
+  section is shown when the project has an open insight or one first seen during the week; a reopened insight counts
+  through the first condition only.
+- **Evidence decimals.** `evidence.metrics` decimals are written in the canonical form everywhere (stored evidence,
+  API and payload): normalised, no exponent, zero as `"0"`.
+
+## Insights (added 2026-10-10)
+
+- **Reads.** The list, one insight, the summary and the detector runs need `project:read` and are not open to API keys;
+  the actions (acknowledge, resolve, mute and unmute) and `explain` need `insights:manage` (owner, admin). A non-member gets `404`.
+- **Filters.** `status` may repeat (`?status=open&status=acknowledged`); `severity`, `kind` and `trace_id` take one
+  value. `trace_id` keeps insights whose `evidence.trace_ids` contains the id exactly. An unknown `status` or `severity`
+  is `422`. The cursor is the `(last_seen_at, id)` of the last item.
+- **Summary.** `open_critical`, `open_warning` and `open_info` count insights in status `open` or `acknowledged` (the ones
+  that still need a person), despite the `open_` prefix. A muted insight is not counted, even with its mute ended.
+- **Evidence.** `metrics` values are decimal strings, integers or `null`. `label` is the catalogue's name for the kind, or
+  the kind itself when the catalogue no longer has it.
+- **Detector rules the spec left open.** The per-hour baselines (`cost_usd_per_hour`, `llm_calls_per_hour`) divide by
+  the baseline period's active hours, those with at least one call, not by every hour, so a diurnal or batch
+  workload is compared with its own busy hours. `retry_storm` only counts spans of one flow (the same trace, or traces
+  that share a non-null session): identical prompts from unrelated traces are not a retry. `client_timeout_misconfigured`
+  compares the abort cluster with the model's successes in the environments of the clustered aborts, leaving out
+  fault-injected and cache-hit successes. Tool-span input hashes are SHA-256 of the stored jsonb's text form, computed
+  in the database; they are compared only with each other, never with a request hash. Every detector returns its
+  findings in fingerprint-key order.
+- **Mute.** `until` must carry a UTC offset (`422` otherwise, the usual validation error); a past or too distant value, or an
+  empty, blank or over-500-character reason, is `422 INVALID_MUTE`. A mute may be set from any status, including to change the end or the reason of one
+  that is already muted.
+- **Detector runs.** `limit` is 1–100 (default 100), newest first. `findings` is `null` when the run failed and `error`
+  says why.
+- **Detail.** `explanations` lists the insight's explanations that have an answer, newest first, at most 20; one still
+  being written, or a paid call that returned no answer, is not shown.
+- **Explain.** `POST /projects/{id}/insights/{insight_id}/explain` answers `201` with the explanation; it needs no
+  `Idempotency-Key` (a repeat is a second, separately budgeted call). Checks run in this order: `404` for an unknown
+  insight, `409 NOT_CONFIGURED` (budget `0`, no `CREDENTIALS_KEYS`, no Anthropic credential in the organization),
+  `409 EXPLAIN_MODEL_UNPRICED` (also when the model's price, an organization override included, is zero),
+  `402 EXPLAIN_BUDGET_EXCEEDED`, then the call (one attempt, no fallbacks; `502 EXPLAIN_FAILED` when it fails or its
+  answer has no text). A failed call stays in the month's spend as an explanation without text, which the detail never lists,
+  whenever the provider may have billed it: at the cost of its reported usage, or at the worst case after a timeout,
+  a connection error, an answer without usage or the client going away once the request was sent. Only a call the
+  gateway never sent (refused before the provider, such as a project `block` budget) or one the provider answered with
+  an HTTP error status and no usage is not counted. Each excerpt is cut to 2048 characters and each payload to its first 1024 characters of compact
+  JSON; every field is redacted before it is cut. The excerpt of a trace is its first failed span (llm spans first), else its first llm span,
+  else its first span; a cited trace with no stored span is left out. `cost_usd` is the cost of the answer's token usage;
+  when the provider reported no usage it is the reserved worst case, so the budget never counts a call as free. A
+  project's `block` budgets apply to the call like any gateway call (a blocked call is `502 EXPLAIN_FAILED`). An insight
+  deleted while the call ran answers `404`. A reservation still open after 10 minutes (its request died before it
+  settled, for example a process killed mid-call) is completed by the cleanup job at its worst-case cost, without text;
+  it is never deleted, because the provider may have billed it.
+- **Health.** `GET /projects/{id}/health` needs `project:read` (no API keys). `from`/`to` default to the last 24 h like the
+  metrics routes; the baseline is the window of equal length before it. `value` is `null` when the window has no LLM calls
+  (and `components` is then empty). Components are `findings`, `errors`, `latency` and `cost`; `observed` and `baseline` are
+  decimal strings or `null` (`findings` observes the count of open critical and warning insights; `findings` and `errors`
+  have no baseline). `error_rate` is a fraction. `approximate` is true when any metric read was a histogram estimate.
+
+## Users (added 2026-10-10)
+
+- **Reads.** `GET /projects/{id}/users` and `GET /projects/{id}/users/{external_user_id}` need `project:read` and are also
+  open to an API key with `traces:read` for its own project, like the metrics routes. A non-member gets `404`.
+- **Source.** The figures come from `user_stats_daily`, one row per UTC day and end user (`traces.external_user_id`), which the
+  `refresh_user_stats` job recomputes for yesterday and today every 15 minutes for projects with a user-tagged trace since
+  the start of yesterday, UTC (`USER_STATS_ENABLED`). A trace counts for the day it started. `llm_calls`, `errors` and `tokens` are over the
+  trace's spans of kind `llm` (an error is a span with status `error`, so `errors` differs from the `error_count` of `recent_sessions`, which counts
+  failed spans of every kind; tokens are input plus output, input already
+  including cached tokens). Days older than yesterday are only as complete as the job was when they were current: there is
+  no backfill. Rows older than the project's `retention_days` are deleted by the retention job.
+- **Window.** `from`/`to` (default last 24 h, at most 90 days) are widened to whole UTC days: `from` floored, `to` ceiled.
+  The response's `window` (`start`, `end`, midnights in UTC, `end` exclusive) says which days were summed.
+- **`cost_usd`.** The sum of the priced calls over the days with activity: `null` when calls were made and none was priced,
+  a lower bound when only some were (`unpriced_calls` counts the calls without a price, as on releases). A user (or a day) with no LLM call has cost `"0"`.
+- **List.** `sort` is `cost` (default), `errors` or `traces`, always descending, users without a value (unknown cost) last,
+  then by `external_user_id` ascending. `limit` is 1–200 (default 50). The cursor encodes the sort value and the id of the
+  last item; one issued for another `sort` is not rejected but pages meaninglessly. A cursor that does not decode is
+  `422 VALIDATION_ERROR`, like every other keyset cursor, not the `INVALID_CURSOR` the spec named. `first_seen_day`
+  and `last_seen_day` are the first and last day in the window with activity.
+- **Detail.** `daily` has one entry per UTC day of the window: a day with no traces is all zeros with `cost_usd` `"0"`, a day
+  with calls but none priced has `cost_usd` `null`. `recent_sessions` is the user's 20 sessions with the latest activity,
+  over all time (not limited to the window), in the shape of `GET /sessions`. A user with no activity in the window is
+  `404 NOT_FOUND`. The id is URL-encoded by the client; a `/` in it is accepted. Browsers resolve `.` and `..` path
+  segments even when percent-encoded, so the id has a one-character escape: the client prefixes `~` when the id is `.`
+  or `..` or starts with `~`, and the route strips exactly one leading `~` before the lookup (`~~a` names the user
+  `~a`, `~.` names `.`, `a` names `a`). A path with NUL is `422 VALIDATION_ERROR`.

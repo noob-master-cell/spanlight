@@ -16,6 +16,7 @@ from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
+from .._request_hash import request_hash
 from .._serialize import to_jsonable
 from .._span import Span
 
@@ -167,12 +168,26 @@ def start_llm_span(
         span = client.start_span(endpoint.span_name(kwargs), kind="llm")
         model = kwargs.get("model")
         span.set_model(model if isinstance(model, str) else None, provider=endpoint.provider)
-        span.set_input(sanitize_request(kwargs))
+        request = sanitize_request(kwargs)
+        span.set_request_hash(_request_hash_or_none(model, request))
+        span.set_input(request)
         if kwargs.get("stream") is True:
             span.set_attribute("request.stream", True)
         return span
     except Exception:
         logger.debug("Failed to start LLM span", exc_info=True)
+        return None
+
+
+def _request_hash_or_none(model: Any, request: Any) -> str | None:
+    """Return the request hash, or ``None`` when it cannot be computed.
+
+    An optional fingerprint must never cost the call its span.
+    """
+    try:
+        return request_hash(model if isinstance(model, str) else None, request)
+    except Exception:
+        logger.debug("Failed to hash the request", exc_info=True)
         return None
 
 

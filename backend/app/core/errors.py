@@ -10,12 +10,13 @@ from collections.abc import Mapping, Sequence
 from http import HTTPStatus
 from typing import Any, TypedDict, cast
 
+import psycopg
 import psycopg.errors
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DataError, OperationalError
 from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -278,10 +279,22 @@ async def _handle_operational_error(request: Request, exc: Exception) -> JSONRes
     return await _handle_unexpected(request, exc)
 
 
+async def _handle_data_error(request: Request, exc: Exception) -> JSONResponse:
+    error = cast(DataError, exc)
+    # A request value Postgres text cannot hold (NUL) that no parameter constraint caught: the
+    # client's mistake, not ours. Any other data error is unexpected.
+    if isinstance(error.orig, psycopg.DataError) and "NUL" in str(error.orig):
+        return problem_response(
+            422, "VALIDATION_ERROR", "Text parameters cannot contain NUL characters."
+        )
+    return await _handle_unexpected(request, exc)
+
+
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ProblemError, _handle_problem)
     app.add_exception_handler(RequestValidationError, _handle_validation)
     app.add_exception_handler(StarletteHTTPException, _handle_http)
     app.add_exception_handler(PoolTimeoutError, _handle_pool_timeout)
     app.add_exception_handler(OperationalError, _handle_operational_error)
+    app.add_exception_handler(DataError, _handle_data_error)
     app.add_exception_handler(Exception, _handle_unexpected)

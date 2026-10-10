@@ -10,6 +10,7 @@ import binascii
 import json
 import uuid
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
 from fastapi import Query
@@ -55,3 +56,70 @@ def decode_uuid_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         return sort_value, uuid.UUID(tiebreaker)
     except ValueError as exc:
         raise _invalid_cursor() from exc
+
+
+# A sort value is a count or a cost, so a cursor that is longer, or has a larger exponent or more
+# digits, is not one we issued, and casting it to `numeric` in a query could fail.
+_MAX_VALUE_EXPONENT = 40
+_MAX_VALUE_DIGITS = 40
+_MAX_VALUE_CURSOR_LENGTH = 1024
+_MAX_TIEBREAKER_LENGTH = 256
+
+
+def _is_bindable_text(text: str) -> bool:
+    return all(char != "\x00" and not 0xD800 <= ord(char) <= 0xDFFF for char in text)
+
+
+def _is_plausible_value(value: Decimal) -> bool:
+    _, digits, exponent = value.as_tuple()
+    return (
+        isinstance(exponent, int)
+        and len(digits) <= _MAX_VALUE_DIGITS
+        and abs(exponent) <= _MAX_VALUE_EXPONENT
+        and abs(value.adjusted()) <= _MAX_VALUE_EXPONENT
+    )
+
+
+def encode_value_cursor(value: Decimal | int | None, tiebreaker: str) -> str:
+    """A cursor for a list sorted by a number, largest first, rows without one last.
+
+    `None` is the sort value of the rows that have none (an unknown cost); they come after every
+    number, so a cursor at one continues among the rest of them.
+    """
+    payload = json.dumps(
+        {"v": None if value is None else format(Decimal(value), "f"), "t": tiebreaker},
+        separators=(",", ":"),
+    )
+    return base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
+
+
+def decode_value_cursor(cursor: str) -> tuple[Decimal | None, str]:
+    """The sort value (`None`: the rows without one) and tiebreaker `encode_value_cursor` wrote.
+
+    Anything it could not have written is the usual invalid cursor error, so a forged cursor
+    never reaches the database.
+    """
+    try:
+        if len(cursor) > _MAX_VALUE_CURSOR_LENGTH:
+            raise ValueError("cursor too long")
+        padded = cursor + "=" * (-len(cursor) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded))
+        raw, tiebreaker = payload["v"], payload["t"]
+        if not isinstance(tiebreaker, str) or not (raw is None or isinstance(raw, str)):
+            raise ValueError("malformed cursor")
+        # NUL and lone surrogates cannot be bound as text parameters.
+        if len(tiebreaker) > _MAX_TIEBREAKER_LENGTH or not _is_bindable_text(tiebreaker):
+            raise ValueError("malformed tiebreaker")
+        value = None if raw is None else Decimal(raw)
+        if value is not None and not _is_plausible_value(value):
+            raise ValueError("malformed cursor")
+    except (
+        binascii.Error,
+        ValueError,
+        KeyError,
+        TypeError,
+        RecursionError,
+        InvalidOperation,
+    ) as exc:
+        raise _invalid_cursor() from exc
+    return value, tiebreaker

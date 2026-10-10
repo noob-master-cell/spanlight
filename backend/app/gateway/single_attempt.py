@@ -95,7 +95,7 @@ async def _read(
         )
     if not 200 <= status < 300:
         body = await read_all(response)
-        retry_after = parse_retry_after(response.headers.get("retry-after"))
+        retry_after = parse_retry_after(response.headers)
         outcome = AttemptOutcome(status, "status", retry_after)
         return AttemptEnd(outcome, status, headers, body, error=upstream_failure(status, body))
     answer = response

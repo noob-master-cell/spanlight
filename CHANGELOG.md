@@ -2,6 +2,47 @@
 
 All notable changes to Spanlight are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project is pre-1.0, so minor versions may change behaviour; breaking changes are called out.
 
+## [0.5.0] - Unreleased
+
+The Doctor: Spanlight reads your traces, opens findings about how your application calls LLMs, and shows what changed between releases and who drives cost.
+
+### Added
+
+- **Error class, request hash and finish reason on LLM spans.** Every failed span gets one class (`auth`, `rate_limit`, `timeout`, `context_length`, `content_filter`, `provider_5xx`, `network`, `client` or `unknown`) from its HTTP status or message, and Traces can be filtered by it. Spans carry a `request_hash` (the same model and request give the same hash, computed before payload capture so it exists even when inputs are not stored) and a canonical `finish_reason` (`stop`, `length`, `tool_calls`, `content_filter` or `other`) for OpenAI, Anthropic and OTLP spans. Gateway spans for faults that answer before the provider call now record the simulated status and `Retry-After`. Spans stored before this release have none of these and are not backfilled.
+- **Fifteen detectors.** Deterministic rules over a project's recent spans: `error_spike`, `latency_regression`, `cost_spike`, `retry_storm`, `retry_after_ignored`, `rate_limit_pressure`, `truncated_outputs`, `context_growth`, `cache_opportunity`, `tool_loop`, `truncated_stream_accepted`, `unsupported_parameter_retried`, `client_timeout_misconfigured`, `unpriced_spend` and `provider_incident`. They run every 15 minutes for each project with traffic in the last 24 hours, skip calls the Integration Lab faulted when they judge traffic or provider health, and return nothing below a minimum sample size. Each finding carries its evidence (up to 20 traces), the layer where it fails, whether it is measured or inferred, a suggested fix and a way to verify it. The catalogue, thresholds and fixes are on the new Doctor page of the documentation.
+- **Insights lifecycle.** A problem is one insight however often it recurs: it counts occurrences, resolves itself after 24 hours without a sighting, and reopens if it returns. Admins and owners can acknowledge, resolve, mute (up to 90 days, with a reason) and unmute. A project's insight notifications go to a list of its organization's alert channels; only a critical insight that opens notifies, once, as an `insight.opened` webhook event (signed like alert events), a Slack message, an email or a PagerDuty trigger. The weekly digest gains an Insights section.
+- **Health score.** Overview shows a 0 to 100 score: 100 minus penalties for open critical and warning insights, error rate, a slower p95 and higher spend than the previous window. It is "—", never 0, when the window has no LLM calls.
+- **Explain with Claude.** An opt-in button on an insight asks Claude to explain the finding from its evidence. Admins and owners only, capped per organization at `EXPLAIN_MONTHLY_BUDGET_USD` a month with the cost reserved up front, shown under an "Advisory" label as plain text. Only redacted excerpts of at most five example traces are sent, through the organization's own Anthropic credential and traced into the project.
+- **Releases.** Set a release with the SDK, the OTLP `service.version` attribute or the gateway header `x-spanlight-release`. The Releases page lists releases in a range and compares two: deltas, model mix, error classes and new error messages, with exact percentiles over a range of up to 30 days.
+- **Users.** The Users page ranks end users (the SDK `user_id`, OTLP `user.id` or `x-spanlight-user`) by cost, errors or traces over whole UTC days, with a daily chart and recent sessions for each. Statistics are refreshed every 15 minutes. Releases and Users can also be read with a project API key that has the `traces:read` scope.
+- **Lab example clients.** `examples/` holds a deliberately naive client and a corrected one that run the Integration Lab scenarios against the gateway. The naive client opens the matching finding for each scenario and the corrected one opens none.
+- **Doctor screens.** Doctor (list and detail with evidence, fix, verification and actions), Releases, Users, a health tile on Overview, insight badges on traces, an error-class filter on Traces and an Insight notifications setting in Settings, Project.
+- **Operations.** `GET /api/v1/projects/{id}/detector-runs` shows what each detector did on its last passes. New Prometheus metrics (`spanlight_detector_runs_total`, `spanlight_detector_duration_seconds`, `spanlight_insights_open`, `spanlight_detector_projects_skipped_total`) feed a Doctor row on the Grafana dashboard. A new runbook covers detector runs, a project that times out, muting and the explanation budget.
+
+### Changed
+
+- **`insight.opened` joins the notification payloads.** Webhook, Slack, email and PagerDuty channels render it next to alert events; PagerDuty uses a dedup key that is stable for the insight and never sends a resolve for one.
+- **The gateway reads `x-spanlight-release`** (1 to 128 characters) into the trace, so release comparison covers traffic that has no SDK.
+- **Gateway `Retry-After` handling.** The provider's `retry-after-ms` header is now passed back to the client next to `retry-after`, and the gateway honours and records the millisecond value first.
+- **A Lab `malformed_json` call is recorded as failed.** It still answers `200` with the cut body, but its span has status `error` and the message `200 FAULT_MALFORMED_JSON: …`, so a client's reaction to it is judged like any other failure.
+
+### SDK
+
+- **Request hash and finish reason on LLM spans.** The OpenAI and Anthropic wrappers now send a `request_hash` (a stable hash of the model and request parameters, computed before payload capture so it exists even when inputs are not stored) and the provider's raw `finish_reason` (the first choice's `finish_reason` for OpenAI, `stop_reason` for Anthropic, streams included). Manual spans can call `span.set_request_hash(...)` and `span.set_finish_reason(...)`.
+
+### Settings
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `DETECTORS_ENABLED` | `true` | Schedule the detector job. Off, no new insights appear. |
+| `EXPLAIN_MODEL` | `claude-sonnet-5-5` | The model behind "Explain with Claude". It must have a price. |
+| `EXPLAIN_MONTHLY_BUDGET_USD` | `1.00` | Most an organization may spend on explanations per UTC month. `0` turns them off. |
+| `USER_STATS_ENABLED` | `true` | Schedule the refresh of per-user daily statistics behind the Users page. |
+
+### Migrations
+
+Run `spanlight migrate` (or restart the stack) after upgrading. Migrations 0400 to 0405 add the error class, request hash and finish reason columns on spans, the insights, detector runs and insight explanations tables, the project's insight channel list, the per-user daily statistics table and a release index on traces. Migrations 0400, 0401 and 0405 build their indexes `CONCURRENTLY`: writes continue, and on a large table the build takes a few minutes and extra disk.
+
 ## [0.4.0] - Unreleased
 
 Alerts and budgets: get told when error rate, latency, volume or cost crosses a line, and stop runaway spend at the gateway.
@@ -26,6 +67,7 @@ Alerts and budgets: get told when error rate, latency, volume or cost crosses a 
 - **Egress protection is a shared module.** The check that refuses private, loopback, link-local and reserved addresses on every connection moved from the gateway into `app/core/egress.py` and now also guards webhook, Slack and PagerDuty deliveries.
 - **Outbound URLs stay out of logs.** `httpx` and `httpcore` log at WARNING and Sentry's `httpx` integration is off, so a Slack or webhook URL can never reach a log line or an error report.
 - **Model filters match snapshot names.** An alert or budget filter on `gpt-4o` also matches `gpt-4o-2024-08-06` and `gpt-4o-latest`, but not `gpt-4o-mini`, the same rule the price table uses.
+- **SMTP on port 465.** With `SMTP_PORT=465` the email sender connects with implicit TLS (SMTPS) and checks the certificate, for networks that block port 587.
 - **The gateway budget guard is real.** The hook added in 0.3.0 now reads the evaluated state of blocking budgets instead of allowing every call.
 
 ### Security

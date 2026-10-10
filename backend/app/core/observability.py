@@ -106,3 +106,23 @@ BUDGET_BLOCKS = Counter(
     "spanlight_budget_blocks_total",
     "Gateway calls refused because a blocking budget was exhausted.",
 )
+DETECTOR_RUNS = Counter(
+    "spanlight_detector_runs_total",
+    "Detector runs over one project, by detector kind and outcome (ok, error).",
+    ["detector", "outcome"],
+)
+DETECTOR_DURATION = Histogram(
+    "spanlight_detector_duration_seconds",
+    "Time one detector took over one project's context, by detector kind.",
+    ["detector"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+)
+INSIGHTS_OPEN = Gauge(
+    "spanlight_insights_open",
+    "Open insights across every project, by severity, set at the end of each run_detectors pass.",
+    ["severity"],
+)
+DETECTOR_PROJECTS_SKIPPED = Counter(
+    "spanlight_detector_projects_skipped_total",
+    "Projects a run_detectors pass did not start because its run budget ran out.",
+)

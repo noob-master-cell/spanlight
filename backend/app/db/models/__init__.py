@@ -20,6 +20,7 @@ from app.db.models.auth import (
 )
 from app.db.models.base import Base
 from app.db.models.budgets import Budget
+from app.db.models.end_users import UserStatsDaily
 from app.db.models.exports import Export, ExportFormat, ExportKind, ExportStatus
 from app.db.models.gateway import (
     FaultProfile,
@@ -43,6 +44,7 @@ from app.db.models.identity import (
     Session,
     User,
 )
+from app.db.models.insights import DetectorRun, Insight, InsightExplanation
 from app.db.models.notifications import NotificationOutbox, NotificationStatus
 from app.db.models.platform import (
     IdempotencyKey,
@@ -67,6 +69,7 @@ __all__ = [
     "AuditEvent",
     "Base",
     "Budget",
+    "DetectorRun",
     "EmailToken",
     "EmailTokenKind",
     "Export",
@@ -81,6 +84,8 @@ __all__ = [
     "GatewayRoute",
     "GatewayRouteVersion",
     "IdempotencyKey",
+    "Insight",
+    "InsightExplanation",
     "Invite",
     "Job",
     "JobStatus",
@@ -109,5 +114,6 @@ __all__ = [
     "Trace",
     "TraceRollupHourly",
     "User",
+    "UserStatsDaily",
     "WorkerHeartbeat",
 ]

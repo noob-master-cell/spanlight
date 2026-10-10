@@ -22,6 +22,12 @@ class Project(Base):
     capture_payloads: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     # Whether org members get the Monday summary email for this project (`weekly_digest` job).
     weekly_digest_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    # Alert channels of the organization that hear about critical insights, at most 10. No
+    # foreign key: a channel can be deleted while a project still names it, and notifying skips
+    # an id that no longer resolves.
+    insight_channel_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), server_default=text("'{}'")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

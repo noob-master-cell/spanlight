@@ -16,11 +16,18 @@ from app.notifications.queries import DeliveryRow
 
 
 class DeliverySummaryOut(ApiModel):
-    # `alert`, `resolved`, `digest`... or `test` for a test send, which has no rule.
+    # `alert.fired`, `alert.resolved`, `budget.exceeded`, `insight.opened`, `weekly_digest`... or
+    # `test` for a test send, which has no rule.
     event: str
     event_id: uuid.UUID | None = None
+    # Set for an alert or budget event.
     rule_id: uuid.UUID | None = None
     rule_name: str | None = None
+    # Set for `insight.opened`: the insight, its project (channels are shared by the organization's
+    # projects) and its title when it was sent. Rows queued before `project_id` was kept lack it.
+    project_id: uuid.UUID | None = None
+    insight_id: uuid.UUID | None = None
+    title: str | None = None
 
 
 class DeliveryOut(ApiModel):

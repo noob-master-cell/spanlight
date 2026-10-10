@@ -49,6 +49,14 @@ def trace_conditions(project_id: uuid.UUID, filters: ExportFilters) -> list[Colu
                 Span.model == filters.model,
             )
         )
+    if filters.error_class is not None:
+        conditions.append(
+            exists().where(
+                Span.project_id == Trace.project_id,
+                Span.trace_id == Trace.trace_id,
+                Span.error_class == filters.error_class.value,
+            )
+        )
     if filters.q:
         conditions.append(
             or_(

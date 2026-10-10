@@ -5,13 +5,11 @@ and also filter on `project_id` explicitly, which keeps index usage obvious.
 """
 
 import uuid
-from collections.abc import Sequence
 from datetime import timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import Select, and_, distinct, exists, func, or_, select, tuple_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, func, or_, select, tuple_
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -28,7 +26,9 @@ from app.api.window import Window
 from app.core.errors import not_found
 from app.core.pagination import DEFAULT_PAGE_SIZE, PageLimit, decode_cursor, encode_cursor
 from app.core.permissions import Permission
-from app.db.models import Span, SpanStatus, Trace
+from app.db.models import Span, Trace
+from app.explorer.trace_queries import escape_like, has_span, summary_select, trace_spans
+from app.ingest.error_class import ErrorClass
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["traces"])
 
@@ -41,34 +41,9 @@ MAX_FILTER_VALUES = 100
 MAX_ERROR_MESSAGE_LENGTH = 500
 
 
-def _models_subquery() -> Select[Sequence[str | None]]:
-    return select(func.array_agg(distinct(Span.model)).filter(Span.model.is_not(None))).where(
-        Span.project_id == Trace.project_id, Span.trace_id == Trace.trace_id
-    )
-
-
-def _error_message_subquery() -> Select[str | None]:
-    """The earliest failed span's message. Uses the spans primary key (project_id, trace_id, …)."""
-    return (
-        select(Span.status_message)
-        .where(
-            Span.project_id == Trace.project_id,
-            Span.trace_id == Trace.trace_id,
-            Span.status == SpanStatus.ERROR,
-        )
-        .order_by(Span.started_at, Span.span_id)
-        .limit(1)
-    )
-
-
-def _summary_columns() -> tuple[ColumnElement[list[str] | None], ColumnElement[str | None]]:
-    return (
-        _models_subquery().scalar_subquery(),
-        _error_message_subquery().scalar_subquery(),
-    )
-
-
-def _summary(trace: Trace, models: list[str] | None, error_message: str | None) -> TraceSummaryOut:
+def _summary(
+    trace: Trace, models: list[str] | None, error_message: str | None, error_class: str | None
+) -> TraceSummaryOut:
     return TraceSummaryOut(
         trace_id=trace.trace_id,
         name=trace.name,
@@ -88,11 +63,8 @@ def _summary(trace: Trace, models: list[str] | None, error_message: str | None) 
         has_unpriced=trace.has_unpriced,
         models=sorted(models or []),
         error_message=error_message[:MAX_ERROR_MESSAGE_LENGTH] if error_message else None,
+        error_class=ErrorClass(error_class) if error_class else None,
     )
-
-
-def _escape_like(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 @router.get("/traces", response_model=Page[TraceSummaryOut])
@@ -105,6 +77,7 @@ async def list_traces(
     release: OptionalText = None,
     model: OptionalText = None,
     status: Literal["ok", "error"] | None = None,
+    error_class: ErrorClass | None = None,
     user_id: OptionalText = None,
     session_id: OptionalText = None,
     tag: OptionalText = None,
@@ -114,7 +87,7 @@ async def list_traces(
 ) -> Page[TraceSummaryOut]:
     project = access.require_project()
     query = (
-        select(Trace, *_summary_columns())
+        summary_select()
         .where(
             Trace.project_id == project.id,
             Trace.started_at >= window.start,
@@ -139,17 +112,13 @@ async def list_traces(
     elif status == "ok":
         query = query.where(Trace.error_count == 0)
     if model is not None:
-        query = query.where(
-            exists().where(
-                Span.project_id == Trace.project_id,
-                Span.trace_id == Trace.trace_id,
-                Span.model == model,
-            )
-        )
+        query = query.where(has_span(Span.model == model))
+    if error_class is not None:
+        query = query.where(has_span(Span.error_class == error_class.value))
     if q:
         query = query.where(
             or_(
-                Trace.name.ilike(f"%{_escape_like(q)}%", escape="\\"),
+                Trace.name.ilike(f"%{escape_like(q)}%", escape="\\"),
                 Trace.trace_id == q.lower(),
             )
         )
@@ -169,7 +138,7 @@ async def list_traces(
         last = page[-1][0]
         next_cursor = encode_cursor(last.started_at, last.trace_id)
     return Page[TraceSummaryOut](
-        items=[_summary(trace, models, error) for trace, models, error in page],
+        items=[_summary(*row) for row in page],
         next_cursor=next_cursor,
     )
 
@@ -181,51 +150,19 @@ async def get_trace(
     project = access.require_project()
     row = (
         await db.execute(
-            select(Trace, *_summary_columns()).where(
+            summary_select().where(
                 Trace.project_id == project.id, Trace.trace_id == trace_id.lower()
             )
         )
     ).one_or_none()
     if row is None:
         raise not_found()
-    trace, models, error_message = row
-
-    spans = await _trace_spans(db, project.id, trace.trace_id)
-    return TraceDetailOut(**_summary(trace, models, error_message).model_dump(), spans=spans)
-
-
-async def _trace_spans(db: AsyncSession, project_id: uuid.UUID, trace_id: str) -> list[SpanOut]:
-    spans = await db.scalars(
-        select(Span)
-        .where(Span.project_id == project_id, Span.trace_id == trace_id)
-        .order_by(Span.started_at, Span.span_id)
+    summary = _summary(*row)
+    spans = await trace_spans(db, project.id, summary.trace_id)
+    return TraceDetailOut(
+        **summary.model_dump(),
+        spans=[SpanOut.model_validate(span, from_attributes=True) for span in spans],
     )
-    return [
-        SpanOut(
-            span_id=span.span_id,
-            parent_span_id=span.parent_span_id,
-            kind=span.kind,
-            name=span.name,
-            status=span.status,
-            status_message=span.status_message,
-            started_at=span.started_at,
-            ended_at=span.ended_at,
-            duration_ms=span.duration_ms,
-            provider=span.provider,
-            model=span.model,
-            input_tokens=span.input_tokens,
-            output_tokens=span.output_tokens,
-            cached_tokens=span.cached_tokens,
-            cost_usd=span.cost_usd,
-            pricing_version=span.pricing_version,
-            time_to_first_token_ms=span.time_to_first_token_ms,
-            input=span.input,
-            output=span.output,
-            attributes=span.attributes,
-            truncated=span.truncated,
-        )
-        for span in spans
-    ]
 
 
 @router.get("/sessions", response_model=Page[SessionSummaryOut])

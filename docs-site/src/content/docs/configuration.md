@@ -37,7 +37,7 @@ Email is optional. It is on when `EMAIL_PROVIDER` is `resend` or `smtp` (with wh
 | `EMAIL_FROM` | string | unset | Sender address, for example `Spanlight <noreply@example.com>`. Required for `resend` and `smtp`. |
 | `RESEND_API_KEY` | secret | unset | API key of the Resend account. Required for `resend`. |
 | `SMTP_HOST` | string | unset | SMTP server host name. Required for `smtp`. |
-| `SMTP_PORT` | integer | `587` | SMTP server port. |
+| `SMTP_PORT` | integer | `587` | SMTP server port. `465` uses implicit TLS (SMTPS); any other port uses STARTTLS. |
 | `SMTP_USERNAME` | string | unset | SMTP user name. Optional. |
 | `SMTP_PASSWORD` | secret | unset | SMTP password. Optional. |
 | `SMTP_STARTTLS` | boolean | `true` | Upgrade the SMTP connection with STARTTLS. Turn it off only for a trusted local relay: mail and password then travel in clear text. |
@@ -117,6 +117,17 @@ Alert rules notify channels: email recipients, a Slack incoming webhook, a signe
 | `WEBHOOK_ALLOW_PRIVATE_TARGETS` | boolean | `false` | Allow webhook channels to use `http://` URLs and private, loopback or link-local addresses, for a receiver inside your network. Off, a webhook URL must be `https://` and resolve only to public addresses. Keep it off on a shared deployment. |
 | `ALERT_EMAIL_ANY_RECIPIENT` | boolean | `false` | Allow email channels to send to any address. Off, every recipient must be a member of the organization with a verified email. Keep it off on a shared deployment. |
 | `PAGERDUTY_EVENTS_URL` | string | `https://events.pagerduty.com/v2/enqueue` | Where PagerDuty channels send events (Events API v2). |
+
+### Doctor
+
+Detectors read each project's recent spans every 15 minutes and turn what they find into insights with a cause and a fix. "Explain with Claude" sends one insight's evidence to Claude through the organization's own Anthropic gateway credential, so it is real spend in that organization, capped by the monthly budget.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `DETECTORS_ENABLED` | boolean | `true` | Schedule the detector job, which looks for problems in every project with traffic every 15 minutes. Off, no new insights appear. |
+| `EXPLAIN_MODEL` | string | `claude-sonnet-5-5` | Claude model that explains an insight. It must have a price, or explanations answer `409 EXPLAIN_MODEL_UNPRICED`. |
+| `EXPLAIN_MONTHLY_BUDGET_USD` | decimal (min 0) | `1.00` | Most an organization may spend on explanations per UTC month, in US dollars. `0` turns explanations off (`409 NOT_CONFIGURED`). |
+| `USER_STATS_ENABLED` | boolean | `true` | Schedule the refresh of per-user daily statistics behind the Users page. Off, the page stops updating. |
 
 ### API request limits
 

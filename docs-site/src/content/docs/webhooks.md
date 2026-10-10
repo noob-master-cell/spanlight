@@ -1,11 +1,11 @@
 ---
 title: Alert webhooks
-description: The signed HTTP requests Spanlight sends for alerts and budgets, how to verify them, and how failed deliveries are retried.
+description: The signed HTTP requests Spanlight sends for alerts, budgets and critical Doctor insights, how to verify them, and how failed deliveries are retried.
 sidebar:
   order: 3
 ---
 
-A webhook channel makes Spanlight send a signed `POST` with a JSON body to a URL you choose whenever an alert rule fires or resolves, or a budget is exceeded. Use it to open tickets, page a rota, or feed your own tooling. This page lists the events, the request, how to check that a request really came from your Spanlight, and what happens when your endpoint is down.
+A webhook channel makes Spanlight send a signed `POST` with a JSON body to a URL you choose whenever an alert rule fires or resolves, a budget is exceeded, or the [Doctor](/docs/doctor/) opens a critical insight. Use it to open tickets, page a rota, or feed your own tooling. This page lists the events, the request, how to check that a request really came from your Spanlight, and what happens when your endpoint is down.
 
 Webhook channels belong to an organization. Create one under **Alerts → Channels**, choose **Webhook** and enter the URL. Spanlight shows the signing secret once, when the channel is created and again when you rotate it. Copy it then; it cannot be read back.
 
@@ -16,6 +16,7 @@ Webhook channels belong to an organization. Create one under **Alerts → Channe
 | `alert.fired` | An alert rule's condition became true. |
 | `alert.resolved` | The condition stopped being true. A resolved budget rule also sends this event, with `budget` set. |
 | `budget.exceeded` | A budget reached its amount. |
+| `insight.opened` | The Doctor opened a critical insight in a project that lists this channel under **Insight notifications**. See [insight.opened](#insightopened). |
 | `test` | You pressed **Send test** on the channel. The body is smaller: `version`, `event`, `occurred_at`, `org` and `url`. |
 
 ## The request
@@ -70,6 +71,49 @@ The body is compact JSON in UTF-8 (no spaces between tokens). Decimal numbers ar
 - `budget` is `null` for rule alerts. For budget events it is `{ id, name, scope, scope_id, period, amount_usd, spent_usd, action, resets_at }`, `rule.kind` is `budget` and `rule.window_minutes` is `null`.
 - `resolved_at` is set on `alert.resolved`.
 - New fields can appear in a later `version`. Ignore fields you do not know.
+
+## insight.opened
+
+The [Doctor](/docs/doctor/) sends this event once each time a **critical** insight becomes open: when it is first found, when a resolved one comes back, and when a mute ends and the problem is still there. A warning or info insight, and a critical one that is merely seen again, send nothing; a warning that later grows to critical stays quiet. A channel receives it only when an admin has added it to the project's insight channels under **Settings, Project, Insight notifications**. The request is signed, retried and deduplicated exactly like the alert events above; only the body differs.
+
+```json
+{
+  "version": "2026-10-01",
+  "event": "insight.opened",
+  "event_id": "0192f5a0-0000-7000-8000-0000000000e2",
+  "occurred_at": "2026-10-10T09:30:00Z",
+  "org": { "id": "0192f5a0-0000-7000-8000-00000000a001", "name": "Acme" },
+  "project": { "id": "0192f5a0-0000-7000-8000-00000000b001", "name": "Support Copilot" },
+  "insight": {
+    "id": "0192f5a0-0000-7000-8000-00000000f001",
+    "kind": "retry_storm",
+    "label": "Retry storm",
+    "severity": "critical",
+    "fingerprint": "5c1d0a9be3f24d7a8a61c0b2e4f93d17",
+    "title": "Identical failing requests repeated up to 24 times",
+    "summary": "3 bursts in the last 15 minutes sent the same request 5 or more times within 60 seconds after it failed (2 distinct requests).",
+    "failure_layer": "client",
+    "suggested_fix": "Retry with exponential backoff and jitter, at most 3 attempts, and only on retryable errors (429, 5xx, timeouts). Never retry 400, 401 or 403. The official SDKs do this with `max_retries=2` (three attempts in all).",
+    "verification": "Run the `provider_5xx` lab scenario on a test key: one round shows at most 3 attempts with growing gaps.",
+    "occurrences": 1,
+    "first_seen_at": "2026-10-10T09:30:00Z",
+    "last_seen_at": "2026-10-10T09:30:00Z",
+    "evidence": {
+      "trace_ids": ["4bf92f3577b34da6a3ce929d0e0e4736", "0af7651916cd43dd8448eb211c80319c"],
+      "metrics": { "storms": 3, "largest_storm": 24, "hashes": 2 },
+      "window": { "start": "2026-10-10T09:15:00Z", "end": "2026-10-10T09:30:00Z" }
+    }
+  },
+  "url": "https://app.example.com/0192f5a0-0000-7000-8000-00000000a001/0192f5a0-0000-7000-8000-00000000b001/doctor/0192f5a0-0000-7000-8000-00000000f001"
+}
+```
+
+- `fingerprint` names the problem within the project and is stable across reopenings, so it is a good key for your own ticket or incident. `insight.id` is also stable.
+- `evidence.trace_ids` holds up to 20 traces, most recent first. `evidence.metrics` depends on the kind: decimals are strings, counts are integers and an unknown value is `null`. `evidence.window` is the span of data the detector looked at.
+- `occurred_at` is the detection that opened the insight. `failure_layer` is one of `client`, `request`, `agent`, `provider`, `platform` or `traffic`.
+- `suggested_fix` and `verification` are the catalogue text for the kind, as shown on the insight page; they contain Markdown-style backticks and no HTML.
+- There is no `insight.resolved` event: an insight resolves after a quiet day, which is not a signal worth waking anyone for.
+- A PagerDuty channel gets a `trigger` with severity `critical` whatever severity you set on the channel, and a dedup key that is stable for the insight. The dedup key stops a second incident only while the first is still open. It never gets a `resolve`, so close the incident in PagerDuty when you have fixed the cause.
 
 ## Verify a request
 

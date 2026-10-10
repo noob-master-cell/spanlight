@@ -11,7 +11,7 @@ import asyncio
 import contextlib
 import dataclasses
 import math
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -83,17 +83,29 @@ def classify_failure(error: BaseException, timeout_ms: int) -> UpstreamFailure |
     return None
 
 
-def parse_retry_after(value: str | None) -> float | None:
-    """`Retry-After` in seconds (an integer or a decimal); an HTTP date or junk is None."""
-    if value is None:
+def parse_retry_after(headers: Mapping[str, str]) -> float | None:
+    """The provider's wait in seconds: `retry-after-ms` (÷ 1000) when present and valid, else
+    `retry-after` (an integer or a decimal). An HTTP date or junk is None.
+
+    `retry-after-ms` comes first because it is the precise value: `retry-after` is whole seconds
+    rounded up, and clients that follow the official SDKs wait for the millisecond one.
+    """
+    milliseconds = _non_negative_number(headers.get("retry-after-ms"))
+    if milliseconds is not None:
+        return milliseconds / 1000
+    return _non_negative_number(headers.get("retry-after"))
+
+
+def _non_negative_number(value: str | None) -> float | None:
+    if value is None or len(value) > 32:
         return None
     try:
-        seconds = float(value.strip())
+        number = float(value.strip())
     except ValueError:
         return None
-    if not math.isfinite(seconds) or seconds < 0:
+    if not math.isfinite(number) or number < 0:
         return None
-    return seconds
+    return number
 
 
 def insecure_url() -> GatewayError:

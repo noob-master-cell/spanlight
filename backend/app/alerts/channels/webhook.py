@@ -1,8 +1,8 @@
-"""Deliver an alert to a customer's endpoint as a signed JSON POST.
+"""Deliver an alert or an insight to a customer's endpoint as a signed JSON POST.
 
-The outbox row's target is `{"channel_id", "delivery_id"}`. The body is the alert payload's
-canonical JSON (the stored payload without its `summary`), exactly the bytes that are signed, so
-a receiver can verify the signature over what it read. Headers: `X-Spanlight-Event`,
+The outbox row's target is `{"channel_id", "delivery_id"}`. The body is the alert (or insight)
+payload's canonical JSON (the stored payload without its `summary`), exactly the bytes that are
+signed, so a receiver can verify the signature over what it read. Headers: `X-Spanlight-Event`,
 `X-Spanlight-Delivery` (the outbox row's id, constant across retries, for deduplication),
 `X-Spanlight-Timestamp` (unix seconds, fresh on every attempt) and `X-Spanlight-Signature`.
 
@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.alerts.channels.http import SharedClient, post_checked
 from app.alerts.channels.target import BAD_PAYLOAD, BAD_TARGET, resolve_target, summary_event
-from app.alerts.payload import AlertPayload, parse_payload
+from app.alerts.payload import AlertPayload, InsightPayload, parse_payload
 from app.db.models import AlertChannelKind
 from app.notifications.registry import PermanentDeliveryError
 from app.notifications.signing import sign
@@ -39,10 +39,10 @@ logger = structlog.get_logger(__name__)
 def webhook_body(payload: dict[str, Any]) -> tuple[bytes, str]:
     """The bytes to send and the event name, from an outbox row's payload.
 
-    Raises `pydantic.ValidationError` when the payload is neither an alert nor a test event.
+    Raises `pydantic.ValidationError` when the payload is not an alert, insight or test event.
     """
     parsed = parse_payload(payload)
-    if isinstance(parsed, AlertPayload):
+    if isinstance(parsed, AlertPayload | InsightPayload):
         return parsed.canonical_json(), parsed.event
     document = json.dumps(parsed.to_json_dict(), separators=(",", ":"), ensure_ascii=False)
     return document.encode(), parsed.event

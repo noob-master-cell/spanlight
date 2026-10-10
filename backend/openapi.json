@@ -1275,6 +1275,61 @@
         "title": "Comparator",
         "type": "string"
       },
+      "Comparison": {
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/ReleaseStats"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ReleaseStats"
+          },
+          "deltas": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Delta"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Deltas",
+            "type": "object"
+          },
+          "error_classes": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorClassChange"
+            },
+            "title": "Error Classes",
+            "type": "array"
+          },
+          "model_mix": {
+            "items": {
+              "$ref": "#/components/schemas/ModelShare"
+            },
+            "title": "Model Mix",
+            "type": "array"
+          },
+          "new_errors": {
+            "items": {
+              "$ref": "#/components/schemas/NewError"
+            },
+            "title": "New Errors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "deltas",
+          "model_mix",
+          "error_classes",
+          "new_errors"
+        ],
+        "title": "Comparison",
+        "type": "object"
+      },
       "CredentialCheckOut": {
         "properties": {
           "checked_at": {
@@ -1471,6 +1526,58 @@
         "title": "CredentialRotateIn",
         "type": "object"
       },
+      "DayStats": {
+        "description": "One UTC day of one user. A day without traces is all zeros with a `cost_usd` of 0; a day\nwith calls but none priced has `cost_usd` `None`.",
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "llm_calls": {
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "traces": {
+            "title": "Traces",
+            "type": "integer"
+          },
+          "unpriced_calls": {
+            "title": "Unpriced Calls",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "traces",
+          "llm_calls",
+          "errors",
+          "unpriced_calls",
+          "cost_usd",
+          "tokens"
+        ],
+        "title": "DayStats",
+        "type": "object"
+      },
       "DeliveryOut": {
         "properties": {
           "attempts": {
@@ -1558,6 +1665,30 @@
             ],
             "title": "Event Id"
           },
+          "insight_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insight Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
           "rule_id": {
             "anyOf": [
               {
@@ -1580,12 +1711,121 @@
               }
             ],
             "title": "Rule Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "required": [
           "event"
         ],
         "title": "DeliverySummaryOut",
+        "type": "object"
+      },
+      "Delta": {
+        "description": "`b - a`, and that as a fraction of `a` (`None` when `a` is 0).",
+        "properties": {
+          "absolute": {
+            "title": "Absolute",
+            "type": "string"
+          },
+          "relative": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative"
+          }
+        },
+        "required": [
+          "absolute",
+          "relative"
+        ],
+        "title": "Delta",
+        "type": "object"
+      },
+      "DetectorRunOut": {
+        "description": "One run of one detector. `findings` is `None` when the run failed (`error` is set).",
+        "properties": {
+          "detector": {
+            "title": "Detector",
+            "type": "string"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "findings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Findings"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ran_at": {
+            "format": "date-time",
+            "title": "Ran At",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "window_end": {
+            "format": "date-time",
+            "title": "Window End",
+            "type": "string"
+          },
+          "window_start": {
+            "format": "date-time",
+            "title": "Window Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "detector",
+          "window_start",
+          "window_end",
+          "findings",
+          "truncated",
+          "duration_ms",
+          "error",
+          "ran_at"
+        ],
+        "title": "DetectorRunOut",
         "type": "object"
       },
       "EmailConfig": {
@@ -1624,6 +1864,166 @@
         "title": "EmailVerifyConfirmIn",
         "type": "object"
       },
+      "ErrorClass": {
+        "enum": [
+          "auth",
+          "rate_limit",
+          "timeout",
+          "context_length",
+          "content_filter",
+          "provider_5xx",
+          "network",
+          "client",
+          "unknown"
+        ],
+        "title": "ErrorClass",
+        "type": "string"
+      },
+      "ErrorClassChange": {
+        "properties": {
+          "a_count": {
+            "title": "A Count",
+            "type": "integer"
+          },
+          "b_count": {
+            "title": "B Count",
+            "type": "integer"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Class"
+          }
+        },
+        "required": [
+          "error_class",
+          "a_count",
+          "b_count"
+        ],
+        "title": "ErrorClassChange",
+        "type": "object"
+      },
+      "EvidenceOut": {
+        "description": "The traces and numbers behind an insight; decimals are strings, unknown values `None`.",
+        "properties": {
+          "metrics": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "trace_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Trace Ids",
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/EvidenceWindowOut"
+          }
+        },
+        "required": [
+          "trace_ids",
+          "metrics",
+          "window"
+        ],
+        "title": "EvidenceOut",
+        "type": "object"
+      },
+      "EvidenceWindowOut": {
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "EvidenceWindowOut",
+        "type": "object"
+      },
+      "ExplanationOut": {
+        "description": "Claude's explanation of an insight: plain text, advisory, and what the call cost.\n\n`cost_usd` is the call's cost from its token usage (the reserved worst case when the answer\nreported no usage).",
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "model",
+          "text",
+          "cost_usd",
+          "created_by",
+          "created_at"
+        ],
+        "title": "ExplanationOut",
+        "type": "object"
+      },
       "ExportCreateIn": {
         "additionalProperties": false,
         "properties": {
@@ -1656,6 +2056,16 @@
               }
             ],
             "title": "Environment"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "from": {
             "format": "date-time",
@@ -3052,6 +3462,97 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HealthComponentOut": {
+        "description": "One source of penalty. `observed` and `baseline` are decimal strings, `None` when unknown\n(or when the component has no baseline: findings and errors).",
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "penalty": {
+            "title": "Penalty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "penalty",
+          "observed",
+          "baseline"
+        ],
+        "title": "HealthComponentOut",
+        "type": "object"
+      },
+      "HealthOut": {
+        "description": "The health score over the window; `value` is `None` (never 0) when it had no LLM calls.\n\n`approximate` is true when a percentile behind the score was estimated from rollup histograms.",
+        "properties": {
+          "approximate": {
+            "title": "Approximate",
+            "type": "boolean"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/HealthComponentOut"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "open_critical": {
+            "title": "Open Critical",
+            "type": "integer"
+          },
+          "open_warning": {
+            "title": "Open Warning",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "window": {
+            "$ref": "#/components/schemas/EvidenceWindowOut"
+          }
+        },
+        "required": [
+          "value",
+          "components",
+          "open_critical",
+          "open_warning",
+          "window",
+          "approximate"
+        ],
+        "title": "HealthOut",
+        "type": "object"
+      },
       "IngestResponse": {
         "properties": {
           "accepted": {
@@ -3071,6 +3572,317 @@
           "rejected"
         ],
         "title": "IngestResponse",
+        "type": "object"
+      },
+      "InsightDetailOut": {
+        "description": "The insight and its completed explanations, newest first.",
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "certainty": {
+            "title": "Certainty",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceOut"
+          },
+          "explanations": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationOut"
+            },
+            "title": "Explanations",
+            "type": "array"
+          },
+          "failure_layer": {
+            "title": "Failure Layer",
+            "type": "string"
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "mute_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mute Reason"
+          },
+          "muted_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Muted Until"
+          },
+          "occurrences": {
+            "title": "Occurrences",
+            "type": "integer"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InsightStatus"
+          },
+          "suggested_fix": {
+            "title": "Suggested Fix",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "severity",
+          "status",
+          "title",
+          "summary",
+          "failure_layer",
+          "certainty",
+          "evidence",
+          "suggested_fix",
+          "verification",
+          "first_seen_at",
+          "last_seen_at",
+          "occurrences",
+          "resolved_at",
+          "muted_until",
+          "mute_reason",
+          "acknowledged_at",
+          "explanations"
+        ],
+        "title": "InsightDetailOut",
+        "type": "object"
+      },
+      "InsightOut": {
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "certainty": {
+            "title": "Certainty",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceOut"
+          },
+          "failure_layer": {
+            "title": "Failure Layer",
+            "type": "string"
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "mute_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mute Reason"
+          },
+          "muted_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Muted Until"
+          },
+          "occurrences": {
+            "title": "Occurrences",
+            "type": "integer"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InsightStatus"
+          },
+          "suggested_fix": {
+            "title": "Suggested Fix",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "severity",
+          "status",
+          "title",
+          "summary",
+          "failure_layer",
+          "certainty",
+          "evidence",
+          "suggested_fix",
+          "verification",
+          "first_seen_at",
+          "last_seen_at",
+          "occurrences",
+          "resolved_at",
+          "muted_until",
+          "mute_reason",
+          "acknowledged_at"
+        ],
+        "title": "InsightOut",
+        "type": "object"
+      },
+      "InsightStatus": {
+        "enum": [
+          "open",
+          "acknowledged",
+          "resolved",
+          "muted"
+        ],
+        "title": "InsightStatus",
+        "type": "string"
+      },
+      "InsightSummaryOut": {
+        "description": "Counts of the insights that still need a person: `open` and `acknowledged` ones.",
+        "properties": {
+          "open_critical": {
+            "title": "Open Critical",
+            "type": "integer"
+          },
+          "open_info": {
+            "title": "Open Info",
+            "type": "integer"
+          },
+          "open_warning": {
+            "title": "Open Warning",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open_critical",
+          "open_warning",
+          "open_info"
+        ],
+        "title": "InsightSummaryOut",
         "type": "object"
       },
       "InviteAcceptIn": {
@@ -3615,6 +4427,72 @@
         "title": "ModelMetricsOut",
         "type": "object"
       },
+      "ModelShare": {
+        "description": "A model's share of each release's LLM calls (`None`: that release made no calls).",
+        "properties": {
+          "a_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Share"
+          },
+          "b_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Share"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "model",
+          "a_share",
+          "b_share"
+        ],
+        "title": "ModelShare",
+        "type": "object"
+      },
+      "MuteIn": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "title": "Reason",
+            "type": "string"
+          },
+          "until": {
+            "format": "date-time",
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "until",
+          "reason"
+        ],
+        "title": "MuteIn",
+        "type": "object"
+      },
       "MuteRequest": {
         "additionalProperties": false,
         "properties": {
@@ -3635,6 +4513,30 @@
           "until"
         ],
         "title": "MuteRequest",
+        "type": "object"
+      },
+      "NewError": {
+        "description": "A normalised failure message that spans of `b` have and spans of `a` do not.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "example_trace_id": {
+            "title": "Example Trace Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "count",
+          "example_trace_id"
+        ],
+        "title": "NewError",
         "type": "object"
       },
       "NotificationStatus": {
@@ -3995,6 +4897,34 @@
           "next_cursor"
         ],
         "title": "Page[ExportOut]",
+        "type": "object"
+      },
+      "Page_InsightOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InsightOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[InsightOut]",
         "type": "object"
       },
       "Page_SessionSummaryOut_": {
@@ -4510,6 +5440,14 @@
             "title": "Id",
             "type": "string"
           },
+          "insight_channel_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Insight Channel Ids",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -4540,6 +5478,7 @@
           "retention_days",
           "capture_payloads",
           "weekly_digest_enabled",
+          "insight_channel_ids",
           "created_at"
         ],
         "title": "ProjectOut",
@@ -4557,6 +5496,22 @@
               }
             ],
             "title": "Capture Payloads"
+          },
+          "insight_channel_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insight Channel Ids"
           },
           "name": {
             "anyOf": [
@@ -4670,6 +5625,105 @@
           "reason"
         ],
         "title": "RejectedSpan",
+        "type": "object"
+      },
+      "ReleaseStats": {
+        "description": "One release over a window. Unknown values are `None`, never 0.\n\n`cost_usd` is the sum of the priced spans: `None` only when nothing was priced, and a lower\nbound while `unpriced_calls` is above 0.",
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "error_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Rate"
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "llm_calls": {
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms"
+          },
+          "release": {
+            "title": "Release",
+            "type": "string"
+          },
+          "traces": {
+            "title": "Traces",
+            "type": "integer"
+          },
+          "unpriced_calls": {
+            "title": "Unpriced Calls",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "release",
+          "first_seen_at",
+          "last_seen_at",
+          "traces",
+          "llm_calls",
+          "unpriced_calls",
+          "error_rate",
+          "p50_ms",
+          "p95_ms",
+          "cost_usd",
+          "input_tokens",
+          "output_tokens"
+        ],
+        "title": "ReleaseStats",
         "type": "object"
       },
       "RetryPolicy": {
@@ -5298,6 +6352,15 @@
         "title": "SessionSummaryOut",
         "type": "object"
       },
+      "Severity": {
+        "enum": [
+          "info",
+          "warning",
+          "critical"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
       "SignupIn": {
         "properties": {
           "email": {
@@ -5397,6 +6460,27 @@
             "format": "date-time",
             "title": "Ended At",
             "type": "string"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finish_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finish Reason"
           },
           "input": {
             "title": "Input"
@@ -5523,6 +6607,7 @@
           "name",
           "status",
           "status_message",
+          "error_class",
           "started_at",
           "ended_at",
           "duration_ms",
@@ -5537,7 +6622,8 @@
           "input",
           "output",
           "attributes",
-          "truncated"
+          "truncated",
+          "finish_reason"
         ],
         "title": "SpanOut",
         "type": "object"
@@ -5550,6 +6636,27 @@
         ],
         "title": "SpanStatus",
         "type": "string"
+      },
+      "StatsWindow": {
+        "description": "The window the figures cover: the requested one widened to whole UTC days.",
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "StatsWindow",
+        "type": "object"
       },
       "Target": {
         "additionalProperties": false,
@@ -5802,6 +6909,16 @@
             ],
             "title": "Environment"
           },
+          "error_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "error_count": {
             "title": "Error Count",
             "type": "integer"
@@ -5927,6 +7044,7 @@
           "has_unpriced",
           "models",
           "error_message",
+          "error_class",
           "spans"
         ],
         "title": "TraceDetailOut",
@@ -5964,6 +7082,16 @@
               }
             ],
             "title": "Environment"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "error_count": {
             "title": "Error Count",
@@ -6082,7 +7210,8 @@
           "cost_usd",
           "has_unpriced",
           "models",
-          "error_message"
+          "error_message",
+          "error_class"
         ],
         "title": "TraceSummaryOut",
         "type": "object"
@@ -6158,6 +7287,70 @@
         "title": "UnsupportedParameterParams",
         "type": "object"
       },
+      "UserDetailOut": {
+        "properties": {
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DayStats"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "recent_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionSummaryOut"
+            },
+            "title": "Recent Sessions",
+            "type": "array"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserStats"
+          },
+          "window": {
+            "$ref": "#/components/schemas/StatsWindow"
+          }
+        },
+        "required": [
+          "user",
+          "daily",
+          "recent_sessions",
+          "window"
+        ],
+        "title": "UserDetailOut",
+        "type": "object"
+      },
+      "UserListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserStats"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "window": {
+            "$ref": "#/components/schemas/StatsWindow"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "window"
+        ],
+        "title": "UserListOut",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "created_at": {
@@ -6191,6 +7384,69 @@
           "email_verified"
         ],
         "title": "UserOut",
+        "type": "object"
+      },
+      "UserStats": {
+        "description": "One end user over the days of the window that have any activity.\n\n`cost_usd` is the sum of the priced calls: `None` when calls were made and none was priced,\nand a lower bound while `unpriced_calls` (the calls without a price) is above 0.\n`first_seen_day` and `last_seen_day` are the first and last of those days. `errors` counts\nfailed LLM calls; the `error_count` of a session counts failed spans of every kind.",
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "external_user_id": {
+            "title": "External User Id",
+            "type": "string"
+          },
+          "first_seen_day": {
+            "format": "date",
+            "title": "First Seen Day",
+            "type": "string"
+          },
+          "last_seen_day": {
+            "format": "date",
+            "title": "Last Seen Day",
+            "type": "string"
+          },
+          "llm_calls": {
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "traces": {
+            "title": "Traces",
+            "type": "integer"
+          },
+          "unpriced_calls": {
+            "title": "Unpriced Calls",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "external_user_id",
+          "traces",
+          "llm_calls",
+          "errors",
+          "unpriced_calls",
+          "cost_usd",
+          "tokens",
+          "first_seen_day",
+          "last_seen_day"
+        ],
+        "title": "UserStats",
         "type": "object"
       },
       "ValidationError": {
@@ -9911,6 +11167,66 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/detector-runs": {
+      "get": {
+        "description": "Newest first: what ran, over which window, how many findings, and what failed.",
+        "operationId": "list_detector_runs_api_v1_projects__project_id__detector_runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DetectorRunOut"
+                  },
+                  "title": "Response List Detector Runs Api V1 Projects  Project Id  Detector Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List recent detector runs",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/exports": {
       "get": {
         "description": "Newest first. A finished export's `download_url` is a signed link, so nothing caches this.",
@@ -11139,6 +12455,625 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/health": {
+      "get": {
+        "description": "0 to 100 over the window (default the last 24 h); `value` is `null` without LLM calls.",
+        "operationId": "get_health_api_v1_projects__project_id__health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Environment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Score the project's health",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights": {
+      "get": {
+        "description": "Most recently seen first. `status` may repeat; `trace_id` keeps insights citing the trace.",
+        "operationId": "list_insights_api_v1_projects__project_id__insights_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/InsightStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Severity"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trace Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_InsightOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List insights",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/summary": {
+      "get": {
+        "description": "Open and acknowledged insights by severity, for the navigation badge.",
+        "operationId": "insights_summary_api_v1_projects__project_id__insights_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Count the insights to act on",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/{insight_id}": {
+      "get": {
+        "description": "The insight and its completed explanations, newest first (at most 20).",
+        "operationId": "get_insight_api_v1_projects__project_id__insights__insight_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read one insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/{insight_id}/acknowledge": {
+      "post": {
+        "description": "Record that you have seen it. `409 INVALID_TRANSITION` unless it is open.",
+        "operationId": "acknowledge_insight_api_v1_projects__project_id__insights__insight_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge an insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/{insight_id}/explain": {
+      "post": {
+        "description": "Claude explains the insight from its evidence; the answer is advisory plain text.\n\nSent with the organization's oldest Anthropic credential and counted against its monthly\nexplain budget. `409 NOT_CONFIGURED` without a credential, `CREDENTIALS_KEYS` or a budget;\n`409 EXPLAIN_MODEL_UNPRICED`; `402 EXPLAIN_BUDGET_EXCEEDED`; `502 EXPLAIN_FAILED`.",
+        "operationId": "explain_insight_api_v1_projects__project_id__insights__insight_id__explain_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask Claude to explain an insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/{insight_id}/mute": {
+      "post": {
+        "description": "Silence it until `until` (at most 90 days ahead); `422 INVALID_MUTE` otherwise.",
+        "operationId": "mute_insight_api_v1_projects__project_id__insights__insight_id__mute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mute an insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/{insight_id}/resolve": {
+      "post": {
+        "description": "Mark it fixed. Detecting the problem again reopens it.",
+        "operationId": "resolve_insight_api_v1_projects__project_id__insights__insight_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve an insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/insights/{insight_id}/unmute": {
+      "post": {
+        "description": "End a mute early. `409 INVALID_TRANSITION` unless it is muted.",
+        "operationId": "unmute_insight_api_v1_projects__project_id__insights__insight_id__unmute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "insight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Insight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unmute an insight",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/keys": {
       "get": {
         "operationId": "list_keys_api_v1_projects__project_id__keys_get",
@@ -11630,6 +13565,224 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/releases": {
+      "get": {
+        "operationId": "list_releases_api_v1_projects__project_id__releases_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Environment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReleaseStats"
+                  },
+                  "title": "Response List Releases Api V1 Projects  Project Id  Releases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Releases",
+        "tags": [
+          "releases"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/releases/compare": {
+      "get": {
+        "operationId": "compare_releases_api_v1_projects__project_id__releases_compare_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[^\\x00]*$",
+              "title": "A",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[^\\x00]*$",
+              "title": "B",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Environment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Releases",
+        "tags": [
+          "releases"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/sessions": {
       "get": {
         "operationId": "list_sessions_api_v1_projects__project_id__sessions_get",
@@ -11818,6 +13971,22 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ErrorClass"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Class"
             }
           },
           {
@@ -12110,6 +14279,215 @@
         "summary": "Get Unpriced Models",
         "tags": [
           "prices"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/users": {
+      "get": {
+        "operationId": "list_users_api_v1_projects__project_id__users_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "cost",
+              "enum": [
+                "cost",
+                "errors",
+                "traces"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Users",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/users/{external_user_id}": {
+      "get": {
+        "operationId": "user_detail_api_v1_projects__project_id__users__external_user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "external_user_id",
+            "required": true,
+            "schema": {
+              "maxLength": 257,
+              "minLength": 1,
+              "pattern": "^[^\\x00]*$",
+              "title": "External User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "User Detail",
+        "tags": [
+          "users"
         ]
       }
     },

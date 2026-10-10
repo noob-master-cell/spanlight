@@ -39,6 +39,7 @@ const RUNBOOK_ORDER = [
   'slo',
   'gateway',
   'alerts',
+  'detectors',
 ];
 
 const errors = [];

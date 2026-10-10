@@ -71,7 +71,7 @@ Anthropic:
 
 When the provider itself answers with an error that the route does not retry, the gateway returns that response **unchanged**: the provider's status and body, with `X-Spanlight-Code: UPSTREAM_ERROR` added. Your SDK raises the provider's own exception. The call's span is marked as an error and records the provider's error type.
 
-Only a short allowlist of provider headers is passed back: `content-type`, `retry-after`, `x-ratelimit-*`, `anthropic-ratelimit-*` and `openai-processing-ms`; the provider's `request-id` becomes `x-upstream-request-id`.
+Only a short allowlist of provider headers is passed back: `content-type`, `retry-after`, `retry-after-ms`, `x-ratelimit-*`, `anthropic-ratelimit-*` and `openai-processing-ms`; the provider's `request-id` becomes `x-upstream-request-id`.
 
 ## Errors from the Lab
 

@@ -118,6 +118,7 @@ _SPAN_COLUMNS = (
     "name",
     "status",
     "status_message",
+    "error_class",
     "started_at",
     "ended_at",
     "provider",
@@ -132,6 +133,8 @@ _SPAN_COLUMNS = (
     "output",
     "attributes",
     "truncated",
+    "request_hash",
+    "finish_reason",
 )
 
 

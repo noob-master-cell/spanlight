@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from app.api.schemas.common import ApiModel
 from app.api.window import MAX_WINDOW
 from app.db.models import ExportFormat, ExportStatus
+from app.ingest.error_class import ErrorClass
 
 FilterText = Annotated[str, StringConstraints(max_length=256)]
 
@@ -31,6 +32,8 @@ class ExportFilters(BaseModel):
     release: FilterText | None = None
     model: FilterText | None = None
     status: Literal["ok", "error"] | None = None
+    # Keeps traces with at least one span of this class, as in the trace list.
+    error_class: ErrorClass | None = None
     user_id: FilterText | None = None
     session_id: FilterText | None = None
     tag: FilterText | None = None

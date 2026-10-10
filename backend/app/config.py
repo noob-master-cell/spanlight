@@ -147,6 +147,16 @@ class Settings(BaseSettings):
     # Where PagerDuty alert channels send events (the Events API v2 endpoint).
     pagerduty_events_url: str = "https://events.pagerduty.com/v2/enqueue"
 
+    # The Doctor. `detectors_enabled` schedules the detector job (every 15 minutes) and
+    # `user_stats_enabled` the per-user daily stats refresh; turn either off to stop it
+    # everywhere. "Explain with Claude" calls `explain_model` through the organization's own
+    # Anthropic credential, at most `explain_monthly_budget_usd` per organization per UTC month
+    # (0 turns explanations off). The model must have a price, or the budget cannot be enforced.
+    detectors_enabled: bool = True
+    explain_model: str = Field(default="claude-sonnet-5-5", min_length=1)
+    explain_monthly_budget_usd: Decimal = Field(default=Decimal("1.00"), ge=0)
+    user_stats_enabled: bool = True
+
     sentry_dsn: str | None = None
 
     # Tracing of the app's own requests, queries and outbound calls. Set the base URL of an OTLP
@@ -212,6 +222,10 @@ class Settings(BaseSettings):
         "webhook_allow_private_targets",
         "alert_email_any_recipient",
         "pagerduty_events_url",
+        "detectors_enabled",
+        "explain_model",
+        "explain_monthly_budget_usd",
+        "user_stats_enabled",
         "otel_service_name",
         mode="before",
     )

@@ -1,4 +1,5 @@
-"""Housekeeping for auth and throttle tables, idempotency keys, rate limit buckets, jobs, outbox."""
+"""Housekeeping for auth and throttle tables, idempotency keys, rate limit buckets, jobs, outbox
+and the explain budget's stale reservations."""
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -20,6 +21,7 @@ from app.db.models import (
     ThrottleEvent,
 )
 from app.exports.expiry import expire_exports, reap_exports
+from app.insights.explain_queries import complete_stale_reservations
 from app.jobs.context import TaskContext
 from app.storage.object_store import get_object_store
 
@@ -31,6 +33,10 @@ EMAIL_TOKEN_RETENTION = timedelta(days=1)
 FINISHED_JOB_RETENTION = timedelta(days=7)
 FINISHED_OUTBOX_RETENTION = timedelta(days=7)
 RATE_LIMIT_BUCKET_RETENTION = timedelta(hours=1)  # a bucket idle this long is full again anyway
+# An explanation call is answered within the route's 60 s timeout, so a reservation this old
+# belongs to a request that died before it could complete or release it. It is completed at its
+# worst-case cost, never deleted: the provider may have billed it.
+STALE_RESERVATION_AGE = timedelta(minutes=10)
 
 
 async def run_cleanup_sessions(context: TaskContext, _: dict[str, Any]) -> None:
@@ -40,6 +46,10 @@ async def run_cleanup_sessions(context: TaskContext, _: dict[str, Any]) -> None:
     store = get_object_store(context.settings)
     counts["exports_expired"] = await expire_exports(context.session_factory, store, now=now)
     counts["exports_reaped"] = await reap_exports(context.session_factory, store, now=now)
+    # Separate as well: `insight_explanations` is row-level secured.
+    counts["explain_reservations_completed"] = await complete_stale_reservations(
+        context.session_factory, before=now - STALE_RESERVATION_AGE, now=now
+    )
     logger.info("cleanup_done", **counts)
 
 

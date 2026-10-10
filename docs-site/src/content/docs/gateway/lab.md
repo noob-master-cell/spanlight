@@ -43,7 +43,8 @@ You can always tell a Lab fault from a real provider failure:
 - the response has `X-Spanlight-Fault: <scenario>`;
 - error bodies carry `spanlight_code` and the `X-Spanlight-Code` header `FAULT_<SCENARIO>`, for example `FAULT_PROVIDER_5XX`;
 - the span has the attributes `spanlight.fault.scenario` and `spanlight.fault.profile_id`;
-- the trace has the tag `lab:<scenario>`, for example `lab:truncated_stream`, so a filter on that tag lists every faulted trace.
+- the trace has the tag `lab:<scenario>`, for example `lab:truncated_stream`, so a filter on that tag lists every faulted trace;
+- a `malformed_json` call answers `200`, but its span is recorded as failed with the status message `200 FAULT_MALFORMED_JSON: …`, because the client received a body it cannot parse.
 
 **Gateway, Lab** lists the recent faulted calls and **Gateway, Overview** counts them per scenario. Calls that a fault made fail are included in the overview's error rate.
 

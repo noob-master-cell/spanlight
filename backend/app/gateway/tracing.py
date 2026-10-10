@@ -9,19 +9,22 @@ import secrets
 from datetime import datetime
 from typing import Any
 
-from app.db.models import ProviderCredential
+from app.db.models import FaultScenario, ProviderCredential
 from app.gateway.context import (
     UPSTREAM_ERROR_CODE,
     GatewayContext,
     GatewayRequest,
     GatewayResult,
 )
-from app.gateway.faults import lab_tag
+from app.gateway.faults import BEFORE_SCENARIOS, fault_code, lab_tag
 from app.gateway.sse import Usage
 from app.gateway.trace_headers import MAX_TAGS
+from app.ingest.request_hash import request_hash
 
 MAX_NAME_LENGTH = 256
 MAX_STATUS_MESSAGE = 4096
+# Matches no error-class pattern, so with its 200 status the span's class is `unknown`.
+MALFORMED_JSON_MESSAGE = "the Integration Lab cut the response body short on purpose"
 
 
 def new_trace_id() -> str:
@@ -68,8 +71,13 @@ def build_span(
         "input": request.body,
         "output": result.output,
         "attributes": _attributes(request, result, context),
+        # Computed here, from what the client sent: ingestion drops `input` when the project
+        # does not capture payloads, and the requested model keeps the hash stable across a
+        # fallback to another target.
+        "request_hash": request_hash(_requested_model(request), request.body),
         "trace": {
             "environment": context.environment or None,
+            "release": request.trace.release,
             "user_id": request.trace.user_id,
             "session_id": request.trace.session_id,
             "tags": trace_tags(request, result, context),
@@ -94,7 +102,22 @@ def status_message(result: GatewayResult) -> str | None:
         return f"{error.status} {code}: {error.message}"[:MAX_STATUS_MESSAGE]
     if result.stream_error is not None:
         return f"{result.status} stream_error: {result.stream_error}"[:MAX_STATUS_MESSAGE]
+    if _body_cut_by_fault(result):
+        code = fault_code(FaultScenario.MALFORMED_JSON)
+        return f"{result.status} {code}: {MALFORMED_JSON_MESSAGE}"
     return None
+
+
+def _body_cut_by_fault(result: GatewayResult) -> bool:
+    """Whether a `malformed_json` fault cut an otherwise successful answer's body.
+
+    The client got a success status with a body it cannot parse, so the span is a failure: what
+    the client does next is then judged like after any other failure.
+    """
+    fault = result.fault
+    return (
+        fault is not None and fault.scenario == FaultScenario.MALFORMED_JSON and result.status < 400
+    )
 
 
 def trace_tags(
@@ -113,11 +136,7 @@ def _attributes(
     request: GatewayRequest, result: GatewayResult, context: GatewayContext
 ) -> dict[str, Any]:
     credential = _credential(result, context)
-    last = result.attempts[-1] if result.attempts else None
-    retry_after = next(
-        (a.retry_after for a in reversed(result.attempts) if a.retry_after is not None),
-        None,
-    )
+    upstream_status, retry_after = _upstream_status(result)
     targets_tried = list(dict.fromkeys(attempt.target_index for attempt in result.attempts))
     attributes: dict[str, Any] = {
         "spanlight.gateway.key_id": str(context.key_id) if context.key_id else None,
@@ -131,7 +150,7 @@ def _attributes(
         "spanlight.gateway.fallbacks": max(0, len(targets_tried) - 1),
         "spanlight.gateway.overhead_ms": result.overhead_ms,
         "spanlight.gateway.stream": request.stream,
-        "spanlight.gateway.upstream_status": last.status if last is not None else None,
+        "spanlight.gateway.upstream_status": upstream_status,
         "spanlight.gateway.retry_after_s": retry_after,
         "spanlight.gateway.client_disconnected": result.client_disconnected,
         "spanlight.cache": result.cache,
@@ -147,6 +166,30 @@ def _attributes(
         budget_id = result.budget.budget_id
         attributes["spanlight.budget.id"] = str(budget_id) if budget_id is not None else None
     return attributes
+
+
+def _upstream_status(result: GatewayResult) -> tuple[int | None, float | None]:
+    """The provider's status and `Retry-After`: the last attempt's, or a fault's simulated ones.
+
+    A fault answered before the upstream call makes no attempt, so its span carries the status
+    (and, for `rate_limited`, the `Retry-After`) the gateway answered with instead. Its
+    `spanlight.gateway.attempts` stays 0, which tells a simulated status from a real one.
+    """
+    if result.attempts:
+        retry_after = next(
+            (a.retry_after for a in reversed(result.attempts) if a.retry_after is not None),
+            None,
+        )
+        return result.attempts[-1].status, retry_after
+    fault, error = result.fault, result.error
+    if (
+        fault is not None
+        and fault.scenario in BEFORE_SCENARIOS
+        and error is not None
+        and error.spanlight_code == fault_code(fault.scenario)
+    ):
+        return error.status, error.retry_after
+    return None, None
 
 
 def _usage(result: GatewayResult) -> dict[str, Any] | None:

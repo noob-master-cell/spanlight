@@ -1,6 +1,6 @@
-"""The one fan-out from an alert payload to an organization's alert channels.
+"""The one fan-out from an alert or insight payload to an organization's alert channels.
 
-Every producer of alert notifications (the evaluation job; later, insights) calls
+Every producer of notifications (the evaluation job; the Doctor's `notify_opened`) calls
 `notify_channels` inside the transaction that decided to notify, so the decision and its outbox
 rows commit or roll back together.
 """
@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.alerts.delivery_fanout import enqueue_for_channel
-from app.alerts.payload import AlertPayload
+from app.alerts.payload import AlertPayload, NotifyPayload
 from app.db.models import AlertChannel
 
 if TYPE_CHECKING:
@@ -26,15 +26,15 @@ logger = structlog.get_logger(__name__)
 async def notify_channels(
     db: AsyncSession,
     channel_ids: Sequence[uuid.UUID],
-    payload: AlertPayload,
+    payload: NotifyPayload,
     *,
     settings: "Settings",
 ) -> int:
     """Queue `payload` for each channel in `channel_ids`, in order; returns how many rows.
 
     Only channels of the payload's organization are used. An id that names no such channel (the
-    channel was deleted; rules keep the id) is skipped and logged as `alert_channel_missing`.
-    Never commits.
+    channel was deleted; rules and projects keep the id) is skipped and logged as
+    `alert_channel_missing`. Never commits.
     """
     wanted = list(dict.fromkeys(channel_ids))
     if not wanted:
@@ -51,12 +51,24 @@ async def notify_channels(
     for channel_id in wanted:
         channel = channels.get(channel_id)
         if channel is None:
-            logger.warning(
-                "alert_channel_missing",
-                channel_id=str(channel_id),
-                rule_id=str(payload.rule.id),
-                event_id=str(payload.event_id),
-            )
+            _log_missing(channel_id, payload)
             continue
         queued += await enqueue_for_channel(db, channel, payload, settings=settings)
     return queued
+
+
+def _log_missing(channel_id: uuid.UUID, payload: NotifyPayload) -> None:
+    if isinstance(payload, AlertPayload):
+        logger.warning(
+            "alert_channel_missing",
+            channel_id=str(channel_id),
+            rule_id=str(payload.rule.id),
+            event_id=str(payload.event_id),
+        )
+    else:
+        logger.warning(
+            "alert_channel_missing",
+            channel_id=str(channel_id),
+            insight_id=str(payload.insight.id),
+            event_id=str(payload.event_id),
+        )

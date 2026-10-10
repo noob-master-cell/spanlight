@@ -69,6 +69,11 @@ class AuditAction(enum.StrEnum):
     BUDGET_CREATE = "budget.create"
     BUDGET_UPDATE = "budget.update"
     BUDGET_DELETE = "budget.delete"
+    INSIGHT_ACKNOWLEDGE = "insight.acknowledge"
+    INSIGHT_RESOLVE = "insight.resolve"
+    INSIGHT_MUTE = "insight.mute"
+    INSIGHT_UNMUTE = "insight.unmute"
+    INSIGHT_EXPLAIN = "insight.explain"
 
 
 class User(Base):

@@ -12,10 +12,12 @@ PARENT_SPAN_ID_HEADER = "x-spanlight-parent-span-id"
 SESSION_HEADER = "x-spanlight-session"
 USER_HEADER = "x-spanlight-user"
 TAGS_HEADER = "x-spanlight-tags"
+RELEASE_HEADER = "x-spanlight-release"
 
 MAX_TAGS = 20
 MAX_TAG_LENGTH = 64
 MAX_TRACE_TEXT = 256  # user and session ids, as in native ingestion
+MAX_RELEASE = 128  # as `TraceIn.release`
 
 _TRACE_ID = re.compile(r"[0-9a-f]{32}")
 _SPAN_ID = re.compile(r"[0-9a-f]{16}")
@@ -30,11 +32,11 @@ def _valid_id(value: str | None, pattern: re.Pattern[str]) -> str | None:
     return lowered
 
 
-def _bounded_text(value: str | None) -> str | None:
+def _bounded_text(value: str | None, limit: int = MAX_TRACE_TEXT) -> str | None:
     if value is None:
         return None
     stripped = value.strip()
-    return stripped if 0 < len(stripped) <= MAX_TRACE_TEXT else None
+    return stripped if 0 < len(stripped) <= limit else None
 
 
 def _tags(value: str | None) -> list[str]:
@@ -57,6 +59,7 @@ class TraceHeaders:
     session_id: str | None = None
     user_id: str | None = None
     tags: list[str] = field(default_factory=list)
+    release: str | None = None
 
     @classmethod
     def from_headers(cls, headers: Mapping[str, str]) -> "TraceHeaders":
@@ -64,8 +67,9 @@ class TraceHeaders:
 
         If either id is present but invalid, both are dropped and the call starts a new trace; a
         parent id without a trace id is dropped as well. User and session ids are 1 to 256
-        characters, tags are comma-separated, at most 20 of at most 64 characters each (longer
-        ones are dropped, repeats ignored).
+        characters and the release 1 to 128 (the bounds of native ingestion; a value outside
+        them is dropped). Tags are comma-separated, at most 20 of at most 64 characters each
+        (longer ones are dropped, repeats ignored).
         """
         lowered = {name.lower(): value for name, value in headers.items()}
         raw_trace, raw_parent = lowered.get(TRACE_ID_HEADER), lowered.get(PARENT_SPAN_ID_HEADER)
@@ -82,4 +86,5 @@ class TraceHeaders:
             session_id=_bounded_text(lowered.get(SESSION_HEADER)),
             user_id=_bounded_text(lowered.get(USER_HEADER)),
             tags=_tags(lowered.get(TAGS_HEADER)),
+            release=_bounded_text(lowered.get(RELEASE_HEADER), MAX_RELEASE),
         )

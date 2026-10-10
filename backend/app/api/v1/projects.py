@@ -18,6 +18,7 @@ from app.api.schemas import (
 from app.core.errors import confirmation_mismatch, conflict, forbidden, not_found
 from app.core.permissions import Permission
 from app.db.models import AuditAction, Project, Trace
+from app.insights.channels import check_insight_channels
 from app.services.audit import record_audit
 from app.services.deletion import (
     delete_project_rows,
@@ -100,6 +101,8 @@ async def update_project(
     if not await lock_project_for_write(db, access.org.id, project.id):
         raise not_found()
     changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    if "insight_channel_ids" in changes:
+        await check_insight_channels(db, access.org.id, changes["insight_channel_ids"])
     for field, value in changes.items():
         setattr(project, field, value)
     if changes:
@@ -111,7 +114,10 @@ async def update_project(
             target_type="project",
             target_id=project.id,
             ip=client_ip(request),
-            metadata={"changes": changes},
+            # JSON mode: channel ids are stored as strings.
+            metadata={
+                "changes": body.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+            },
         )
     await db.commit()
     return project

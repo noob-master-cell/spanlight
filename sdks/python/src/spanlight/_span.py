@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import re
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping
@@ -25,6 +26,8 @@ SpanStatus = Literal["ok", "error", "unset"]
 
 _VALID_KINDS: frozenset[str] = frozenset(get_args(SpanKind))
 _MAX_STATUS_MESSAGE = 2_000
+_MAX_FINISH_REASON = 64
+_REQUEST_HASH_PATTERN = re.compile(r"[0-9a-f]{32}")
 
 
 def normalize_kind(kind: str) -> SpanKind:
@@ -140,6 +143,8 @@ class Span:
         self.output_tokens: int | None = None
         self.cached_tokens: int | None = None
         self.time_to_first_token_ms: float | None = None
+        self.request_hash: str | None = None
+        self.finish_reason: str | None = None
         self.input: JsonValue = None
         self.output: JsonValue = None
         self.attributes: dict[str, JsonValue] = {}
@@ -214,6 +219,25 @@ class Span:
         if cached_tokens is not None:
             self.cached_tokens = int(cached_tokens)
 
+    def set_request_hash(self, value: str | None) -> None:
+        """Record the request hash used to group identical calls.
+
+        Provider wrappers set this automatically. A value that is not 32
+        lowercase hex characters is ignored, because the server would reject
+        the whole batch.
+        """
+        if not self._mutable:
+            return
+        if value is None or (isinstance(value, str) and _REQUEST_HASH_PATTERN.fullmatch(value)):
+            self.request_hash = value
+        else:
+            logger.debug("Ignoring malformed request hash %r", value)
+
+    def set_finish_reason(self, reason: str | None) -> None:
+        """Record why generation stopped, exactly as the provider reports it."""
+        if self._mutable and (reason is None or isinstance(reason, str)):
+            self.finish_reason = reason[:_MAX_FINISH_REASON] if reason else None
+
     def mark_first_token(self) -> None:
         """Record time-to-first-token as "now"; only the first call counts."""
         if self._mutable and self.time_to_first_token_ms is None:
@@ -276,6 +300,8 @@ class Span:
             "model": self.model,
             "usage": usage,
             "time_to_first_token_ms": self.time_to_first_token_ms,
+            "request_hash": self.request_hash,
+            "finish_reason": self.finish_reason,
             "input": self.input,
             "output": self.output,
             "attributes": dict(self.attributes),

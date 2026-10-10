@@ -31,6 +31,7 @@ class Permission(enum.StrEnum):
     GATEWAY_WRITE = "gateway:write"
     CREDENTIALS_MANAGE = "credentials:manage"
     ALERTS_WRITE = "alerts:write"
+    INSIGHTS_MANAGE = "insights:manage"
 
 
 PermissionClass = Literal["read", "write"]
@@ -56,6 +57,7 @@ PERMISSION_CLASSES: dict[Permission, PermissionClass] = {
     Permission.GATEWAY_WRITE: "write",
     Permission.CREDENTIALS_MANAGE: "write",
     Permission.ALERTS_WRITE: "write",
+    Permission.INSIGHTS_MANAGE: "write",
 }
 
 
@@ -74,6 +76,7 @@ _ADMIN = _MEMBER | {
     Permission.AUDIT_READ,
     Permission.GATEWAY_WRITE,
     Permission.ALERTS_WRITE,
+    Permission.INSIGHTS_MANAGE,
 }
 _OWNER = _ADMIN | {Permission.ORG_DELETE, Permission.ORG_SECURITY, Permission.CREDENTIALS_MANAGE}
 
