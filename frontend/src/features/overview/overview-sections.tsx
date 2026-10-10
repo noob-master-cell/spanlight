@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 import {
   CallsErrorsChart,
   CallsErrorsChartError,
@@ -5,6 +7,7 @@ import {
 } from "./calls-errors-chart";
 import { toChartPoints } from "./chart-data";
 import { shortRangeLabel } from "./hero";
+import { HealthTile, HealthTileError, HealthTileSkeleton } from "./health-tile";
 import { LatestTraces, LatestTracesError, LatestTracesSkeleton } from "./latest-traces";
 import { ModelTable, ModelTableError, ModelTableSkeleton } from "./model-table";
 import { RecentErrors, RecentErrorsError, RecentErrorsSkeleton } from "./recent-errors";
@@ -40,6 +43,31 @@ export function CallsSection({ queries, now, className }: SectionProps) {
       rangeLabel={shortRangeLabel(range)}
       isRefreshing={timeseries.isPlaceholderData}
       now={now}
+    />
+  );
+}
+
+export function HealthSection({ queries, className }: Omit<SectionProps, "now">) {
+  const { health, range } = queries;
+  if (health.isPending) {
+    return <HealthTileSkeleton className={className} />;
+  }
+  if (health.isError) {
+    return (
+      <HealthTileError
+        className={className}
+        error={health.error}
+        onRetry={() => {
+          void health.refetch();
+        }}
+      />
+    );
+  }
+  return (
+    <HealthTile
+      className={cn("transition-opacity", health.isPlaceholderData && "opacity-60", className)}
+      health={health.data}
+      rangeLabel={shortRangeLabel(range)}
     />
   );
 }

@@ -1,28 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedRange } from "@/lib/time-range";
-
-import { loadedSummary, rangePhrase, tracesNoun } from "./list-summary";
-
-function preset(value: ResolvedRange["value"]): ResolvedRange {
-  return {
-    value,
-    from: "2026-10-07T00:00:00.000Z",
-    to: "2026-10-08T00:00:00.000Z",
-    durationMs: 24 * 3600_000,
-  };
-}
-
-describe("rangePhrase", () => {
-  it("lower-cases preset labels", () => {
-    expect(rangePhrase(preset("24h"))).toBe("in the last 24 hours");
-    expect(rangePhrase(preset("1h"))).toBe("in the last hour");
-  });
-
-  it("describes a custom window with its bounds", () => {
-    expect(rangePhrase(preset("custom"))).toMatch(/^from Oct \d+, \d\d:\d\d – Oct \d+, \d\d:\d\d$/);
-  });
-});
+import { loadedSummary, tracesNoun } from "./list-summary";
 
 describe("loadedSummary", () => {
   it("shows loaded of total for an unfiltered list", () => {

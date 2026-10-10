@@ -11,6 +11,8 @@ export interface TimeRangeOptions {
    * pages.
    */
   fallback?: RangePreset;
+  /** Whether the environment filter is shown next to the range. Defaults to true. */
+  environment?: boolean;
 }
 
 export const DEFAULT_TIME_RANGE_OPTIONS: TimeRangeOptions = {
@@ -26,4 +28,11 @@ export const GATEWAY_TIME_RANGE_OPTIONS = {
   presets: ["1h", "24h", "7d"],
   allowCustom: false,
   fallback: "7d",
+} as const satisfies TimeRangeOptions;
+
+/** End-user pages filter by time only: their endpoints take no environment. */
+export const USERS_TIME_RANGE_OPTIONS = {
+  presets: RANGE_PRESETS,
+  allowCustom: true,
+  environment: false,
 } as const satisfies TimeRangeOptions;

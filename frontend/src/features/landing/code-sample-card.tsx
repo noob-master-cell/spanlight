@@ -2,6 +2,7 @@ import { Tabs as TabsPrimitive } from "radix-ui";
 import { useState } from "react";
 
 import { CopyButton } from "@/components/copy-button";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import {
@@ -14,7 +15,9 @@ import {
   type CodeSampleId,
   type CodeTone,
 } from "./code-samples";
-import { COMPACT_QUERY, useMediaQuery } from "./use-media-query";
+
+/** Phones get the compact variants of the landing illustrations (Figma "Landing — Mobile"). */
+const COMPACT_QUERY = "(max-width: 767px)";
 
 const TONE_CLASSES: Record<CodeTone, string | undefined> = {
   plain: undefined,

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
+import { OpenCriticalBadge } from "./nav-badge";
 import { NAV_ITEMS, type NavItem } from "./nav-items";
 import { useProjectParams, useProjectQuery } from "./project-context";
 import { ProjectSwitcher } from "./project-switcher";
@@ -41,10 +42,11 @@ const RAIL_LINK = {
 };
 
 /** The link's content: the label, and a dark dot on the active one. */
-function railLabel(label: string) {
+function railLabel(label: string, badge?: NavItem["badge"]) {
   return ({ isActive }: { isActive: boolean }) => (
     <>
       {label}
+      {badge === "open-critical" ? <OpenCriticalBadge active={isActive} /> : null}
       {isActive ? <span aria-hidden className="size-1.5 rounded-full bg-lime-foreground" /> : null}
     </>
   );
@@ -99,13 +101,13 @@ export function Sidebar({ onNavigate, headerAction, className }: SidebarProps) {
 
       <nav aria-label="Main">
         <ul className="flex flex-col gap-1">
-          {NAV_ITEMS.map(({ label, to }) => (
+          {NAV_ITEMS.map(({ label, to, badge }) => (
             <li key={to}>
               {settingsLocked && to === SETTINGS_PATH ? (
                 <LockedSettingsLink label={label} onNavigate={onNavigate} />
               ) : (
                 <Link to={to} params={params} {...RAIL_LINK} onClick={onNavigate}>
-                  {railLabel(label)}
+                  {railLabel(label, badge)}
                 </Link>
               )}
             </li>

@@ -1,7 +1,7 @@
 import { ApiError, NetworkError } from "./errors";
 import type { ProblemDetails } from "./types";
 
-type QueryValue = string | number | boolean | null | undefined;
+type QueryValue = string | number | boolean | null | undefined | readonly string[];
 
 export type QueryParams = Record<string, QueryValue>;
 
@@ -66,6 +66,13 @@ export function buildUrl(path: string, query?: QueryParams): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      // A repeatable parameter: `status=open&status=muted`.
+      for (const item of value) {
+        params.append(key, String(item));
+      }
       continue;
     }
     params.set(key, String(value));

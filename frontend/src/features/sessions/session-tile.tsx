@@ -1,15 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, MessageSquare } from "lucide-react";
 
+import { CostValue } from "@/components/cost-value";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectParams } from "@/features/shell/project-context";
 import type { SessionSummary } from "@/lib/api";
-import { formatInteger, formatTimestamp } from "@/lib/format";
+import { formatInteger, formatTimestamp, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { CostValue } from "@/features/traces/cost-value";
-import { formatCompactDuration, formatSessionWindow, pluralize } from "./session-format";
+import { formatCompactDuration, formatSessionWindow } from "./session-format";
 import { spanBetween } from "./session-summary";
 
 /** Column widths shared by the labels row and every tile (Figma "Session/Tile"). */

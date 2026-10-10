@@ -1,3 +1,5 @@
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+
 import { deltaTone, signedDelta, type DeltaTone } from "@/lib/delta";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,8 @@ interface DeltaPillProps {
    * only carries volume metrics, which have no good/bad tone).
    */
   surface?: DeltaPillSurface;
+  /** Puts an arrow (up, down or flat) before the text, so direction never rides on colour alone. */
+  showArrow?: boolean;
   /** Appended for screen readers, e.g. "vs previous 24 hours". */
   comparisonLabel?: string;
   className?: string;
@@ -60,6 +64,7 @@ export function DeltaPill({
   increaseIsGood,
   format = defaultFormat,
   surface = "default",
+  showArrow = false,
   comparisonLabel,
   className,
 }: DeltaPillProps) {
@@ -69,16 +74,18 @@ export function DeltaPill({
   const tone = deltaTone(delta, increaseIsGood);
   // Without a direction "neutral" doesn't mean "no change", so there is no tone to announce.
   const toneWord = increaseIsGood === null ? null : TONE_WORDS[tone];
+  const Arrow = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus;
   const srSuffix = [toneWord, comparisonLabel].filter(Boolean).join(", ");
 
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap tabular",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap tabular",
         TONE_CLASSES[surface][tone],
         className,
       )}
     >
+      {showArrow ? <Arrow aria-hidden className="size-3" strokeWidth={2.5} /> : null}
       {signedDelta(delta, format)}
       {srSuffix ? <span className="sr-only"> ({srSuffix})</span> : null}
     </span>

@@ -1,8 +1,8 @@
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
 
+import { FieldSelect } from "@/components/field-select";
 import { FormField } from "@/components/form-field";
 
-import { FieldSelect } from "./field-select";
 import { METRIC_LABELS, METRICS } from "./metric-labels";
 import {
   COMPARATORS,

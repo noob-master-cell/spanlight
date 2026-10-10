@@ -1,12 +1,22 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { useCallback } from "react";
 
+import { errorClassLabel, isErrorClass } from "@/lib/error-class";
 import type { TraceFilters } from "./search";
 
 const tracesRoute = getRouteApi("/_authed/$orgId/$projectId/traces");
 
 /** The facet filters owned by the traces page. */
-export const FACET_KEYS = ["status", "model", "release", "tag", "user", "session", "q"] as const;
+export const FACET_KEYS = [
+  "status",
+  "error_class",
+  "model",
+  "release",
+  "tag",
+  "user",
+  "session",
+  "q",
+] as const;
 export type FacetKey = (typeof FACET_KEYS)[number];
 
 /**
@@ -19,6 +29,7 @@ export type FilterKey = (typeof FILTER_KEYS)[number];
 export const FILTER_LABELS: Record<FilterKey, string> = {
   env: "Environment",
   status: "Status",
+  error_class: "Error class",
   model: "Model",
   release: "Release",
   tag: "Tag",
@@ -48,7 +59,12 @@ export function activeFiltersOf(search: TraceFilters): ActiveFilter[] {
       continue;
     }
     const isStatus = key === "status" && (raw === "ok" || raw === "error");
-    const value = isStatus ? STATUS_LABELS[raw] : raw;
+    let value = raw;
+    if (isStatus) {
+      value = STATUS_LABELS[raw];
+    } else if (key === "error_class" && isErrorClass(raw)) {
+      value = errorClassLabel(raw);
+    }
     active.push({ key, label: FILTER_LABELS[key], value });
   }
   return active;
@@ -58,6 +74,7 @@ function clearedFilters(): Record<FilterKey, undefined> {
   return {
     env: undefined,
     status: undefined,
+    error_class: undefined,
     model: undefined,
     release: undefined,
     tag: undefined,

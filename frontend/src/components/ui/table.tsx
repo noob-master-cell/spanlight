@@ -58,4 +58,21 @@ function TableCell({ className, ...props }: ComponentProps<"td">) {
   return <td className={cn("h-13 px-4 align-middle whitespace-nowrap", className)} {...props} />;
 }
 
-export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow };
+/**
+ * The first cell of a body row when it names the row (`<th scope="row">`): body-cell height and
+ * hairline, medium weight. It follows the row hover like `TableCell`.
+ */
+function TableRowHeader({ className, ...props }: ComponentProps<"th">) {
+  return (
+    <th
+      scope="row"
+      className={cn(
+        "h-13 border-b border-border px-4 text-left align-middle text-sm font-medium whitespace-nowrap transition-colors group-last/row:border-b-0 group-hover/row:bg-surface-muted",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableRowHeader };

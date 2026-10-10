@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import type { TraceSummary } from "@/lib/api";
+import { pluralize } from "@/lib/format";
 
-import { pluralize, turnRangeLabel } from "./session-format";
+import { turnRangeLabel } from "./session-format";
 import { SessionTurn } from "./session-turn";
 
 /**

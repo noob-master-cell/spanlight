@@ -14,6 +14,7 @@ const project = {
   retention_days: 30,
   capture_payloads: true,
   weekly_digest_enabled: true,
+  insight_channel_ids: [] as string[],
 };
 
 describe("changedProjectFields", () => {

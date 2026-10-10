@@ -1,10 +1,10 @@
+import { NO_PRICE_REASON } from "@/components/cost-value";
 import { UnknownValue, ValueOrUnknown } from "@/components/unknown-value";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Span } from "@/lib/api";
 import { formatCost, formatDuration, formatInteger } from "@/lib/format";
 
-import { NO_PRICE_REASON } from "./cost-value";
 import { MetaField } from "./meta-field";
 
 const NOT_REPORTED = "Not reported by the SDK";

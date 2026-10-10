@@ -3,22 +3,20 @@ import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/copy-button";
+import { CostValue } from "@/components/cost-value";
 import { UnknownValue } from "@/components/unknown-value";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectParams } from "@/features/shell/project-context";
 import type { TraceDetail } from "@/lib/api";
-import { formatCost, formatDuration, formatInteger, formatTimestamp } from "@/lib/format";
+import { formatDuration, formatInteger, formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { CostValue, NO_PRICE_REASON } from "./cost-value";
+import { InsightBadges } from "./insight-badges";
 import { recallTracesSearch } from "./last-traces-search";
 import { failedSpanCount } from "./span-tree";
 import { TraceStatusBadge } from "./status";
-
-/** Unknown values on the ink strip need the light-on-dark placeholder colours. */
-const ON_INK_UNKNOWN = "text-rail-muted-foreground decoration-rail-subtle-foreground";
 
 export function BackToTracesLink() {
   const { orgId, projectId } = useProjectParams();
@@ -50,6 +48,7 @@ export function TraceHeader({ trace }: { trace: TraceDetail }) {
           {trace.name ?? "Unnamed trace"}
         </h1>
         <TraceStatusBadge errorCount={trace.error_count} />
+        <InsightBadges traceId={trace.trace_id} />
       </div>
 
       <div className="flex min-w-0 items-center gap-1.5">
@@ -97,11 +96,7 @@ function TraceSummaryStrip({ trace }: { trace: TraceDetail }) {
         </span>
       </Stat>
       <Stat label="Cost">
-        {formatCost(trace.cost_usd) === null ? (
-          <UnknownValue reason={NO_PRICE_REASON} className={ON_INK_UNKNOWN} />
-        ) : (
-          <CostValue cost={trace.cost_usd} hasUnpriced={trace.has_unpriced} />
-        )}
+        <CostValue cost={trace.cost_usd} hasUnpriced={trace.has_unpriced} unknownTone="on-ink" />
       </Stat>
       <Stat label="Environment">
         <ValueOnInk value={trace.environment} reason="The SDK didn't send an environment" />
@@ -113,7 +108,7 @@ function TraceSummaryStrip({ trace }: { trace: TraceDetail }) {
 /** A strip value, or the unknown placeholder in light-on-dark colours. */
 function ValueOnInk({ value, reason }: { value: string | null; reason: string }) {
   if (value === null || value === "") {
-    return <UnknownValue reason={reason} className={ON_INK_UNKNOWN} />;
+    return <UnknownValue reason={reason} tone="on-ink" />;
   }
   return (
     <span title={value} className="truncate tabular">

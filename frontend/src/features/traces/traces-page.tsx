@@ -1,19 +1,20 @@
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/error-state";
+import { ListFooter } from "@/components/list-footer";
 import { PageHeader } from "@/components/page-header";
 import { UnknownValue } from "@/components/unknown-value";
 import { Card } from "@/components/ui/card";
 import { useProjectFilters } from "@/features/shell/project-context";
 import { formatInteger } from "@/lib/format";
+import { rangePhrase } from "@/lib/time-range";
 
 import { recallOpenedTrace, rememberTracesSearch } from "./last-traces-search";
-import { loadedSummary, rangePhrase, tracesNoun } from "./list-summary";
+import { loadedSummary, tracesNoun } from "./list-summary";
 import { useTraceCountQuery, useTraceListQuery } from "./trace-queries";
 import { ExportTracesButton } from "./export-trigger";
 import { TraceTiles, TraceTilesSkeleton } from "./trace-tiles";
 import { TracesEmptyState } from "./traces-empty-state";
-import { TracesListFooter } from "./traces-list-footer";
 import { TracesTable, TracesTableSkeleton } from "./traces-table";
 import { TracesToolbar } from "./traces-toolbar";
 import { useTraceFilters } from "./use-trace-filters";
@@ -99,14 +100,14 @@ export function TracesPage() {
       <>
         <Card className="@container hidden flex-col p-2 md:flex">
           <TracesTable traces={traces} selectedTraceId={selectedTraceId} stale={stale} />
-          {loadMoreError ?? <TracesListFooter layout="card" {...footerProps} />}
+          {loadMoreError ?? <ListFooter layout="card" {...footerProps} />}
         </Card>
         <div className="flex flex-col gap-4 md:hidden">
           <TraceTiles traces={traces} selectedTraceId={selectedTraceId} stale={stale} />
           {loadMoreError ? (
             <Card>{loadMoreError}</Card>
           ) : (
-            <TracesListFooter layout="stacked" {...footerProps} />
+            <ListFooter layout="stacked" {...footerProps} />
           )}
         </div>
       </>

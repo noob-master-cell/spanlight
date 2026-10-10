@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { MouseEvent, ReactNode } from "react";
 
+import { CostValue } from "@/components/cost-value";
 import { RelativeTime } from "@/components/relative-time";
 import { ValueOrUnknown } from "@/components/unknown-value";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,9 +10,15 @@ import type { TraceSummary } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { CostValue } from "./cost-value";
 import { TraceStatusDot } from "./status";
-import { EnvironmentBadge, ModelBadges, TagBadges, TokenPair, UserSession } from "./trace-cells";
+import {
+  EnvironmentBadge,
+  ModelBadges,
+  TagBadges,
+  TokenPair,
+  TraceErrorLine,
+  UserSession,
+} from "./trace-cells";
 
 /*
  * Figma "Traces/Table row": a 56px rounded row inside an 8px-padded card. Columns appear as the
@@ -177,7 +184,7 @@ interface TraceNameProps {
   projectId: string;
 }
 
-/** Bold name (the row's link) over the trace ID in mono. */
+/** Bold name (the row's link) over the trace ID in mono, or over the class and message of a failed trace. */
 function TraceName({ trace, orgId, projectId }: TraceNameProps) {
   const hasName = trace.name !== null && trace.name !== "";
   return (
@@ -192,12 +199,16 @@ function TraceName({ trace, orgId, projectId }: TraceNameProps) {
       >
         {hasName ? trace.name : "Unnamed trace"}
       </Link>
-      <span
-        title={trace.trace_id}
-        className="truncate font-mono text-label text-subtle-foreground group-hover/row:text-muted-foreground"
-      >
-        {trace.trace_id}
-      </span>
+      {trace.error_class !== null || trace.error_message ? (
+        <TraceErrorLine errorClass={trace.error_class} message={trace.error_message} />
+      ) : (
+        <span
+          title={trace.trace_id}
+          className="truncate font-mono text-label text-subtle-foreground group-hover/row:text-muted-foreground"
+        >
+          {trace.trace_id}
+        </span>
+      )}
     </div>
   );
 }

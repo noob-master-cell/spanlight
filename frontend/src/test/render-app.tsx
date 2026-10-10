@@ -31,6 +31,7 @@ export function makeProject(id: string, name: string): Project {
     retention_days: 30,
     capture_payloads: true,
     weekly_digest_enabled: true,
+    insight_channel_ids: [],
     created_at: "2026-10-01T00:00:00Z",
   };
 }

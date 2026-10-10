@@ -2,7 +2,13 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect, useRef } from "react";
 
 import { useProjectFilters, useProjectParams } from "@/features/shell/project-context";
-import { projectsApi, queryKeys, type MetricsQuery, type TraceListQuery } from "@/lib/api";
+import {
+  insightsApi,
+  projectsApi,
+  queryKeys,
+  type MetricsQuery,
+  type TraceListQuery,
+} from "@/lib/api";
 import { bucketFor, resolveRange } from "@/lib/time-range";
 
 export const RECENT_ERRORS_LIMIT = 3;
@@ -42,6 +48,13 @@ export function useOverviewQueries() {
   const models = useQuery({
     queryKey: keys.models(metricsWindow),
     queryFn: () => projectsApi.models(projectId, metricsWindow),
+    placeholderData: keepPreviousData,
+  });
+
+  // The Doctor's score for the same window and environment as the rest of the page.
+  const health = useQuery({
+    queryKey: keys.health(metricsWindow),
+    queryFn: () => insightsApi.health(projectId, metricsWindow),
     placeholderData: keepPreviousData,
   });
 
@@ -110,6 +123,7 @@ export function useOverviewQueries() {
     overview,
     timeseries,
     models,
+    health,
     recentErrors,
     latestTraces,
     onboarding,

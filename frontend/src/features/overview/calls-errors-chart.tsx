@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Area, CartesianGrid, ComposedChart, Line, Tooltip, XAxis, YAxis } from "recharts";
 
+import { ChartDataTableView } from "@/components/chart-data-table";
 import { AreaGradient, ChartTooltip } from "@/components/chart-parts";
 import { ErrorState } from "@/components/error-state";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
   Y_AXIS_PROPS,
 } from "@/lib/chart-theme";
 import { formatCompact, formatInteger, formatPercent } from "@/lib/format";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,8 +31,6 @@ import {
   summarizeCalls,
   type ChartPoint,
 } from "./chart-data";
-import { ChartDataTableView } from "./chart-table";
-import { useMediaQuery } from "./use-media-query";
 
 const GRADIENT_ID = "overview-calls-fill";
 const PLOT_HEIGHT_CLASSES = "h-[150px] sm:h-[196px]";

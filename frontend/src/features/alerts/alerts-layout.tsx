@@ -1,7 +1,7 @@
-import { Lock } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/page-header";
+import { ReadOnlyLine } from "@/components/read-only-line";
 
 import { AlertsHeaderTabs } from "./alerts-header-tabs";
 
@@ -28,10 +28,5 @@ export function AlertsLayout({ children }: { children: ReactNode }) {
 
 /** Figma read-only line: a lock and "Only admins and owners can change alerts", visible text. */
 export function AlertsReadOnlyLine() {
-  return (
-    <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-      <Lock aria-hidden className="size-3.5 shrink-0" strokeWidth={2} />
-      {ALERTS_READ_ONLY_REASON}
-    </p>
-  );
+  return <ReadOnlyLine>{ALERTS_READ_ONLY_REASON}</ReadOnlyLine>;
 }

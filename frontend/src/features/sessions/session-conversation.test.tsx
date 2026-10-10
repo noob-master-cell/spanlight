@@ -46,6 +46,7 @@ function makeTrace(index: number): TraceSummary {
     has_unpriced: false,
     models: ["claude-sonnet-4-5"],
     error_message: null,
+    error_class: null,
   };
 }
 

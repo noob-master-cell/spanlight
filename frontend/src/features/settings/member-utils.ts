@@ -1,4 +1,5 @@
 import { errorMessage, isApiError, type Member, type Role } from "@/lib/api";
+import { pluralize } from "@/lib/format";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES } from "@/lib/permissions";
 
 export const LAST_OWNER_MESSAGE =
@@ -34,10 +35,6 @@ export function displayName(member: Member): string {
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 
-function plural(count: number, unit: string): string {
-  return `${count} ${unit}${count === 1 ? "" : "s"}`;
-}
-
 /** "Expires in 7 days", "Expires in 5 hours", or "Expired" once the date has passed. */
 export function inviteExpiryLabel(expiresAt: string, now: Date = new Date()): string {
   const expires = new Date(expiresAt).getTime();
@@ -49,10 +46,10 @@ export function inviteExpiryLabel(expiresAt: string, now: Date = new Date()): st
     return "Expired";
   }
   if (remaining >= DAY_MS) {
-    return `Expires in ${plural(Math.round(remaining / DAY_MS), "day")}`;
+    return `Expires in ${pluralize(Math.round(remaining / DAY_MS), "day")}`;
   }
   if (remaining >= HOUR_MS) {
-    return `Expires in ${plural(Math.round(remaining / HOUR_MS), "hour")}`;
+    return `Expires in ${pluralize(Math.round(remaining / HOUR_MS), "hour")}`;
   }
   return "Expires in less than an hour";
 }

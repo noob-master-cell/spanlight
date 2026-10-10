@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MAX_RULE_CHANNELS } from "@/features/alerts";
 import type { Project, ProjectUpdate } from "@/lib/api";
 
 export const PROJECT_NAME_MAX_LENGTH = 100;
@@ -28,6 +29,10 @@ export const capturePayloadsSchema = z.object({
   capture_payloads: z.boolean(),
 });
 
+export const insightChannelsSchema = z.object({
+  insight_channel_ids: z.array(z.string()).max(MAX_RULE_CHANNELS),
+});
+
 export const weeklyDigestSchema = z.object({
   weekly_digest_enabled: z.boolean(),
 });
@@ -38,11 +43,17 @@ export const projectSettingsSchema = z.object({
   ...retentionSchema.shape,
   ...capturePayloadsSchema.shape,
   ...weeklyDigestSchema.shape,
+  ...insightChannelsSchema.shape,
 });
 
 export type ProjectSettingsValues = z.infer<typeof projectSettingsSchema>;
 
 type EditableProjectFields = Required<ProjectUpdate>;
+
+/** The same channels, whatever their order. */
+function sameChannels(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id));
+}
 
 /**
  * The PATCH body for a settings form: only the fields whose value differs from
@@ -71,6 +82,12 @@ export function changedProjectFields(
   ) {
     update.weekly_digest_enabled = values.weekly_digest_enabled;
   }
+  if (
+    values.insight_channel_ids !== undefined &&
+    !sameChannels(values.insight_channel_ids, project.insight_channel_ids)
+  ) {
+    update.insight_channel_ids = values.insight_channel_ids;
+  }
   return update;
 }
 
@@ -98,6 +115,11 @@ export function projectSavedMessage(update: ProjectUpdate): string {
     return update.weekly_digest_enabled
       ? "Members will get the weekly digest."
       : "The weekly digest is turned off.";
+  }
+  if (update.insight_channel_ids !== undefined) {
+    return update.insight_channel_ids.length === 0
+      ? "Insight notifications are turned off."
+      : "Insight notification channels saved.";
   }
   return update.capture_payloads
     ? "Prompts and completions will be captured."

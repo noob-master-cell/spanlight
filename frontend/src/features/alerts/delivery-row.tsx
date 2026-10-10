@@ -1,7 +1,9 @@
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useProjectParams } from "@/features/shell/project-context";
 import { errorMessage, isApiError, type Delivery } from "@/lib/api";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -10,6 +12,7 @@ import {
   attemptsLabel,
   canRetry,
   deliveryEventLabel,
+  deliveryInsightTarget,
   deliveryStatus,
   deliveryTitle,
   nextAttemptLabel,
@@ -33,6 +36,8 @@ export function DeliveryRow({ delivery, channelId, canWrite }: DeliveryRowProps)
   const status = deliveryStatus(delivery);
   const StatusIcon = status.icon;
   const title = deliveryTitle(delivery);
+  const target = deliveryInsightTarget(delivery);
+  const { orgId } = useProjectParams();
   const event = deliveryEventLabel(delivery);
   const next = nextAttemptLabel(delivery);
   const failed = delivery.status === "failed";
@@ -46,7 +51,17 @@ export function DeliveryRow({ delivery, channelId, canWrite }: DeliveryRowProps)
           {status.label}
         </Badge>
         <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-          {title ?? <span className="font-medium text-muted-foreground">No summary kept</span>}
+          {target && title ? (
+            <Link
+              to="/$orgId/$projectId/doctor/$insightId"
+              params={{ orgId, projectId: target.projectId, insightId: target.insightId }}
+              className="rounded-sm hover:underline"
+            >
+              {title}
+            </Link>
+          ) : (
+            (title ?? <span className="font-medium text-muted-foreground">No summary kept</span>)
+          )}
         </p>
         {event ? <span className="text-xs font-medium text-muted-foreground">{event}</span> : null}
         <time

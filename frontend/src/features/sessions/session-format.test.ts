@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedRange } from "@/lib/time-range";
-
 import {
   dayLabel,
   formatClock,
   formatCompactDuration,
   formatDayTime,
   formatSessionWindow,
-  pluralize,
-  rangePhrase,
   turnRangeLabel,
 } from "./session-format";
 
@@ -82,28 +78,6 @@ describe("formatCompactDuration", () => {
   it("returns null for unknown durations", () => {
     expect(formatCompactDuration(null)).toBeNull();
     expect(formatCompactDuration(Number.NaN)).toBeNull();
-  });
-});
-
-describe("rangePhrase", () => {
-  it("reads naturally after 'from' for presets and custom ranges", () => {
-    const preset: ResolvedRange = { value: "24h", from: "", to: "", durationMs: 0 };
-    expect(rangePhrase(preset)).toBe("the last 24 hours");
-
-    const custom: ResolvedRange = {
-      value: "custom",
-      from: localIso(1, 10, 0),
-      to: localIso(2, 10, 0),
-      durationMs: 24 * 3_600_000,
-    };
-    expect(rangePhrase(custom)).toBe("Oct 1, 10:00 – Oct 2, 10:00");
-  });
-});
-
-describe("pluralize", () => {
-  it("picks the singular or plural form", () => {
-    expect(pluralize(1, "turn")).toBe("1 turn");
-    expect(pluralize(1200, "error")).toBe("1,200 errors");
   });
 });
 

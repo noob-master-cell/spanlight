@@ -30,6 +30,7 @@ function makeSpan({
     name: id,
     status: "ok",
     status_message: null,
+    error_class: null,
     started_at: new Date(BASE + start).toISOString(),
     ended_at: new Date(BASE + start + 10).toISOString(),
     duration_ms: 10,
@@ -45,6 +46,7 @@ function makeSpan({
     output,
     attributes: {},
     truncated: false,
+    finish_reason: null,
   };
 }
 

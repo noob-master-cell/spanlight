@@ -7,6 +7,7 @@ import {
   formatPercent,
   formatRelativeTime,
   parseMoney,
+  pluralize,
   relativeChange,
 } from "./format";
 
@@ -84,5 +85,12 @@ describe("formatRelativeTime", () => {
   it("returns null for invalid input", () => {
     expect(formatRelativeTime("not a date", now)).toBeNull();
     expect(formatRelativeTime(null, now)).toBeNull();
+  });
+});
+
+describe("pluralize", () => {
+  it("picks the singular or plural form", () => {
+    expect(pluralize(1, "turn")).toBe("1 turn");
+    expect(pluralize(1200, "error")).toBe("1,200 errors");
   });
 });

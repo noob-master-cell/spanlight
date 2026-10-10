@@ -15,7 +15,9 @@ export {
 export { credentialsApi, priceOverridesApi } from "./credentials";
 export { exportsApi, newIdempotencyKey } from "./exports";
 export type { CreateExportInput, ExportListQuery } from "./exports";
+export { endUsersApi, fromPathUserId, toPathUserId } from "./end-users";
 export { gatewayApi } from "./gateway";
+export { insightsApi } from "./insights";
 export { orgsApi } from "./orgs";
 export type { AuditFilters, AuditQuery, OrgUpdate } from "./orgs";
 export { pricesApi } from "./prices";
@@ -28,6 +30,7 @@ export type {
   TraceListQuery,
 } from "./projects";
 export { queryKeys } from "./query-keys";
+export { releasesApi } from "./releases";
 export { oauthStartUrl, securityApi } from "./security";
 export type { OAuthStartOptions, TotpVerifyInput } from "./security";
 export { tokensApi } from "./tokens";

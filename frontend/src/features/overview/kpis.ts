@@ -4,6 +4,7 @@ import {
   formatDuration,
   formatInteger,
   formatPercent,
+  pluralNoun,
   relativeChange,
 } from "@/lib/format";
 import type { ResolvedRange } from "@/lib/time-range";
@@ -117,10 +118,6 @@ function totalTokens(kpis: Kpis): number {
   return kpis.input_tokens + kpis.output_tokens;
 }
 
-function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
-  return count === 1 ? singular : pluralForm;
-}
-
 /** The four KPI cards next to the calls chart, in display order. */
 export function buildKpiCards({ current, previous, approximate }: OverviewMetrics): KpiCardModel[] {
   const errors = errorCountFrom(current.error_rate, current.llm_calls);
@@ -146,7 +143,7 @@ export function buildKpiCards({ current, previous, approximate }: OverviewMetric
       detail:
         errors === null
           ? null
-          : `${formatInteger(errors) ?? "0"} of ${callsLabel} ${plural(current.llm_calls, "call")}`,
+          : `${formatInteger(errors) ?? "0"} of ${callsLabel} ${pluralNoun(current.llm_calls, "call")}`,
       p50: null,
       approximate: false,
       delta: delta(pointsDelta(current.error_rate, previous.error_rate), "points", false),
@@ -156,7 +153,7 @@ export function buildKpiCards({ current, previous, approximate }: OverviewMetric
       label: "LLM calls",
       value: formatCompact(current.llm_calls),
       unknownReason: "Not reported for this period",
-      detail: `across ${formatCompact(current.traces) ?? "0"} ${plural(current.traces, "trace")}`,
+      detail: `across ${formatCompact(current.traces) ?? "0"} ${pluralNoun(current.traces, "trace")}`,
       p50: null,
       approximate: false,
       delta: delta(percentDelta(current.llm_calls, previous.llm_calls), "percent", null),

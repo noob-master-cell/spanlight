@@ -1,8 +1,8 @@
 import { Controller, type UseFormReturn } from "react-hook-form";
 
+import { FieldSelect } from "@/components/field-select";
 import { FormField } from "@/components/form-field";
 
-import { FieldSelect } from "./field-select";
 import { RULE_EDITOR_COPY, windowOptionLabel, windowOptions } from "./rule-form-options";
 import type { RuleFormValues } from "./rule-form-schema";
 import { UnitInput } from "./unit-input";

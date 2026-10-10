@@ -2,7 +2,6 @@
  * Wording for the traces list header and footer. Pure functions only — no React here.
  */
 import { formatInteger } from "@/lib/format";
-import { describeRange, type ResolvedRange } from "@/lib/time-range";
 
 function formatCount(value: number): string {
   return formatInteger(value) ?? String(value);
@@ -10,12 +9,6 @@ function formatCount(value: number): string {
 
 export function tracesNoun(count: number): string {
   return count === 1 ? "trace" : "traces";
-}
-
-/** "in the last 24 hours", or "from Oct 1, 10:00 – Oct 2, 10:00" for a custom window. */
-export function rangePhrase(range: ResolvedRange): string {
-  const label = describeRange(range);
-  return range.value === "custom" ? `from ${label}` : `in the ${label.toLowerCase()}`;
 }
 
 interface LoadedSummaryInput {

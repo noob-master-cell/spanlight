@@ -164,3 +164,13 @@ export function relativeChange(current: Maybe<number>, previous: Maybe<number>):
 export function shortId(id: string, length = 8): string {
   return id.length > length ? id.slice(0, length) : id;
 }
+
+/** "turn" or "turns": the noun for a count, without the count. */
+export function pluralNoun(count: number, singular: string, plural = `${singular}s`): string {
+  return count === 1 ? singular : plural;
+}
+
+/** "1 turn", "1,200 errors": the count with thousands separators and the matching noun. */
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${formatInteger(count) ?? String(count)} ${pluralNoun(count, singular, plural)}`;
+}

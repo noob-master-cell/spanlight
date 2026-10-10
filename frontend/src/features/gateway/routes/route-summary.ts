@@ -1,23 +1,20 @@
 import type { GatewayKey, RouteConfig, User } from "@/lib/api";
+import { pluralize } from "@/lib/format";
 
 import { WEIGHT_MAX, WEIGHT_MIN } from "./route-form";
-
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /** The list row's sub-line, e.g. "2 targets · 2 attempts · fallback on 4 conditions · 60 s timeout". */
 export function routeSummary(config: RouteConfig): string {
   const parts = [
-    plural(config.targets.length, "target", "targets"),
-    plural(config.retry.max_attempts ?? 2, "attempt", "attempts"),
+    pluralize(config.targets.length, "target", "targets"),
+    pluralize(config.retry.max_attempts ?? 2, "attempt", "attempts"),
   ];
   const fallbackOn = config.fallback.on?.length ?? 4;
   if (config.targets.length > 1) {
     parts.push(
       fallbackOn === 0
         ? "no fallback"
-        : `fallback on ${plural(fallbackOn, "condition", "conditions")}`,
+        : `fallback on ${pluralize(fallbackOn, "condition", "conditions")}`,
     );
   }
   const timeoutMs = config.timeout_ms ?? 60_000;
@@ -77,7 +74,7 @@ export function keysUsingRoute(keys: readonly GatewayKey[], routeId: string): Ga
 }
 
 export function keyCountLabel(count: number): string {
-  return count === 0 ? "No keys" : plural(count, "key", "keys");
+  return count === 0 ? "No keys" : pluralize(count, "key", "keys");
 }
 
 /** "Priya Raman", or the email when the account has no name. */

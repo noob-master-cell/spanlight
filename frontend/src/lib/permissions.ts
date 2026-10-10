@@ -17,7 +17,8 @@ export type Permission =
   | "export:create"
   | "gateway:write"
   | "credentials:manage"
-  | "alerts:write";
+  | "alerts:write"
+  | "insights:manage";
 
 const VIEWER: Permission[] = ["org:read", "project:read"];
 const MEMBER: Permission[] = [...VIEWER, "key:create", "key:revoke_own", "export:create"];
@@ -31,6 +32,7 @@ const ADMIN: Permission[] = [
   "audit:read",
   "gateway:write",
   "alerts:write",
+  "insights:manage",
 ];
 const OWNER: Permission[] = [...ADMIN, "org:delete", "org:security", "credentials:manage"];
 

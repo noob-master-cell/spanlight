@@ -186,12 +186,17 @@ export interface AlertEventQuery {
 export type DeliveryStatus = "pending" | "sent" | "failed";
 
 export interface DeliverySummary {
-  /** `alert.fired`, `alert.resolved`, `budget.exceeded` or `test`. */
+  /** `alert.fired`, `alert.resolved`, `budget.exceeded`, `insight.opened` or `test`. */
   event: string;
   /** Null for a test send, which has no event or rule. */
   event_id?: string | null;
   rule_id?: string | null;
   rule_name?: string | null;
+  /** `insight.opened` only: the insight, its title and its project (channels are org-wide). */
+  insight_id?: string | null;
+  title?: string | null;
+  /** Missing on rows queued before the project was kept. */
+  project_id?: string | null;
 }
 
 export interface Delivery {

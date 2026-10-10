@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/format";
+import { formatDate, pluralize } from "@/lib/format";
 
 /** The expiry a person picks when creating a token or an API key. */
 export type ExpiryChoice = "30" | "90" | "365" | "never";
@@ -70,10 +70,6 @@ export function expiryState(expiresAt: string | null, now: Date = new Date()): E
   return remaining <= EXPIRING_SOON_DAYS * DAY_MS ? "soon" : "later";
 }
 
-function plural(count: number, unit: string): string {
-  return `${String(count)} ${unit}${count === 1 ? "" : "s"}`;
-}
-
 /** "in 5 days" for a credential about to expire. */
 function timeLeft(expiresAt: string, now: Date): string {
   const remaining = new Date(expiresAt).getTime() - now.getTime();
@@ -81,9 +77,9 @@ function timeLeft(expiresAt: string, now: Date): string {
     return "in under an hour";
   }
   if (remaining <= DAY_MS) {
-    return `in ${plural(Math.ceil(remaining / HOUR_MS), "hour")}`;
+    return `in ${pluralize(Math.ceil(remaining / HOUR_MS), "hour")}`;
   }
-  return `in ${plural(Math.ceil(remaining / DAY_MS), "day")}`;
+  return `in ${pluralize(Math.ceil(remaining / DAY_MS), "day")}`;
 }
 
 /** The Expires cell of a list row: "Never", a date, or "in 5 days" within a week of the end. */

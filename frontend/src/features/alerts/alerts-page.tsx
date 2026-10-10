@@ -6,13 +6,13 @@ import { ErrorState } from "@/components/error-state";
 import { SectionCard } from "@/components/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePermission } from "@/features/shell";
+import { useNow } from "@/lib/use-now";
 
 import { AlertsLayout, AlertsReadOnlyLine } from "./alerts-layout";
 import { useAlertChannelsQuery, useAlertRulesQuery, useOpenEventsQuery } from "./alerts-queries";
 import { CreateRuleButton } from "./create-rule-button";
 import { RuleList, RuleListSkeleton } from "./rule-list";
 import { rulesCountLine } from "./rule-state";
-import { useNow } from "./use-now";
 
 const EMPTY_BODY =
   "Get told when error rate, latency or cost crosses a line, before anyone opens a dashboard.";

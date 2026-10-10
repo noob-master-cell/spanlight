@@ -1,6 +1,7 @@
 import { CircleDollarSign, Info, RotateCw } from "lucide-react";
 import { Bar, BarChart, Rectangle, Tooltip, XAxis, YAxis, type BarShapeProps } from "recharts";
 
+import { ChartDataTableView } from "@/components/chart-data-table";
 import { ChartTooltip } from "@/components/chart-parts";
 import { DeltaPill } from "@/components/delta-pill";
 import { UnknownValue } from "@/components/unknown-value";
@@ -20,7 +21,6 @@ import {
   hasCostData,
   type ChartPoint,
 } from "./chart-data";
-import { ChartDataTableView } from "./chart-table";
 import { shortRangeLabel } from "./hero";
 import { percentDelta, previousPeriodLabel } from "./kpis";
 import {

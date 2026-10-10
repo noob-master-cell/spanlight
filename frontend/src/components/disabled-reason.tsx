@@ -7,15 +7,20 @@ interface DisabledReasonProps {
   reason: string;
   /** A disabled control. Disabled elements get no pointer or focus events, so we wrap it. */
   children: ReactNode;
+  /**
+   * The id of a visible element that already states the reason. Screen readers then read it as
+   * the description instead of a hidden copy, so several disabled controls don't repeat it.
+   */
+  describedBy?: string;
 }
 
 /** Shows a tooltip explaining why a disabled control can't be used. Keyboard reachable. */
-export function DisabledReason({ reason, children }: DisabledReasonProps) {
+export function DisabledReason({ reason, children, describedBy }: DisabledReasonProps) {
   return (
     <Tooltip content={reason}>
-      <span tabIndex={0} className="inline-flex rounded-md">
+      <span tabIndex={0} aria-describedby={describedBy} className="inline-flex rounded-md">
         {children}
-        <span className="sr-only">{reason}</span>
+        {describedBy === undefined ? <span className="sr-only">{reason}</span> : null}
       </span>
     </Tooltip>
   );

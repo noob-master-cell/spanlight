@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useProjectFilters } from "@/features/shell/project-context";
 import type { SessionSummary } from "@/lib/api";
+import { pluralize } from "@/lib/format";
+import { rangePhrase } from "@/lib/time-range";
 import { cn } from "@/lib/utils";
 
-import { pluralize, rangePhrase } from "./session-format";
 import { useSessionListQuery } from "./session-queries";
 import { SessionColumnLabels, SessionTile, SessionTileSkeleton } from "./session-tile";
 
@@ -115,8 +116,8 @@ function SessionList({
         ) : null}
         <p className="text-xs font-medium text-muted-foreground" aria-live="polite">
           {hasNextPage ? "Showing the latest " : "Showing "}
-          {pluralize(sessions.length, "session")} from {rangePhrase(range)}. Sessions include traces
-          from every environment.
+          {pluralize(sessions.length, "session")} {rangePhrase(range)}. Sessions include traces from
+          every environment.
         </p>
       </div>
     </>
@@ -132,7 +133,7 @@ function SessionsEmptyState() {
       description={
         <>
           <p>
-            Nothing was grouped into a session in {rangePhrase(range)}. Sessions appear when traces
+            Nothing was grouped into a session {rangePhrase(range)}. Sessions appear when traces
             carry a session ID, for example:
           </p>
           <code className="mt-2 inline-block rounded-xs border border-border bg-surface-muted px-2 py-0.5 font-mono text-label text-foreground">

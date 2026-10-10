@@ -22,7 +22,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 /**
  * Global shortcuts: ⌘K / Ctrl+K toggles the command palette, and Linear-style
- * "G then O/T/S/G/A/B/," sequences jump between pages.
+ * "G then O/T/S/D/R/U/G/A/B/," sequences jump between pages.
  */
 export function useKeyboardShortcuts(onTogglePalette: () => void): void {
   const navigate = useNavigate();

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, CircleAlert, RotateCw } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 
+import { CostValue } from "@/components/cost-value";
 import { StatusDot } from "@/components/status-dot";
 import { ValueOrUnknown } from "@/components/unknown-value";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,6 @@ import { formatDuration, formatTimestamp, shortId } from "@/lib/format";
 
 import { FailedBubble, MessageBubble } from "./chat-bubble";
 import { earliestFailedSpan, extractTurnConversation } from "./conversation";
-import { CostValue } from "@/features/traces/cost-value";
 import { formatClock } from "./session-format";
 
 interface SessionTurnProps {

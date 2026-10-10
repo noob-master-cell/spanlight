@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { bucketFor, projectSearchSchema, resolveRange } from "./time-range";
+import {
+  bucketFor,
+  projectSearchSchema,
+  rangePhrase,
+  resolveRange,
+  type ResolvedRange,
+} from "./time-range";
 
 const NOW = new Date("2026-10-07T12:34:56.789Z");
 
@@ -55,5 +61,25 @@ describe("projectSearchSchema", () => {
       range: undefined,
       env: "prod",
     });
+  });
+});
+
+function preset(value: ResolvedRange["value"]): ResolvedRange {
+  return {
+    value,
+    from: "2026-10-07T00:00:00.000Z",
+    to: "2026-10-08T00:00:00.000Z",
+    durationMs: 24 * 3600_000,
+  };
+}
+
+describe("rangePhrase", () => {
+  it("lower-cases preset labels", () => {
+    expect(rangePhrase(preset("24h"))).toBe("in the last 24 hours");
+    expect(rangePhrase(preset("1h"))).toBe("in the last hour");
+  });
+
+  it("describes a custom window with its bounds", () => {
+    expect(rangePhrase(preset("custom"))).toMatch(/^from Oct \d+, \d\d:\d\d – Oct \d+, \d\d:\d\d$/);
   });
 });

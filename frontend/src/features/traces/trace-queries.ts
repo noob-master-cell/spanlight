@@ -20,6 +20,7 @@ export function toTraceListQuery(
     release: search.release,
     model: search.model,
     status: search.status,
+    error_class: search.error_class,
     user_id: search.user,
     session_id: search.session,
     tag: search.tag,

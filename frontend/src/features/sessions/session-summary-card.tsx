@@ -1,13 +1,19 @@
 import { useId, type ReactNode } from "react";
 
+import { CostValue } from "@/components/cost-value";
 import { UnknownValue, ValueOrUnknown } from "@/components/unknown-value";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import type { TraceSummary } from "@/lib/api";
-import { formatCost, formatDuration, formatInteger, formatTimestamp } from "@/lib/format";
+import {
+  formatCost,
+  formatDuration,
+  formatInteger,
+  formatTimestamp,
+  pluralize,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { CostValue } from "@/features/traces/cost-value";
-import { formatDayTime, pluralize } from "./session-format";
+import { formatDayTime } from "./session-format";
 import {
   averageCostPerTurn,
   consistentUserId,

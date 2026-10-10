@@ -37,10 +37,22 @@ const EVENT_LABELS: Record<string, string> = {
   "alert.fired": "Fired",
   "alert.resolved": "Resolved",
   "budget.exceeded": "Exceeded",
+  "insight.opened": "Insight opened",
   test: "Test",
 };
 
-/** The event badge: Fired, Resolved, Exceeded or Test. Null for a row without a summary. */
+/** The Doctor insight an `insight.opened` row announced, with its project; null otherwise. */
+export function deliveryInsightTarget(
+  delivery: Pick<Delivery, "summary">,
+): { insightId: string; projectId: string } | null {
+  const summary = delivery.summary;
+  if (summary?.event !== "insight.opened" || !summary.insight_id || !summary.project_id) {
+    return null;
+  }
+  return { insightId: summary.insight_id, projectId: summary.project_id };
+}
+
+/** The event badge: Fired, Resolved, Exceeded, Insight opened or Test. Null for a row without a summary. */
 export function deliveryEventLabel(delivery: Pick<Delivery, "summary">): string | null {
   const event = delivery.summary?.event;
   if (!event) {
@@ -49,7 +61,10 @@ export function deliveryEventLabel(delivery: Pick<Delivery, "summary">): string 
   return EVENT_LABELS[event] ?? event;
 }
 
-/** The row title: the rule's name, "Test notification", or null when the row has no summary. */
+/**
+ * The row title: the rule's name, the insight's title, "Test notification", or null when the row
+ * has no summary.
+ */
 export function deliveryTitle(delivery: Pick<Delivery, "summary">): string | null {
   const summary = delivery.summary;
   if (!summary) {
@@ -57,6 +72,9 @@ export function deliveryTitle(delivery: Pick<Delivery, "summary">): string | nul
   }
   if (summary.event === "test") {
     return "Test notification";
+  }
+  if (summary.event === "insight.opened") {
+    return summary.title ?? "Insight opened";
   }
   return summary.rule_name ?? null;
 }

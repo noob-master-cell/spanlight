@@ -15,12 +15,15 @@ import { ensureMe } from "@/features/auth/queries";
 import { authSearchSchema, safeNextPath } from "@/features/auth/search";
 import { SignupPage } from "@/features/auth/signup-page";
 import { TwoFactorPage } from "@/features/auth/two-factor-page";
+import { doctorSearchSchema } from "@/features/doctor/search";
 import { onboardingSearchSchema } from "@/features/onboarding/search";
+import { releasesSearchSchema } from "@/features/releases/search";
 import { AppShell } from "@/features/shell/app-shell";
 import { resolveHomeDestination } from "@/features/shell/home-redirect";
 import { auditSearchSchema } from "@/features/settings/audit-search";
 import { securitySearchSchema } from "@/features/settings/security/search";
 import { traceDetailSearchSchema, traceFiltersSchema } from "@/features/traces/search";
+import { usersSearchSchema } from "@/features/users/search";
 import { projectSearchSchema } from "@/lib/time-range";
 
 /*
@@ -259,6 +262,50 @@ const sessionDetailRoute = createRoute({
   ),
 });
 
+const doctorRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/doctor",
+  validateSearch: doctorSearchSchema,
+  head: () => pageTitle("Doctor"),
+  component: lazyRouteComponent(() => import("@/features/doctor/doctor-page"), "DoctorPage"),
+});
+
+const insightDetailRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/doctor/$insightId",
+  head: () => pageTitle("Insight"),
+  component: lazyRouteComponent(
+    () => import("@/features/doctor/insight-detail-page"),
+    "InsightDetailPage",
+  ),
+});
+
+const releasesRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/releases",
+  validateSearch: releasesSearchSchema,
+  head: () => pageTitle("Releases"),
+  component: lazyRouteComponent(() => import("@/features/releases/releases-page"), "ReleasesPage"),
+});
+
+const usersRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/users",
+  validateSearch: usersSearchSchema,
+  head: () => pageTitle("Users"),
+  component: lazyRouteComponent(() => import("@/features/users/users-page"), "UsersPage"),
+});
+
+const userDetailRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/users/$userId",
+  head: () => pageTitle("User"),
+  component: lazyRouteComponent(
+    () => import("@/features/users/user-detail-page"),
+    "UserDetailPage",
+  ),
+});
+
 const gatewayRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/gateway",
@@ -463,6 +510,11 @@ const routeTree = rootRoute.addChildren([
       traceDetailRoute,
       sessionsRoute,
       sessionDetailRoute,
+      doctorRoute,
+      insightDetailRoute,
+      releasesRoute,
+      usersRoute,
+      userDetailRoute,
       gatewayRoute,
       gatewayKeysRoute,
       gatewayRoutesRoute,

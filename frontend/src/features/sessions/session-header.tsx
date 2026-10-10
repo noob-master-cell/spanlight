@@ -3,13 +3,13 @@ import { ArrowLeft, User } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 
 import { CopyButton } from "@/components/copy-button";
+import { CostValue } from "@/components/cost-value";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectParams } from "@/features/shell/project-context";
 import type { TraceSummary } from "@/lib/api";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, pluralize } from "@/lib/format";
 
-import { CostValue } from "@/features/traces/cost-value";
-import { formatSessionWindow, pluralize } from "./session-format";
+import { formatSessionWindow } from "./session-format";
 import { consistentUserId, type SessionTotals } from "./session-summary";
 
 export function BackToSessionsLink() {

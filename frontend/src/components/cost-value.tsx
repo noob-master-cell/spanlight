@@ -1,6 +1,6 @@
 import { CircleDashed } from "lucide-react";
 
-import { UnknownValue } from "@/components/unknown-value";
+import { UnknownValue, type UnknownTone } from "@/components/unknown-value";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatCost } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,8 @@ interface CostValueProps {
   hasUnpriced?: boolean;
   /** Tooltip shown when the whole cost is unknown. */
   unknownReason?: string;
+  /** Placeholder colours for an unknown cost; `on-ink` on the dark header bands. */
+  unknownTone?: UnknownTone;
   className?: string;
 }
 
@@ -21,11 +23,12 @@ export function CostValue({
   cost,
   hasUnpriced = false,
   unknownReason = NO_PRICE_REASON,
+  unknownTone,
   className,
 }: CostValueProps) {
   const formatted = formatCost(cost);
   if (formatted === null) {
-    return <UnknownValue reason={unknownReason} className={className} />;
+    return <UnknownValue reason={unknownReason} tone={unknownTone} className={className} />;
   }
   return (
     <span className={cn("inline-flex items-center gap-1 tabular", className)}>

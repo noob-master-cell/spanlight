@@ -108,6 +108,12 @@ export function describeRange(range: ResolvedRange): string {
   return `${format.format(new Date(range.from))} – ${format.format(new Date(range.to))}`;
 }
 
+/** "in the last 24 hours", or "from Oct 1, 10:00 – Oct 2, 10:00" for a custom window. */
+export function rangePhrase(range: ResolvedRange): string {
+  const label = describeRange(range);
+  return range.value === "custom" ? `from ${label}` : `in the ${label.toLowerCase()}`;
+}
+
 /** `<input type="datetime-local">` wants local time without a zone: 2026-10-07T14:30 */
 export function toLocalInputValue(iso: string): string {
   const date = new Date(iso);

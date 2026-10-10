@@ -1,14 +1,14 @@
 import { Link } from "@tanstack/react-router";
 
+import { NO_PRICE_REASON } from "@/components/cost-value";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectParams } from "@/features/shell/project-context";
 import type { TraceSummary } from "@/lib/api";
 import { formatCost, formatDuration, formatRelativeTime, formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { NO_PRICE_REASON } from "./cost-value";
 import { TraceStatusDot } from "./status";
-import { MonoBadge } from "./trace-cells";
+import { MonoBadge, TraceErrorLine } from "./trace-cells";
 
 interface TraceTilesProps {
   traces: TraceSummary[];
@@ -84,9 +84,11 @@ function TraceTile({ trace, selected }: { trace: TraceSummary; selected: boolean
           </>
         ) : null}
       </span>
-      {trace.error_message ? (
-        <span className="truncate pl-4 text-xs text-danger-text">{trace.error_message}</span>
-      ) : null}
+      <TraceErrorLine
+        errorClass={trace.error_class}
+        message={trace.error_message}
+        className="pl-4"
+      />
     </Link>
   );
 }

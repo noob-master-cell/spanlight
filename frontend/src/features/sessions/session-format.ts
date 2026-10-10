@@ -2,7 +2,7 @@
  * Display helpers for session times and counts. Pure functions only; every
  * clock time is shown in the viewer's local time zone.
  */
-import { describeRange, type ResolvedRange } from "@/lib/time-range";
+import { pluralize } from "@/lib/format";
 
 const clockFormat = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
@@ -114,17 +114,6 @@ export function formatCompactDuration(ms: number | null | undefined): string | n
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
-}
-
-/** The time range as a phrase that follows "from" or "in": "the last 24 hours". */
-export function rangePhrase(range: ResolvedRange): string {
-  const label = describeRange(range);
-  return range.value === "custom" ? label : `the ${label.toLowerCase()}`;
-}
-
-/** "1 turn", "12 turns". */
-export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count.toLocaleString("en-US")} ${count === 1 ? singular : plural}`;
 }
 
 /** "Turns 1–10 of 24", "12 turns", or "Latest 100 turns" while older turns aren't loaded. */

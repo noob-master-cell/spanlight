@@ -26,7 +26,7 @@ export function Topbar({ onOpenCommandPalette, dataFilters }: TopbarProps) {
         {dataFilters ? (
           <>
             <TimeRangePicker options={dataFilters} />
-            <EnvironmentFilter />
+            {dataFilters.environment === false ? null : <EnvironmentFilter />}
           </>
         ) : null}
         <ThemeToggle />
@@ -99,7 +99,7 @@ export function MobileDataFilters({ options }: { options: TimeRangeOptions }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <TimeRangePicker options={options} />
-      <EnvironmentFilter />
+      {options.environment === false ? null : <EnvironmentFilter />}
     </div>
   );
 }

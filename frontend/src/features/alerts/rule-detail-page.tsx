@@ -6,6 +6,7 @@ import { Callout } from "@/components/callout";
 import { Button } from "@/components/ui/button";
 import { usePermission, useProjectParams } from "@/features/shell";
 import type { AlertRule } from "@/lib/api";
+import { useNow } from "@/lib/use-now";
 
 import { useAlertChannelsQuery, useAlertRuleQuery, useRuleEventsQuery } from "./alerts-queries";
 import { EventTimeline } from "./event-timeline";
@@ -15,7 +16,6 @@ import { RuleSettingsCard } from "./rule-settings-card";
 import { mutedLabel, mutedUntil } from "./rule-state";
 import { RuleStateHero } from "./rule-state-hero";
 import { openEvent } from "./timeline-markers";
-import { useNow } from "./use-now";
 
 const ruleRoute = getRouteApi("/_authed/$orgId/$projectId/alerts/$ruleId");
 

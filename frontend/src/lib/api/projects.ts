@@ -4,6 +4,7 @@ import type {
   ApiKey,
   Bucket,
   CreatedApiKey,
+  ErrorClass,
   FilterOptions,
   KeyScope,
   ModelMetrics,
@@ -34,6 +35,7 @@ export interface TraceListQuery extends TimeWindow {
   release?: string | undefined;
   model?: string | undefined;
   status?: TraceStatusFilter | undefined;
+  error_class?: ErrorClass | undefined;
   user_id?: string | undefined;
   session_id?: string | undefined;
   tag?: string | undefined;

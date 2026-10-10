@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { SectionCard } from "@/components/section-card";
 import { Input } from "@/components/ui/input";
-import { errorMessage, type Project } from "@/lib/api";
+import { errorMessage, isApiError, type Project } from "@/lib/api";
 import { applyServerFieldErrors } from "@/lib/form-errors";
 
 import {
@@ -18,6 +18,7 @@ import {
   RETENTION_MIN_DAYS,
   type ProjectSettingsValues,
 } from "./project-settings-schema";
+import { InsightChannelsField } from "./insight-channels-field";
 import {
   CapturePayloadsField,
   ProjectIdentifiers,
@@ -38,6 +39,7 @@ function valuesFrom(project: Project): ProjectSettingsValues {
     retention_days: project.retention_days,
     capture_payloads: project.capture_payloads,
     weekly_digest_enabled: project.weekly_digest_enabled ?? true,
+    insight_channel_ids: project.insight_channel_ids,
   };
 }
 
@@ -65,7 +67,12 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
         toast.success(projectSavedMessage(update));
       },
       onError: (error) => {
-        if (!applyServerFieldErrors(error, form.setError, ["name", "retention_days"])) {
+        if (isApiError(error) && error.code === "UNKNOWN_CHANNEL") {
+          form.setError("insight_channel_ids", {
+            type: "server",
+            message: "A selected channel no longer exists. Remove it and save again.",
+          });
+        } else if (!applyServerFieldErrors(error, form.setError, ["name", "retention_days"])) {
           toast.error(errorMessage(error));
         }
       },
@@ -136,6 +143,13 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
 
       <SectionCard title="Email" description="What members of this project get by email.">
         <WeeklyDigestField control={form.control} canEdit={canEdit} />
+      </SectionCard>
+
+      <SectionCard
+        title="Insight notifications"
+        description="Where the Doctor sends critical findings for this project."
+      >
+        <InsightChannelsField control={form.control} canEdit={canEdit} />
       </SectionCard>
 
       {canEdit ? (

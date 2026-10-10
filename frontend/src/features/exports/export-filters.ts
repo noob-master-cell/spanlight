@@ -3,7 +3,7 @@
  * them, the 90-day window rule, and the short text that describes a set of filters. Pure
  * functions only, so the traces page and the exports list agree on every word.
  */
-import type { ExportFilters } from "@/lib/api";
+import type { ErrorClass, ExportFilters } from "@/lib/api";
 import { MAX_WINDOW_MS } from "@/lib/time-range";
 
 /** The limit the API enforces between `from` and `to`; the dialog checks it before any request. */
@@ -16,6 +16,7 @@ export interface TraceFacets {
   release?: string | undefined;
   model?: string | undefined;
   status?: "ok" | "error" | undefined;
+  error_class?: ErrorClass | undefined;
   tag?: string | undefined;
   user?: string | undefined;
   session?: string | undefined;
@@ -57,6 +58,9 @@ export function toExportFilters(
   }
   if (facets.status) {
     filters.status = facets.status;
+  }
+  if (facets.error_class) {
+    filters.error_class = facets.error_class;
   }
   const userId = present(facets.user);
   if (userId) {
@@ -107,6 +111,7 @@ export function exportFilterEntries(filters: ExportFilters): FilterEntry[] {
     ["release", filters.release],
     ["model", filters.model],
     ["status", filters.status],
+    ["error_class", filters.error_class],
     ["user_id", filters.user_id],
     ["session_id", filters.session_id],
     ["tag", filters.tag],

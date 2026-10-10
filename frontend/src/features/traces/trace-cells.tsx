@@ -1,9 +1,36 @@
 import type { ReactNode } from "react";
 
+import { ErrorClassChip } from "@/components/error-class-chip";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { ErrorClass } from "@/lib/api";
 import { formatCompact, formatInteger } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+/** The class chip beside the first error message; renders nothing when neither is known. */
+export function TraceErrorLine({
+  errorClass,
+  message,
+  className,
+}: {
+  errorClass: ErrorClass | null;
+  message: string | null;
+  className?: string;
+}) {
+  if (errorClass === null && !message) {
+    return null;
+  }
+  return (
+    <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
+      {errorClass !== null ? <ErrorClassChip errorClass={errorClass} /> : null}
+      {message ? (
+        <span title={message} className="min-w-0 truncate text-xs text-danger-text">
+          {message}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 /** Figma "Traces/Mono badge": a model name chip in JetBrains Mono. */
 export function MonoBadge({ value, className }: { value: string; className?: string }) {

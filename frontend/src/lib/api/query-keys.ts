@@ -1,7 +1,15 @@
 import type { AlertEventQuery, AlertRulePreviewInput } from "./alerts-types";
 import type { AuditFilters } from "./orgs";
 import type { MetricsQuery, SessionListQuery, TimeWindow, TraceListQuery } from "./projects";
-import type { Bucket } from "./types";
+import type {
+  Bucket,
+  HealthQuery,
+  InsightListQuery,
+  ReleaseCompareQuery,
+  ReleaseListQuery,
+  UserDetailQuery,
+  UserListQuery,
+} from "./types";
 
 /**
  * Query key factory. Every key starts with a stable scope so related queries
@@ -41,6 +49,7 @@ export const queryKeys = {
   project: (projectId: string) => {
     const all = ["project", projectId] as const;
     const gateway = [...all, "gateway"] as const;
+    const doctor = [...all, "doctor"] as const;
     return {
       all,
       detail: [...all, "detail"] as const,
@@ -65,6 +74,18 @@ export const queryKeys = {
         [...all, "alert-events", query] as const,
       alertPreview: (spec: AlertRulePreviewInput) => [...all, "alert-preview", spec] as const,
       budgets: [...all, "budgets"] as const,
+      /** Every Doctor query of the project (insights, summary, health, runs): invalidate with this. */
+      doctor,
+      insights: (query: Omit<InsightListQuery, "cursor">) =>
+        [...doctor, "insights", query] as const,
+      insight: (insightId: string) => [...doctor, "insight", insightId] as const,
+      insightsSummary: [...doctor, "summary"] as const,
+      health: (query: HealthQuery) => [...doctor, "health", query] as const,
+      detectorRuns: [...doctor, "detector-runs"] as const,
+      releases: (query: ReleaseListQuery) => [...all, "releases", query] as const,
+      releaseCompare: (query: ReleaseCompareQuery) => [...all, "release-compare", query] as const,
+      users: (query: Omit<UserListQuery, "cursor">) => [...all, "users", query] as const,
+      user: (userId: string, query: UserDetailQuery) => [...all, "user", userId, query] as const,
       gateway: {
         /** Every gateway query of the project: invalidate with this. */
         all: gateway,
