@@ -13,9 +13,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
+/** The caller owns `open`: for an action opened from a row menu rather than its own button. */
+export interface ConfirmDialogControl {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
 interface ConfirmDialogProps {
-  /** The element that opens the dialog: the row's action button. */
-  trigger: ReactElement;
+  /** The element that opens the dialog: the row's action button. Omit it with `control`. */
+  trigger?: ReactElement;
+  /** Controlled mode: the caller opens the dialog, e.g. from a menu item. */
+  control?: ConfirmDialogControl;
   title: string;
   description: ReactNode;
   confirmLabel: string;
@@ -33,13 +41,16 @@ interface ConfirmDialogProps {
  */
 export function ConfirmDialog({
   trigger,
+  control,
   title,
   description,
   confirmLabel,
   onConfirm,
 }: ConfirmDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const open = control ? control.open : ownOpen;
+  const setOpen = control ? control.onOpenChange : setOwnOpen;
   // What had focus when the dialog opened (the row's action) and the card the row sits in.
   const opener = useRef<{ button: HTMLElement; card: HTMLElement | null } | null>(null);
 
@@ -64,11 +75,11 @@ export function ConfirmDialog({
         }
       }}
     >
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger ? <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger> : null}
       <AlertDialogContent
         className="max-w-[440px] gap-5 rounded-card p-6 sm:p-7"
         onOpenAutoFocus={() => {
-          const button = document.activeElement;
+          const button = openerOf(document.activeElement);
           opener.current =
             button instanceof HTMLElement
               ? { button, card: button.closest<HTMLElement>('[role="region"]') }
@@ -82,6 +93,10 @@ export function ConfirmDialog({
             event.preventDefault();
             card.tabIndex = -1;
             card.focus();
+          } else if (control && button?.isConnected) {
+            // Opened from a menu, Radix would return focus to the menu item, which is gone.
+            event.preventDefault();
+            button.focus();
           }
         }}
       >
@@ -118,4 +133,16 @@ export function ConfirmDialog({
       </AlertDialogContent>
     </AlertDialog>
   );
+}
+
+/**
+ * The control that opened the dialog. Opened from a menu item, that is the menu's trigger (the
+ * row's "more" button): the item itself is gone with the menu.
+ */
+function openerOf(active: Element | null): Element | null {
+  const menu = active?.closest('[role="menu"]');
+  if (!menu?.id) {
+    return active;
+  }
+  return document.querySelector(`[aria-controls="${CSS.escape(menu.id)}"]`) ?? active;
 }

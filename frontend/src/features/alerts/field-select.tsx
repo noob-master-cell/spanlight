@@ -1,0 +1,58 @@
+import type { Ref } from "react";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export interface FieldSelectOption {
+  value: string;
+  label: string;
+}
+
+interface FieldSelectProps {
+  /** React Hook Form's field ref: focuses the trigger when a refused save lands here first. */
+  ref?: Ref<HTMLButtonElement>;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly FieldSelectOption[];
+  /** Wired by `FormField`. */
+  id?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+}
+
+/** Figma "Gateway/Select field" inside a `FormField`: the label, hint and error reach the trigger. */
+export function FieldSelect({
+  ref,
+  value,
+  onChange,
+  options,
+  id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+}: FieldSelectProps) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger
+        ref={ref}
+        id={id}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
+        className="aria-invalid:border-[1.5px] aria-invalid:border-danger"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}

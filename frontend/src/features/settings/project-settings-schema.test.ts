@@ -9,7 +9,12 @@ import {
   retentionSchema,
 } from "./project-settings-schema";
 
-const project = { name: "Support bot", retention_days: 30, capture_payloads: true };
+const project = {
+  name: "Support bot",
+  retention_days: 30,
+  capture_payloads: true,
+  weekly_digest_enabled: true,
+};
 
 describe("changedProjectFields", () => {
   it("returns only the fields that changed", () => {

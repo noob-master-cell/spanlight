@@ -28,11 +28,16 @@ export const capturePayloadsSchema = z.object({
   capture_payloads: z.boolean(),
 });
 
-/** The whole project form: the General and Data cards share one "Save changes". */
+export const weeklyDigestSchema = z.object({
+  weekly_digest_enabled: z.boolean(),
+});
+
+/** The whole project form: the General, Data and Email cards share one "Save changes". */
 export const projectSettingsSchema = z.object({
   ...projectNameSchema.shape,
   ...retentionSchema.shape,
   ...capturePayloadsSchema.shape,
+  ...weeklyDigestSchema.shape,
 });
 
 export type ProjectSettingsValues = z.infer<typeof projectSettingsSchema>;
@@ -60,6 +65,12 @@ export function changedProjectFields(
   ) {
     update.capture_payloads = values.capture_payloads;
   }
+  if (
+    values.weekly_digest_enabled !== undefined &&
+    values.weekly_digest_enabled !== (project.weekly_digest_enabled ?? true)
+  ) {
+    update.weekly_digest_enabled = values.weekly_digest_enabled;
+  }
   return update;
 }
 
@@ -82,6 +93,11 @@ export function projectSavedMessage(update: ProjectUpdate): string {
   }
   if (update.retention_days !== undefined) {
     return `Traces are now kept for ${formatDays(update.retention_days)}.`;
+  }
+  if (update.weekly_digest_enabled !== undefined) {
+    return update.weekly_digest_enabled
+      ? "Members will get the weekly digest."
+      : "The weekly digest is turned off.";
   }
   return update.capture_payloads
     ? "Prompts and completions will be captured."

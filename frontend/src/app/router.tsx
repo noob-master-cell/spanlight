@@ -316,6 +316,40 @@ const gatewayLabRoute = createRoute({
   component: lazyRouteComponent(() => import("@/features/gateway/lab/lab-page"), "GatewayLabPage"),
 });
 
+const alertsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/alerts",
+  head: () => pageTitle("Alerts"),
+  component: lazyRouteComponent(() => import("@/features/alerts/alerts-page"), "AlertsPage"),
+});
+
+const alertChannelsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/alerts/channels",
+  head: () => pageTitle("Alert channels"),
+  component: lazyRouteComponent(
+    () => import("@/features/alerts/channels-page"),
+    "AlertChannelsPage",
+  ),
+});
+
+const alertRuleRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/alerts/$ruleId",
+  head: () => pageTitle("Alert rule"),
+  component: lazyRouteComponent(
+    () => import("@/features/alerts/rule-detail-page"),
+    "AlertRuleDetailPage",
+  ),
+});
+
+const budgetsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/budgets",
+  head: () => pageTitle("Budgets"),
+  component: lazyRouteComponent(() => import("@/features/budgets/budgets-page"), "BudgetsPage"),
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/settings",
@@ -435,6 +469,10 @@ const routeTree = rootRoute.addChildren([
       gatewayRouteEditorRoute,
       gatewayCredentialsRoute,
       gatewayLabRoute,
+      alertsRoute,
+      alertChannelsRoute,
+      alertRuleRoute,
+      budgetsRoute,
       settingsRoute.addChildren([
         settingsIndexRoute,
         projectSettingsRoute,

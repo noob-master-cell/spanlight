@@ -1,3 +1,4 @@
+import type { AlertEventQuery, AlertRulePreviewInput } from "./alerts-types";
 import type { AuditFilters } from "./orgs";
 import type { MetricsQuery, SessionListQuery, TimeWindow, TraceListQuery } from "./projects";
 import type { Bucket } from "./types";
@@ -30,6 +31,10 @@ export const queryKeys = {
       auditEvents: (filters: AuditFilters) => [...audit, filters] as const,
       credentials: [...all, "credentials"] as const,
       priceOverrides: [...all, "price-overrides"] as const,
+      alertChannels: [...all, "alert-channels"] as const,
+      /** The delivery log of one channel; filters ride in the key. */
+      deliveries: (channelId: string, filters: { status?: string | undefined } = {}) =>
+        [...all, "alert-channels", channelId, "deliveries", filters] as const,
     };
   },
 
@@ -52,6 +57,14 @@ export const queryKeys = {
       timeseries: (query: MetricsQuery & { bucket: Bucket }) =>
         [...all, "timeseries", query] as const,
       models: (query: MetricsQuery) => [...all, "models", query] as const,
+      alertRules: [...all, "alert-rules"] as const,
+      alertRule: (ruleId: string) => [...all, "alert-rules", ruleId] as const,
+      /** Every rule's event timeline: invalidate with this. */
+      alertEventsAll: [...all, "alert-events"] as const,
+      alertEvents: (query: Omit<AlertEventQuery, "cursor">) =>
+        [...all, "alert-events", query] as const,
+      alertPreview: (spec: AlertRulePreviewInput) => [...all, "alert-preview", spec] as const,
+      budgets: [...all, "budgets"] as const,
       gateway: {
         /** Every gateway query of the project: invalidate with this. */
         all: gateway,

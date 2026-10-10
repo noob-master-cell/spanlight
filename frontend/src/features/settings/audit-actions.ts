@@ -61,6 +61,19 @@ const AUDIT_ACTION_LABELS: ReadonlyMap<string, string> = new Map(
     "price_override.create": "Created price override",
     "price_override.delete": "Deleted price override",
     "gateway_cache.purge": "Purged gateway cache",
+    "alert_channel.create": "Added alert channel",
+    "alert_channel.update": "Updated alert channel",
+    "alert_channel.delete": "Deleted alert channel",
+    "alert_channel.test": "Sent test notification",
+    "alert_channel.retry_delivery": "Retried alert delivery",
+    "alert_rule.create": "Created alert rule",
+    "alert_rule.update": "Updated alert rule",
+    "alert_rule.delete": "Deleted alert rule",
+    "alert_rule.mute": "Muted alert rule",
+    "alert_event.acknowledge": "Acknowledged alert",
+    "budget.create": "Created budget",
+    "budget.update": "Updated budget",
+    "budget.delete": "Deleted budget",
   }),
 );
 
@@ -103,6 +116,19 @@ export const AUDIT_FILTER_ACTIONS: readonly string[] = [
   "price_override.create",
   "price_override.delete",
   "gateway_cache.purge",
+  "alert_channel.create",
+  "alert_channel.update",
+  "alert_channel.delete",
+  "alert_channel.test",
+  "alert_channel.retry_delivery",
+  "alert_rule.create",
+  "alert_rule.update",
+  "alert_rule.delete",
+  "alert_rule.mute",
+  "alert_event.acknowledge",
+  "budget.create",
+  "budget.update",
+  "budget.delete",
 ];
 
 /** The label for a known action, or null so the caller can show the raw action in mono. */
@@ -126,6 +152,10 @@ const TARGET_TYPE_LABELS: ReadonlyMap<string, string> = new Map(
     gateway_key: "Gateway key",
     fault_profile: "Fault profile",
     price_override: "Price override",
+    alert_channel: "Alert channel",
+    alert_rule: "Alert rule",
+    alert_event: "Alert",
+    budget: "Budget",
   }),
 );
 

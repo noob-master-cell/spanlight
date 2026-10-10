@@ -16,6 +16,7 @@ const project: Project = {
   slug: "my-app",
   retention_days: 30,
   capture_payloads: true,
+  weekly_digest_enabled: true,
   created_at: "2026-10-07T00:00:00Z",
 };
 

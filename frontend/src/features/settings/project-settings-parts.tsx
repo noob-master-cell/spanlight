@@ -49,6 +49,40 @@ export function CapturePayloadsField({ control, canEdit }: CapturePayloadsFieldP
   );
 }
 
+/** The "Weekly digest email" switch tile of the Email card. */
+export function WeeklyDigestField({ control, canEdit }: CapturePayloadsFieldProps) {
+  const switchId = useId();
+  const descriptionId = useId();
+
+  return (
+    <div className="flex items-start gap-4 rounded-tile bg-surface-muted p-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <Label htmlFor={switchId} className="text-sm">
+          Weekly digest email
+        </Label>
+        <p id={descriptionId} className="text-sm text-muted-foreground">
+          Every Monday, members get a summary of spend, calls, errors and alerts.
+        </p>
+      </div>
+      <Controller
+        control={control}
+        name="weekly_digest_enabled"
+        render={({ field }) => (
+          <Switch
+            id={switchId}
+            aria-describedby={descriptionId}
+            checked={field.value}
+            onCheckedChange={field.onChange}
+            onBlur={field.onBlur}
+            ref={field.ref}
+            disabled={!canEdit}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
 /** The project ID for API calls and support requests, and when the project was created. */
 export function ProjectIdentifiers({ project }: { project: Project }) {
   return (

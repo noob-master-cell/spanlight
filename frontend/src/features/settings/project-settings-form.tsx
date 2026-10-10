@@ -18,7 +18,11 @@ import {
   RETENTION_MIN_DAYS,
   type ProjectSettingsValues,
 } from "./project-settings-schema";
-import { CapturePayloadsField, ProjectIdentifiers } from "./project-settings-parts";
+import {
+  CapturePayloadsField,
+  ProjectIdentifiers,
+  WeeklyDigestField,
+} from "./project-settings-parts";
 import { ReadOnlySlugField } from "./read-only-slug-field";
 import { SettingsSaveBar } from "./settings-save-bar";
 import { useUpdateProject } from "./use-update-project";
@@ -33,6 +37,7 @@ function valuesFrom(project: Project): ProjectSettingsValues {
     name: project.name,
     retention_days: project.retention_days,
     capture_payloads: project.capture_payloads,
+    weekly_digest_enabled: project.weekly_digest_enabled ?? true,
   };
 }
 
@@ -127,6 +132,10 @@ export function ProjectSettingsForm({ project, canEdit }: ProjectSettingsFormPro
         </div>
         <hr className="border-border" />
         <CapturePayloadsField control={form.control} canEdit={canEdit} />
+      </SectionCard>
+
+      <SectionCard title="Email" description="What members of this project get by email.">
+        <WeeklyDigestField control={form.control} canEdit={canEdit} />
       </SectionCard>
 
       {canEdit ? (

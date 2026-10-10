@@ -184,6 +184,8 @@ export interface Project {
   slug: string;
   retention_days: number;
   capture_payloads: boolean;
+  /** The Monday summary email to the project's members. Absent from older servers: read it as on. */
+  weekly_digest_enabled?: boolean;
   created_at: string;
 }
 
@@ -191,6 +193,7 @@ export interface ProjectUpdate {
   name?: string;
   retention_days?: number;
   capture_payloads?: boolean;
+  weekly_digest_enabled?: boolean;
 }
 
 /**
@@ -417,3 +420,4 @@ export interface ProblemDetails {
 }
 
 export type * from "./gateway-types";
+export type * from "./alerts-types";

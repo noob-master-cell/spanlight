@@ -30,6 +30,7 @@ export function makeProject(id: string, name: string): Project {
     slug: name.toLowerCase(),
     retention_days: 30,
     capture_payloads: true,
+    weekly_digest_enabled: true,
     created_at: "2026-10-01T00:00:00Z",
   };
 }

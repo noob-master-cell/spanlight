@@ -1,5 +1,7 @@
 export { authApi } from "./auth";
 export type { Credentials, PasswordResetInput, SignupInput } from "./auth";
+export { alertsApi } from "./alerts";
+export { budgetsApi } from "./budgets";
 export { API_PREFIX, api, buildUrl, readCookie, setUnauthorizedHandler } from "./client";
 export type { DownloadedFile } from "./client";
 export {
