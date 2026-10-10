@@ -47,6 +47,23 @@ describe("resolveRange", () => {
       ).value,
     ).toBe("24h");
   });
+
+  it("accepts a custom range exactly at the maximum window", () => {
+    const range = resolveRange(
+      { range: "custom", from: "2026-07-03T00:00:00Z", to: "2026-10-01T00:00:00Z" },
+      NOW,
+    );
+    expect(range.value).toBe("custom");
+    expect(range.durationMs).toBe(90 * 24 * 3600_000);
+  });
+
+  it("falls back to 24h when custom range has invalid date input", () => {
+    const range = resolveRange(
+      { range: "custom", from: "not-a-date", to: "2026-10-01T00:00:00Z" },
+      NOW,
+    );
+    expect(range.value).toBe("24h");
+  });
 });
 
 describe("projectSearchSchema", () => {
