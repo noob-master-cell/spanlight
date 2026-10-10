@@ -12,10 +12,10 @@ from http import HTTPStatus
 
 import httpx
 
+from app.core.egress import BlockedAddress, InsecureUrl
 from app.db.models import ProviderKind
 from app.gateway.adapters import adapter_for
 from app.gateway.credentials import InvalidBaseUrl, validate_base_url
-from app.gateway.egress import BlockedAddress, InsecureUrl
 from app.gateway.http import host_not_found
 
 CHECK_TIMEOUT_SECONDS = 10.0

@@ -132,6 +132,21 @@ class Settings(BaseSettings):
     gateway_record_concurrency: int = Field(default=16, ge=1, le=256)
     gateway_record_backlog: int = Field(default=1000, ge=1, le=100_000)
 
+    # Alerts. `alerts_evaluation_enabled` schedules the alert evaluation job (every minute) and
+    # `weekly_digest_enabled` the Monday digest email; turn either off to stop it everywhere.
+    alerts_evaluation_enabled: bool = True
+    weekly_digest_enabled: bool = True
+    # Whether webhook alert channels may point at `http://` URLs and at private, loopback or
+    # link-local addresses. Off, a webhook URL must be `https://` and resolve only to public
+    # addresses, so a channel cannot turn the worker into a way into the private network.
+    webhook_allow_private_targets: bool = False
+    # Whether email alert channels may send to any address. Off, every recipient must be a
+    # member of the organization with a verified email, so a shared instance cannot be used to
+    # mail strangers from its domain. Meant for a self-hosted instance.
+    alert_email_any_recipient: bool = False
+    # Where PagerDuty alert channels send events (the Events API v2 endpoint).
+    pagerduty_events_url: str = "https://events.pagerduty.com/v2/enqueue"
+
     sentry_dsn: str | None = None
 
     # Tracing of the app's own requests, queries and outbound calls. Set the base URL of an OTLP
@@ -192,6 +207,11 @@ class Settings(BaseSettings):
         "gateway_allow_insecure_base_urls",
         "gateway_record_concurrency",
         "gateway_record_backlog",
+        "alerts_evaluation_enabled",
+        "weekly_digest_enabled",
+        "webhook_allow_private_targets",
+        "alert_email_any_recipient",
+        "pagerduty_events_url",
         "otel_service_name",
         mode="before",
     )
@@ -238,6 +258,16 @@ class Settings(BaseSettings):
     @classmethod
     def _strip_trailing_slash(cls, value: str) -> str:
         return value.rstrip("/")
+
+    @field_validator("pagerduty_events_url")
+    @classmethod
+    def _pagerduty_url_is_https(cls, value: str) -> str:
+        # Fail at startup instead of on the first alert: events carry the routing key, so they
+        # only ever go over https to a named host.
+        parts = urlsplit(value.strip())
+        if parts.scheme != "https" or not parts.hostname or "@" in parts.netloc:
+            raise ValueError("PAGERDUTY_EVENTS_URL must be an https:// URL with a host")
+        return value.strip()
 
     @model_validator(mode="after")
     def _require_real_secret_over_https(self) -> Self:

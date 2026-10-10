@@ -4,12 +4,13 @@ How fast Spanlight ingests and serves traces, how that is measured, and how to r
 
 ## Targets
 
-| Path | Load | Target |
-|---|---|---|
-| Ingestion | `POST /v1/traces`: 500 spans a second, as 5 requests a second of 100 spans | p95 below 200 ms |
-| Dashboard overview | `GET /api/v1/projects/{id}/metrics/overview`: 20 requests a second over four time windows, with 1 million spans stored (`realistic`; the `full` stress run stores 10 million) | p95 below 300 ms |
-| Trace list | `GET /api/v1/projects/{id}/traces`: 20 requests a second, with 1 million spans stored (`realistic`; `full`: 10 million) | p95 below 300 ms |
+| Path                 | Load                                                                                                                                                                                        | Target                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Ingestion            | `POST /v1/traces`: 500 spans a second, as 5 requests a second of 100 spans                                                                                                                  | p95 below 200 ms                                                |
+| Dashboard overview   | `GET /api/v1/projects/{id}/metrics/overview`: 20 requests a second over four time windows, with 1 million spans stored (`realistic`; the `full` stress run stores 10 million)               | p95 below 300 ms                                                |
+| Trace list           | `GET /api/v1/projects/{id}/traces`: 20 requests a second, with 1 million spans stored (`realistic`; `full`: 10 million)                                                                     | p95 below 300 ms                                                |
 | LLM gateway overhead | `POST /gw/v1/chat/completions`: 50 requests a second for 60 s, against a fake provider that answers at once, compared with the same 50 requests a second sent to the fake provider directly | overhead (p95 through the gateway minus p95 direct) below 20 ms |
+| Alert evaluation     | `spanlight alerts evaluate`: one pass over 1 000 seeded alert evaluations (50 projects, 18 rules and 2 budgets each, 7 days of spans and rollups)                                           | median of three passes below 10 s                               |
 
 These are the same figures as the service level objectives in the [SLO runbook](runbooks/slo.md). Beside the latency each scenario has to meet three more conditions:
 
@@ -44,14 +45,14 @@ The [LLM gateway](runbooks/gateway.md) sits between an application and its provi
 
 [`backend/load/seed.py`](../backend/load/seed.py) fills the database before any request. It creates an organization, a project, one ingest key and ten read keys, and stores the spans through the same pipeline that handles `POST /v1/traces` (validation, normalization, pricing and the upsert), called in process because the ingest limit would turn 10 million spans into hours of waiting. Then it builds the rollups and runs `VACUUM ANALYZE`, so the first request sees what a settled system looks like.
 
-| Property | Value |
-|---|---|
-| Traces | 1 to 6 spans each (3.5 on average): a single LLM call, or a root span with children |
-| Kinds | `llm` calls, `tool` and `retrieval` spans under a `chain` root |
-| Models | five with a published price and one without, so some costs are unknown, as in production |
-| Failures | about 2 % of the spans have status `error` |
-| Payloads | input and output of 200 to 800 bytes |
-| Time | start times spread over the 28 days before the seeder started, inside the default retention of 30 days so the retention job leaves them alone. The batches are stored oldest to newest, each holding the traces that start in its slice of the 28 days, and about 2 % of the traces land up to an hour late, like a retry or a batching client. Rows that started close together therefore sit close together in the table, as after real traffic; stored in random order, one day of spans would be scattered over a fifth of the table, which no real system produces. The overview and trace list scripts ask for windows that end where the data ends, not at the wall clock, so every window is full however long the seeding took |
+| Property | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Traces   | 1 to 6 spans each (3.5 on average): a single LLM call, or a root span with children                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Kinds    | `llm` calls, `tool` and `retrieval` spans under a `chain` root                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Models   | five with a published price and one without, so some costs are unknown, as in production                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Failures | about 2 % of the spans have status `error`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Payloads | input and output of 200 to 800 bytes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Time     | start times spread over the 28 days before the seeder started, inside the default retention of 30 days so the retention job leaves them alone. The batches are stored oldest to newest, each holding the traces that start in its slice of the 28 days, and about 2 % of the traces land up to an hour late, like a retry or a batching client. Rows that started close together therefore sit close together in the table, as after real traffic; stored in random order, one day of spans would be scattered over a fifth of the table, which no real system produces. The overview and trace list scripts ask for windows that end where the data ends, not at the wall clock, so every window is full however long the seeding took |
 
 ## Node
 
@@ -67,13 +68,33 @@ All three profiles run on a GitHub-hosted standard `ubuntu-latest` runner: 4 vCP
 
 `realistic` profile, run [37952458454](https://github.com/noob-master-cell/spanlight/actions/runs/37952458454) on 2026-10-09 at commit `2f533e4`: a GitHub-hosted `ubuntu-latest` runner (4 vCPU, 15.6 GiB, image ubuntu24 20261004.327.1), PostgreSQL 17.11, k6 2.3.0, with 1 000 000 spans in 286 612 traces stored. Every threshold passed.
 
-| Scenario | Rate | Median | p95 | p99 | Target (p95) | Failed requests | Dropped iterations |
-|---|---|---|---|---|---|---|---|
-| Ingestion | 5 requests/s of 100 spans, 1 min | 98.9 ms | 111.5 ms | 180.0 ms | 200 ms | 0 % | 0 |
-| Dashboard overview | 20 requests/s, 1 min | 38.9 ms | 50.3 ms | 83.6 ms | 300 ms | 0 % | 0 |
-| Trace list | 20 requests/s, 1 min | 14.1 ms | 16.0 ms | 18.8 ms | 300 ms | 0 % | 0 |
+| Scenario           | Rate                             | Median  | p95      | p99      | Target (p95) | Failed requests | Dropped iterations |
+| ------------------ | -------------------------------- | ------- | -------- | -------- | ------------ | --------------- | ------------------ |
+| Ingestion          | 5 requests/s of 100 spans, 1 min | 98.9 ms | 111.5 ms | 180.0 ms | 200 ms       | 0 %             | 0                  |
+| Dashboard overview | 20 requests/s, 1 min             | 38.9 ms | 50.3 ms  | 83.6 ms  | 300 ms       | 0 %             | 0                  |
+| Trace list         | 20 requests/s, 1 min             | 14.1 ms | 16.0 ms  | 18.8 ms  | 300 ms       | 0 %             | 0                  |
 
-The `full` stress run with 10 million spans has not been recorded yet, and neither has the gateway overhead.
+### Gateway overhead
+
+Run [37997565780](https://github.com/noob-master-cell/spanlight/actions/runs/37997565780) on 2026-10-10 at commit `38568be`, same runner type and stack (1 000 000 spans stored), 50 requests a second for 60 s per scenario. The threshold passed.
+
+| Scenario                                        | Median  | p95         | p99     | Failed requests    | Dropped iterations |
+| ----------------------------------------------- | ------- | ----------- | ------- | ------------------ | ------------------ |
+| Through the gateway (`/gw/v1/chat/completions`) | 11.1 ms | 17.1 ms     | 38.2 ms | 0 %                | 0                  |
+| Direct to the fake provider                     | 0.4 ms  | 0.5 ms      | 0.7 ms  | 0 %                | 0                  |
+| **Overhead (p95 difference)**                   |         | **16.6 ms** |         | target below 20 ms |                    |
+
+The overhead includes the Caddy hop and the gateway's own request to the provider, which the direct scenario does not make, so it reads slightly high. The same run measured the dashboard again: ingestion p95 114.7 ms, overview p95 47.5 ms, trace list p95 15.1 ms.
+
+The `full` stress run with 10 million spans has not been recorded yet.
+
+## Alert evaluation
+
+The [`evaluate_alerts` job](runbooks/alerts.md) runs once a minute and evaluates every enabled rule and budget of every project. The target is that a pass over 1 000 of them finishes in under 10 seconds, so that a worker has most of the minute to spare.
+
+**Method.** [`backend/load/seed_alerts.py`](../backend/load/seed_alerts.py) creates 50 projects, each with 18 rules (threshold and anomaly, over every metric, with windows from 15 minutes to a day, some filtered by environment, provider or model, and several that share a metric, window and filters so the per-pass metric cache matters) and 2 budgets, and 5 000 spans over the last 7 days. The spans go through the real ingestion pipeline and the hourly rollups are built with the same code the worker uses, so a pass reads rollups for the whole hours of a window and raw spans for the rest, as in production. No rule names a channel, so no notification is queued: the test measures evaluation, not delivery. `spanlight alerts evaluate` then runs one real pass in the worker container (the same function as the job, with one metric cache) and prints the rules evaluated by outcome, the transitions and the seconds. The pass is real and not a dry run because the commit of each rule is part of its cost. The worker's own evaluation job is switched off so it does not take rules from the timed pass. The job runs three passes and takes the median; it fails above 10 seconds, when fewer than 1 000 rules were evaluated, or when any rule or project errored. See [`backend/load/alerts.md`](../backend/load/alerts.md) for running it by hand.
+
+**Result.** Pending: recorded by the `alerts-eval` job of the load-smoke workflow ([`load-smoke.yml`](../.github/workflows/load-smoke.yml)). The run's date, commit, node, PostgreSQL version and the three passes will be written here when it has produced them.
 
 ## Known slower paths
 

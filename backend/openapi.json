@@ -16,6 +16,473 @@
         "title": "AcceptedOut",
         "type": "object"
       },
+      "AlertChannelKind": {
+        "enum": [
+          "email",
+          "slack",
+          "webhook",
+          "pagerduty"
+        ],
+        "title": "AlertChannelKind",
+        "type": "string"
+      },
+      "AlertChannelOut": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "has_secret": {
+            "title": "Has Secret",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AlertChannelKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "kind",
+          "name",
+          "config",
+          "has_secret",
+          "verified_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AlertChannelOut",
+        "type": "object"
+      },
+      "AlertChannelSecretOut": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "has_secret": {
+            "title": "Has Secret",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AlertChannelKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "kind",
+          "name",
+          "config",
+          "has_secret",
+          "verified_at",
+          "created_at",
+          "updated_at",
+          "secret"
+        ],
+        "title": "AlertChannelSecretOut",
+        "type": "object"
+      },
+      "AlertEventOut": {
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "acknowledged_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "rule_kind": {
+            "$ref": "#/components/schemas/AlertRuleKind"
+          },
+          "rule_name": {
+            "title": "Rule Name",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "firing",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "rule_id",
+          "rule_name",
+          "rule_kind",
+          "state",
+          "value",
+          "threshold",
+          "started_at",
+          "resolved_at",
+          "acknowledged_by",
+          "acknowledged_at"
+        ],
+        "title": "AlertEventOut",
+        "type": "object"
+      },
+      "AlertRuleKind": {
+        "enum": [
+          "threshold",
+          "anomaly",
+          "budget"
+        ],
+        "title": "AlertRuleKind",
+        "type": "string"
+      },
+      "AlertRuleOut": {
+        "properties": {
+          "baseline_windows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Windows"
+          },
+          "channel_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Channel Ids",
+            "type": "array"
+          },
+          "comparator": {
+            "$ref": "#/components/schemas/Comparator"
+          },
+          "cooldown_minutes": {
+            "title": "Cooldown Minutes",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "filters": {
+            "additionalProperties": true,
+            "title": "Filters",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AlertRuleKind"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "muted_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Muted Until"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "sensitivity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertRuleStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "window_minutes": {
+            "title": "Window Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "kind",
+          "metric",
+          "comparator",
+          "threshold",
+          "window_minutes",
+          "baseline_windows",
+          "sensitivity",
+          "filters",
+          "cooldown_minutes",
+          "enabled",
+          "channel_ids",
+          "muted_until",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AlertRuleOut",
+        "type": "object"
+      },
+      "AlertRuleStateOut": {
+        "properties": {
+          "last_evaluated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Evaluated At"
+          },
+          "last_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Value"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "state": {
+            "$ref": "#/components/schemas/RuleStateName"
+          }
+        },
+        "required": [
+          "state",
+          "since",
+          "last_value",
+          "last_evaluated_at"
+        ],
+        "title": "AlertRuleStateOut",
+        "type": "object"
+      },
       "ApiKeyCreateIn": {
         "properties": {
           "expires_at": {
@@ -306,6 +773,508 @@
         "title": "AuthExpiredParams",
         "type": "object"
       },
+      "BudgetAction": {
+        "description": "What an exhausted budget does: notify its channels, or also block gateway calls.",
+        "enum": [
+          "notify",
+          "block"
+        ],
+        "title": "BudgetAction",
+        "type": "string"
+      },
+      "BudgetOut": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/BudgetAction"
+          },
+          "amount_usd": {
+            "title": "Amount Usd",
+            "type": "string"
+          },
+          "channel_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Channel Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/BudgetPeriod"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BudgetScope"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "scope",
+          "scope_id",
+          "period",
+          "amount_usd",
+          "action",
+          "enabled",
+          "channel_ids",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BudgetOut",
+        "type": "object"
+      },
+      "BudgetPatch": {
+        "additionalProperties": false,
+        "description": "A partial edit: the fields sent replace the budget's. Send `scope_id` with `scope`.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount_usd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,15}0*$)\\d{0,10}\\.\\d{0,4}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Usd"
+          },
+          "channel_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Ids"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetPeriod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          }
+        },
+        "title": "BudgetPatch",
+        "type": "object"
+      },
+      "BudgetPeriod": {
+        "description": "The UTC calendar period a budget's spend is summed over before it starts again.",
+        "enum": [
+          "daily",
+          "monthly"
+        ],
+        "title": "BudgetPeriod",
+        "type": "string"
+      },
+      "BudgetScope": {
+        "description": "Whose spend a budget caps. Every scope but `project` names one value in `scope_id`.",
+        "enum": [
+          "project",
+          "gateway_key",
+          "user",
+          "model"
+        ],
+        "title": "BudgetScope",
+        "type": "string"
+      },
+      "BudgetSpec": {
+        "additionalProperties": false,
+        "description": "A whole budget: the body of a create.",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/BudgetAction"
+          },
+          "amount_usd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,15}0*$)\\d{0,10}\\.\\d{0,4}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amount Usd"
+          },
+          "channel_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Channel Ids",
+            "type": "array"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/BudgetPeriod"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BudgetScope"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "period",
+          "amount_usd",
+          "action"
+        ],
+        "title": "BudgetSpec",
+        "type": "object"
+      },
+      "BudgetStateOut": {
+        "description": "Where the budget stands in the current period (by the server's clock).\n\nUntil the first evaluation of a new period, the previous period's figures no longer apply:\nthe state shows the current period with `spent_usd` null and `state` `ok` (a firing alert\nfrom a past period ends on that evaluation and never blocks).",
+        "properties": {
+          "last_evaluated_at": {
+            "format": "date-time",
+            "title": "Last Evaluated At",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date-time",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          },
+          "spent_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spent Usd"
+          },
+          "state": {
+            "$ref": "#/components/schemas/RuleStateName"
+          }
+        },
+        "required": [
+          "spent_usd",
+          "period_start",
+          "resets_at",
+          "state",
+          "last_evaluated_at"
+        ],
+        "title": "BudgetStateOut",
+        "type": "object"
+      },
+      "ChannelCreate": {
+        "additionalProperties": false,
+        "description": "A new channel. `config` and `secret` are validated for the `kind` sent with them.\n\nSlack and PagerDuty need `secret` (the incoming-webhook URL, the routing key); email and\nwebhook channels refuse it. An omitted `config` is the kind's default, which only Slack and\nPagerDuty have. Errors come out under `config.<field>` and `secret`.",
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailConfig"
+              },
+              {
+                "$ref": "#/components/schemas/SlackConfig"
+              },
+              {
+                "$ref": "#/components/schemas/WebhookConfig"
+              },
+              {
+                "$ref": "#/components/schemas/PagerDutyConfig"
+              }
+            ],
+            "title": "Config"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AlertChannelKind"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 4096,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ],
+        "title": "ChannelCreate",
+        "type": "object"
+      },
+      "ChannelTestOut": {
+        "properties": {
+          "delivery_id": {
+            "format": "uuid",
+            "title": "Delivery Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "status": {
+            "enum": [
+              "sent",
+              "failed",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_id",
+          "status",
+          "error"
+        ],
+        "title": "ChannelTestOut",
+        "type": "object"
+      },
+      "ChannelUpdate": {
+        "additionalProperties": false,
+        "description": "A partial edit: only the fields sent change. A channel's kind never changes.\n\n`config` is validated against the channel's kind (`parse_config`), so it is taken as an\nobject here. `secret` replaces a Slack URL or PagerDuty routing key; `rotate_secret`\ngenerates a new webhook signing secret, returned once.",
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "rotate_secret": {
+            "default": false,
+            "title": "Rotate Secret",
+            "type": "boolean"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 4096,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          }
+        },
+        "title": "ChannelUpdate",
+        "type": "object"
+      },
+      "Comparator": {
+        "enum": [
+          "gt",
+          "gte",
+          "lt",
+          "lte"
+        ],
+        "title": "Comparator",
+        "type": "string"
+      },
       "CredentialCheckOut": {
         "properties": {
           "checked_at": {
@@ -500,6 +1469,144 @@
           "api_key"
         ],
         "title": "CredentialRotateIn",
+        "type": "object"
+      },
+      "DeliveryOut": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "next_attempt_at": {
+            "format": "date-time",
+            "title": "Next Attempt At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "sent",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliverySummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "attempts",
+          "next_attempt_at",
+          "last_error",
+          "created_at",
+          "summary"
+        ],
+        "title": "DeliveryOut",
+        "type": "object"
+      },
+      "DeliverySummaryOut": {
+        "properties": {
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "rule_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Name"
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "title": "DeliverySummaryOut",
+        "type": "object"
+      },
+      "EmailConfig": {
+        "additionalProperties": false,
+        "description": "Who gets the email: 1 to 10 addresses, stored lower-cased and without repeats.",
+        "properties": {
+          "to": {
+            "items": {
+              "format": "email",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "To",
+            "type": "array"
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "title": "EmailConfig",
         "type": "object"
       },
       "EmailVerifyConfirmIn": {
@@ -2402,6 +3509,19 @@
         "title": "MembershipRole",
         "type": "string"
       },
+      "Metric": {
+        "enum": [
+          "error_rate",
+          "p95_ms",
+          "ttft_p95_ms",
+          "cost_usd",
+          "llm_calls",
+          "tokens",
+          "spend"
+        ],
+        "title": "Metric",
+        "type": "string"
+      },
       "ModelMetricsOut": {
         "properties": {
           "approximate": {
@@ -2494,6 +3614,37 @@
         ],
         "title": "ModelMetricsOut",
         "type": "object"
+      },
+      "MuteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "required": [
+          "until"
+        ],
+        "title": "MuteRequest",
+        "type": "object"
+      },
+      "NotificationStatus": {
+        "enum": [
+          "pending",
+          "sent",
+          "failed"
+        ],
+        "title": "NotificationStatus",
+        "type": "string"
       },
       "OAuthIdentityOut": {
         "description": "A sign-in provider account linked to the caller.",
@@ -2734,6 +3885,34 @@
         "title": "OverviewOut",
         "type": "object"
       },
+      "Page_AlertEventOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlertEventOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[AlertEventOut]",
+        "type": "object"
+      },
       "Page_AuditEventOut_": {
         "properties": {
           "items": {
@@ -2760,6 +3939,34 @@
           "next_cursor"
         ],
         "title": "Page[AuditEventOut]",
+        "type": "object"
+      },
+      "Page_DeliveryOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[DeliveryOut]",
         "type": "object"
       },
       "Page_ExportOut_": {
@@ -2844,6 +4051,25 @@
           "next_cursor"
         ],
         "title": "Page[TraceSummaryOut]",
+        "type": "object"
+      },
+      "PagerDutyConfig": {
+        "additionalProperties": false,
+        "description": "The severity PagerDuty shows on events from this channel.",
+        "properties": {
+          "severity": {
+            "default": "error",
+            "enum": [
+              "critical",
+              "error",
+              "warning",
+              "info"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "title": "PagerDutyConfig",
         "type": "object"
       },
       "PasswordForgotIn": {
@@ -3300,6 +4526,10 @@
           "slug": {
             "title": "Slug",
             "type": "string"
+          },
+          "weekly_digest_enabled": {
+            "title": "Weekly Digest Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3309,6 +4539,7 @@
           "slug",
           "retention_days",
           "capture_payloads",
+          "weekly_digest_enabled",
           "created_at"
         ],
         "title": "ProjectOut",
@@ -3352,6 +4583,17 @@
               }
             ],
             "title": "Retention Days"
+          },
+          "weekly_digest_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Digest Enabled"
           }
         },
         "title": "ProjectUpdateIn",
@@ -3648,6 +4890,305 @@
         "title": "RouteVersionOut",
         "type": "object"
       },
+      "RuleDefinition": {
+        "additionalProperties": false,
+        "description": "What a rule measures and when it breaches. The preview's body.",
+        "properties": {
+          "baseline_windows": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 3.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Windows"
+          },
+          "comparator": {
+            "$ref": "#/components/schemas/Comparator"
+          },
+          "cooldown_minutes": {
+            "default": 15,
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Cooldown Minutes",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "filters": {
+            "additionalProperties": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "environment",
+                "provider",
+                "model"
+              ]
+            },
+            "title": "Filters",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "threshold",
+              "anomaly"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "sensitivity": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.5,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,15}|(?=[\\d.]{1,22}0*$)\\d{0,15}\\.\\d{0,6}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "window_minutes": {
+            "maximum": 1440.0,
+            "minimum": 5.0,
+            "title": "Window Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "metric",
+          "comparator",
+          "window_minutes"
+        ],
+        "title": "RuleDefinition",
+        "type": "object"
+      },
+      "RulePreviewOut": {
+        "properties": {
+          "approximate": {
+            "title": "Approximate",
+            "type": "boolean"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RulePreviewPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "points",
+          "approximate"
+        ],
+        "title": "RulePreviewOut",
+        "type": "object"
+      },
+      "RulePreviewPoint": {
+        "properties": {
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "window_end": {
+            "format": "date-time",
+            "title": "Window End",
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_end",
+          "value",
+          "threshold"
+        ],
+        "title": "RulePreviewPoint",
+        "type": "object"
+      },
+      "RuleSpec": {
+        "additionalProperties": false,
+        "description": "A whole rule as a person writes it: the body of a create and of an edit.\n\nAn edit sends the whole rule again and replaces it; the rule's kind may change.",
+        "properties": {
+          "baseline_windows": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 3.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Windows"
+          },
+          "channel_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Channel Ids",
+            "type": "array"
+          },
+          "comparator": {
+            "$ref": "#/components/schemas/Comparator"
+          },
+          "cooldown_minutes": {
+            "default": 15,
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Cooldown Minutes",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "filters": {
+            "additionalProperties": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "environment",
+                "provider",
+                "model"
+              ]
+            },
+            "title": "Filters",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "threshold",
+              "anomaly"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "sensitivity": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.5,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,15}|(?=[\\d.]{1,22}0*$)\\d{0,15}\\.\\d{0,6}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "window_minutes": {
+            "maximum": 1440.0,
+            "minimum": 5.0,
+            "title": "Window Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "metric",
+          "comparator",
+          "window_minutes",
+          "name"
+        ],
+        "title": "RuleSpec",
+        "type": "object"
+      },
+      "RuleStateName": {
+        "enum": [
+          "ok",
+          "firing"
+        ],
+        "title": "RuleStateName",
+        "type": "string"
+      },
       "ScopeDeniedParams": {
         "additionalProperties": false,
         "description": "403 `insufficient_permissions`; takes no parameters.",
@@ -3783,6 +5324,13 @@
           "name"
         ],
         "title": "SignupIn",
+        "type": "object"
+      },
+      "SlackConfig": {
+        "additionalProperties": false,
+        "description": "Nothing to configure: the incoming-webhook URL is the channel's secret.",
+        "properties": {},
+        "title": "SlackConfig",
         "type": "object"
       },
       "SlowResponseParams": {
@@ -4683,6 +6231,23 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WebhookConfig": {
+        "additionalProperties": false,
+        "description": "Where the signed POST goes. The URL rules that need settings or DNS are in `urls.py`.",
+        "properties": {
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "WebhookConfig",
         "type": "object"
       }
     }
@@ -5829,6 +7394,503 @@
         "summary": "Update Org",
         "tags": [
           "orgs"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/alert-channels": {
+      "get": {
+        "description": "By name. Never includes a secret.",
+        "operationId": "list_channels_api_v1_orgs__org_id__alert_channels_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertChannelOut"
+                  },
+                  "title": "Response List Channels Api V1 Orgs  Org Id  Alert Channels Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List alert channels",
+        "tags": [
+          "alerts"
+        ]
+      },
+      "post": {
+        "description": "Store a channel. A webhook channel's response carries its signing `secret`, once.\n\n`409 NOT_CONFIGURED` for Slack, webhook and PagerDuty without CREDENTIALS_KEYS;\n`409 CHANNEL_NAME_TAKEN`; `422 LIMIT_EXCEEDED` past 20 channels; `422 RECIPIENT_NOT_MEMBER`;\n`422 UNSAFE_URL` for a webhook URL that is not `https://` or resolves to a private address.",
+        "operationId": "create_channel_api_v1_orgs__org_id__alert_channels_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertChannelSecretOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add an alert channel",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/alert-channels/{channel_id}": {
+      "delete": {
+        "description": "Rules that name the channel keep its id and skip it until they are edited.",
+        "operationId": "delete_channel_api_v1_orgs__org_id__alert_channels__channel_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an alert channel",
+        "tags": [
+          "alerts"
+        ]
+      },
+      "get": {
+        "operationId": "get_channel_api_v1_orgs__org_id__alert_channels__channel_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertChannelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get an alert channel",
+        "tags": [
+          "alerts"
+        ]
+      },
+      "patch": {
+        "description": "Change the name, config or secret. The kind never changes.\n\n`rotate_secret` (webhooks only) generates a new signing secret, returned once. A new config\nor secret clears `verified_at`. Errors as for the create.",
+        "operationId": "update_channel_api_v1_orgs__org_id__alert_channels__channel_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertChannelSecretOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit an alert channel",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/alert-channels/{channel_id}/deliveries": {
+      "get": {
+        "description": "Newest first. `status` keeps `pending`, `sent` or `failed` deliveries.",
+        "operationId": "list_deliveries_api_v1_orgs__org_id__alert_channels__channel_id__deliveries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/NotificationStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DeliveryOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List a channel's deliveries",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/alert-channels/{channel_id}/deliveries/{delivery_id}/retry": {
+      "post": {
+        "description": "Queue a failed delivery again, with the same id, so receivers still deduplicate on it.\n\nIts attempts start over and the worker picks it up at once; the last error stays until the\nnext attempt. `409 NOT_RETRYABLE` unless the delivery is `failed`.",
+        "operationId": "retry_delivery_api_v1_orgs__org_id__alert_channels__channel_id__deliveries__delivery_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Delivery Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry a failed delivery",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/alert-channels/{channel_id}/test": {
+      "post": {
+        "description": "Deliver a test now. A failing channel is a `200` with `status: \"failed\"` and the error.\n\n`pending` when a failure a retry might fix left it to the worker. `sent` records the channel\nas verified. At most 10 tests per channel an hour (`429 RATE_LIMITED`). An email channel\nwhile no email provider is configured is `409 NOT_CONFIGURED`.",
+        "operationId": "send_channel_test_api_v1_orgs__org_id__alert_channels__channel_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Makes a retry of this request safe: it runs once, then is replayed.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[\\x21-\\x7e]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Makes a retry of this request safe: it runs once, then is replayed.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send a test notification",
+        "tags": [
+          "alerts"
         ]
       }
     },
@@ -7045,6 +9107,807 @@
         "summary": "Update Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/alert-events": {
+      "get": {
+        "description": "Newest first. `state=firing` keeps open events, `state=resolved` resolved ones.",
+        "operationId": "list_events_api_v1_projects__project_id__alert_events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rule_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rule Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "firing",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AlertEventOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List alert events",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/alert-events/{event_id}/acknowledge": {
+      "post": {
+        "description": "Record that you have seen the event. `409 ALREADY_ACKNOWLEDGED` the second time.",
+        "operationId": "acknowledge_event_api_v1_projects__project_id__alert_events__event_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertEventOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge an alert event",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/alert-rules": {
+      "get": {
+        "description": "Firing rules first, then by name. Unpaginated: a project has at most 100 rules.",
+        "operationId": "list_rules_api_v1_projects__project_id__alert_rules_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertRuleOut"
+                  },
+                  "title": "Response List Rules Api V1 Projects  Project Id  Alert Rules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List alert rules",
+        "tags": [
+          "alerts"
+        ]
+      },
+      "post": {
+        "description": "Store a rule. `422 UNKNOWN_CHANNEL` for a channel outside the organization; `422\nLIMIT_EXCEEDED` past 100 rules (budgets' rules do not count).",
+        "operationId": "create_rule_api_v1_projects__project_id__alert_rules_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add an alert rule",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/alert-rules/preview": {
+      "post": {
+        "description": "What the rule would have measured over the last 7 days, one point per window (at least\nan hour apart, at most 168 points), with its line at each point.\n\nReads only; at most 30 previews per person a minute (`429 RATE_LIMITED`).",
+        "operationId": "preview_api_v1_projects__project_id__alert_rules_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulePreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview an alert rule",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/alert-rules/{rule_id}": {
+      "delete": {
+        "description": "Delete the rule with its state and events. A firing alert is resolved first and sends\n`alert.resolved`. Notifications already queued still go out.",
+        "operationId": "delete_rule_api_v1_projects__project_id__alert_rules__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an alert rule",
+        "tags": [
+          "alerts"
+        ]
+      },
+      "get": {
+        "operationId": "get_rule_api_v1_projects__project_id__alert_rules__rule_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get an alert rule",
+        "tags": [
+          "alerts"
+        ]
+      },
+      "patch": {
+        "description": "Replace the rule with the whole rule sent; its kind may change. Errors as for the create.\n\nChanging what a firing rule measures or judges, or disabling it, resolves its alert first\nand sends `alert.resolved`; renaming it or changing its channels or cooldown does not.",
+        "operationId": "update_rule_api_v1_projects__project_id__alert_rules__rule_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit an alert rule",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/alert-rules/{rule_id}/mute": {
+      "post": {
+        "description": "Stop the rule's notifications until `until` (at most 30 days ahead); `null` unmutes.\n\nA muted rule still fires, resolves and records its events.",
+        "operationId": "mute_rule_api_v1_projects__project_id__alert_rules__rule_id__mute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mute an alert rule",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/budgets": {
+      "get": {
+        "description": "By name. Unpaginated: a project has at most 50 budgets.",
+        "operationId": "list_budgets_api_v1_projects__project_id__budgets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BudgetOut"
+                  },
+                  "title": "Response List Budgets Api V1 Projects  Project Id  Budgets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List budgets",
+        "tags": [
+          "budgets"
+        ]
+      },
+      "post": {
+        "description": "Store a budget. `409 BUDGET_NAME_TAKEN`; `422 UNKNOWN_SCOPE` for a gateway key outside\nthe project; `422 UNKNOWN_CHANNEL`; `422 LIMIT_EXCEEDED` past 50 budgets.",
+        "operationId": "create_budget_api_v1_projects__project_id__budgets_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add a budget",
+        "tags": [
+          "budgets"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/budgets/{budget_id}": {
+      "delete": {
+        "description": "Delete the budget with its alert history. A firing budget is resolved first and sends\n`alert.resolved`; a blocking one stops blocking at once.",
+        "operationId": "delete_budget_api_v1_projects__project_id__budgets__budget_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a budget",
+        "tags": [
+          "budgets"
+        ]
+      },
+      "get": {
+        "operationId": "get_budget_api_v1_projects__project_id__budgets__budget_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a budget",
+        "tags": [
+          "budgets"
+        ]
+      },
+      "patch": {
+        "description": "Change the fields sent; send `scope_id` together with `scope`. Errors as for the create.\n\nChanging the amount, scope or period of a firing budget, or disabling it, resolves its alert\nfirst and sends `alert.resolved`. A new scope or period clears the spend shown until the next\nevaluation, about a minute later.",
+        "operationId": "update_budget_api_v1_projects__project_id__budgets__budget_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit a budget",
+        "tags": [
+          "budgets"
         ]
       }
     },

@@ -33,11 +33,23 @@ DELIVER_NOTIFICATIONS = PeriodicJob("deliver_notifications", timedelta(seconds=3
 ROLLUP_HOURLY = PeriodicJob("rollup_hourly", timedelta(minutes=5))
 # A single attempt: retrying would spend real money on a failed run.
 DEMO_TRAFFIC = PeriodicJob("demo_traffic", timedelta(minutes=30), max_attempts=1)
+# Evaluates every enabled alert rule. A single attempt: the next pass a minute later is the retry.
+EVALUATE_ALERTS = PeriodicJob("evaluate_alerts", timedelta(seconds=60), max_attempts=1)
 # One per UTC day, runnable from 03:00 UTC. A worker that starts later in the day still enqueues
 # that day's job, which then runs at once. Always scheduled: with backups off it ends `done` /
 # `skipped_not_configured`, which keeps the skip visible in the job table.
 BACKUP_DATABASE = PeriodicJob(
     "backup_database", timedelta(days=1), max_attempts=3, run_after_offset=timedelta(hours=3)
+)
+# Mails each project's week to its members. Periods start on the Unix epoch, a Thursday, so a
+# four day and eight hour offset lands on Monday 08:00 UTC. A late-starting worker still enqueues
+# the period's job, which then runs at once. Without an email provider it ends `done` /
+# `skipped_not_configured`.
+WEEKLY_DIGEST = PeriodicJob(
+    "weekly_digest",
+    timedelta(days=7),
+    max_attempts=3,
+    run_after_offset=timedelta(days=4, hours=8),
 )
 
 
@@ -65,6 +77,10 @@ def periodic_jobs(settings: Settings) -> list[PeriodicJob]:
     ]
     if settings.is_demo_enabled:
         jobs.append(DEMO_TRAFFIC)
+    if settings.alerts_evaluation_enabled:
+        jobs.append(EVALUATE_ALERTS)
+    if settings.weekly_digest_enabled:
+        jobs.append(WEEKLY_DIGEST)
     return jobs
 
 

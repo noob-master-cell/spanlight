@@ -53,7 +53,7 @@ Anthropic:
 | --- | --- | --- | --- | --- |
 | `UNAUTHORIZED` | 401 | `invalid_request_error` / `invalid_api_key` | `authentication_error` | The key is missing, malformed, unknown, revoked or has the wrong secret, or `Authorization` and `x-api-key` carry different keys |
 | `RATE_LIMITED` | 429 | `requests` / `rate_limit_exceeded` (`tokens` when the tokens-per-minute limit was hit) | `rate_limit_error` | The organization ceiling, the key's requests per minute or its tokens per minute was exceeded. Has `Retry-After` |
-| `BUDGET_EXCEEDED` | 402 | `insufficient_quota` / `insufficient_quota` | `billing_error` | A budget blocked the call before it reached a provider. Reserved: the gateway checks budgets before every call, but no budget rules ship yet |
+| `BUDGET_EXCEEDED` | 402 | `insufficient_quota` / `insufficient_quota` | `billing_error` | A blocking [budget](/docs/budgets/) was exceeded and the call was refused before it reached a provider |
 | `MODEL_NOT_ALLOWED` | 404 | `invalid_request_error` / `model_not_found` (`param: "model"`) | `not_found_error` | The model is not in the key's `allowed_models` |
 | `NO_COMPATIBLE_TARGET` | 400 | `invalid_request_error` | `invalid_request_error` | None of the route's targets can serve the surface, for example a messages call on a route with only OpenAI credentials |
 | `INVALID_REQUEST` | 400 | `invalid_request_error` | `invalid_request_error` | The body is not a JSON object with a string `model`, or uses an unsupported `Content-Encoding`, or does not decompress |

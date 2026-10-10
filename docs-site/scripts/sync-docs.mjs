@@ -38,6 +38,7 @@ const RUNBOOK_ORDER = [
   'ingestion-spike',
   'slo',
   'gateway',
+  'alerts',
 ];
 
 const errors = [];

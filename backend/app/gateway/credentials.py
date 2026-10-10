@@ -13,8 +13,8 @@ from urllib.parse import urlsplit
 import httpx
 
 from app.core.crypto import Sealed, decrypt, encrypt
+from app.core.egress import Resolver, default_port, resolve_checked, scheme_allowed
 from app.db.models import ProviderCredential, ProviderKind
-from app.gateway.egress import Resolver, default_port, resolve_checked, scheme_allowed
 
 if TYPE_CHECKING:
     from app.config import Settings
@@ -132,10 +132,10 @@ async def check_base_url_host(
 ) -> None:
     """Resolve the base URL's host and refuse private and reserved addresses.
 
-    Raises `BlockedAddress` or `UnresolvableHost` (from `app.gateway.egress`), the latter also
+    Raises `BlockedAddress` or `UnresolvableHost` (from `app.core.egress`), the latter also
     when DNS does not answer within `RESOLVE_TIMEOUT_SECONDS`. With `allow_insecure` only an
     unresolvable host is refused. A save-time check only: every upstream connection is checked
-    again when it is opened (`app.gateway.egress.VettedNetworkBackend`).
+    again when it is opened (`app.core.egress.VettedNetworkBackend`).
     """
     host, port = host_and_port(url)
     await resolve_checked(

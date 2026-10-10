@@ -7,6 +7,24 @@ resource module. Shared building blocks live in `common`; a model lives with the
 describes, and a module that embeds another resource's model imports it from there.
 """
 
+from app.api.schemas.alert_deliveries import DeliveryOut, DeliverySummaryOut
+from app.api.schemas.alert_rules import (
+    AlertEventOut,
+    AlertRuleOut,
+    AlertRuleStateOut,
+    MuteRequest,
+    RuleDefinition,
+    RulePreviewOut,
+    RulePreviewPoint,
+    RuleSpec,
+)
+from app.api.schemas.alerts import (
+    AlertChannelOut,
+    AlertChannelSecretOut,
+    ChannelCreate,
+    ChannelTestOut,
+    ChannelUpdate,
+)
 from app.api.schemas.auth import (
     AcceptedOut,
     EmailVerifyConfirmIn,
@@ -28,6 +46,7 @@ from app.api.schemas.auth import (
     TotpStatusOut,
     TotpVerifyIn,
 )
+from app.api.schemas.budgets import BudgetOut, BudgetPatch, BudgetSpec, BudgetStateOut
 from app.api.schemas.common import ApiModel, Money, Name, Page, UserOut
 from app.api.schemas.gateway import (
     CredentialCheckOut,
@@ -93,15 +112,29 @@ from app.api.schemas.traces import (
 
 __all__ = [
     "AcceptedOut",
+    "AlertChannelOut",
+    "AlertChannelSecretOut",
+    "AlertEventOut",
+    "AlertRuleOut",
+    "AlertRuleStateOut",
     "ApiKeyCreateIn",
     "ApiKeyCreatedOut",
     "ApiKeyOut",
     "ApiModel",
     "AuditEventOut",
+    "BudgetOut",
+    "BudgetPatch",
+    "BudgetSpec",
+    "BudgetStateOut",
+    "ChannelCreate",
+    "ChannelTestOut",
+    "ChannelUpdate",
     "CredentialCheckOut",
     "CredentialCreate",
     "CredentialOut",
     "CredentialRotateIn",
+    "DeliveryOut",
+    "DeliverySummaryOut",
     "EmailVerifyConfirmIn",
     "FaultProfileCreate",
     "FaultProfileOut",
@@ -128,6 +161,7 @@ __all__ = [
     "MembershipOut",
     "ModelMetricsOut",
     "Money",
+    "MuteRequest",
     "Name",
     "OAuthIdentityOut",
     "OAuthProviderOut",
@@ -156,6 +190,10 @@ __all__ = [
     "RouteRevertIn",
     "RouteUpdateIn",
     "RouteVersionOut",
+    "RuleDefinition",
+    "RulePreviewOut",
+    "RulePreviewPoint",
+    "RuleSpec",
     "SessionOut",
     "SessionSummaryOut",
     "SignupIn",

@@ -8,7 +8,9 @@ name: Load test
 # default) is a run at the size of a small production team, about 1 million spans. `smoke` is a
 # small run that checks the setup. `full` is the stress run with 10
 # million spans and takes several hours, almost all of it seeding. The profile's settings are in
-# the "Set the profile" step.
+# the "Set the profile" step. A second job, `alerts-eval`, runs beside it on a stack of its own: it
+# seeds 50 projects with 1 000 alert evaluations and fails when `spanlight alerts evaluate` takes
+# more than 10 s (the median of three passes). It does not depend on the profile.
 on:
   workflow_dispatch:
     inputs:
@@ -291,3 +293,152 @@ jobs:
                 "$log" | wc -l)"
             echo "::endgroup::"
           done
+
+  # The alert evaluation pass over 50 projects x 20 evaluations (18 rules and 2 budgets), 7 days of
+  # spans and rollups each (backend/load/alerts.md). It runs on a stack of its own so the k6
+  # scenarios of the `load` job are not disturbed. The worker's own evaluation job is switched
+  # off, otherwise it would take rules away from the timed passes. The passes are real (no
+  # --dry-run): the commits are part of the cost. No rule names a channel, so nothing is queued
+  # in the outbox.
+  alerts-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WEB_PORT: "8080"
+      LOAD_POSTGRES_PORT: "55433"
+      COMPOSE_PROJECT_NAME: spanlight-alerts
+      COMPOSE_FILE: deploy/compose.yaml:backend/load/compose.load.yaml
+      # 50 projects x 20 evaluations, and the limit the exit criterion sets.
+      EXPECTED_RULES: "1000"
+      LIMIT_SECONDS: "10"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Write a throwaway env file
+        run: |
+          env_file="$RUNNER_TEMP/alerts.env"
+          add_secret() {
+            value=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+            echo "::add-mask::$value"
+            echo "$1=$value" >> "$env_file"
+          }
+          : > "$env_file"
+          add_secret POSTGRES_PASSWORD
+          add_secret APP_DB_PASSWORD
+          add_secret SECRET_KEY
+          add_secret METRICS_TOKEN
+          echo "APP_BASE_URL=http://localhost:$WEB_PORT" >> "$env_file"
+          echo "WEB_PORT=$WEB_PORT" >> "$env_file"
+          echo "LOAD_POSTGRES_PORT=$LOAD_POSTGRES_PORT" >> "$env_file"
+          echo "ALERTS_EVALUATION_ENABLED=false" >> "$env_file"
+          mkdir -p "$RUNNER_TEMP/alerts-results"
+          echo "LOAD_ENV_FILE=$env_file" >> "$GITHUB_ENV"
+          echo "RESULTS_DIR=$RUNNER_TEMP/alerts-results" >> "$GITHUB_ENV"
+
+      - name: Start the stack
+        run: docker compose --env-file "$LOAD_ENV_FILE" up -d --build
+
+      - name: Wait for the stack to be ready
+        run: |
+          for _ in $(seq 1 90); do
+            if curl --fail --silent --output /dev/null "http://localhost:$WEB_PORT/health/ready"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "the stack was not ready after 180 s" >&2
+          exit 1
+
+      - name: Seed the alert rules and their spans
+        working-directory: backend
+        run: |
+          postgres_password=$(sed -n 's/^POSTGRES_PASSWORD=//p' "$LOAD_ENV_FILE")
+          export LOAD_DATABASE_URL="postgresql+psycopg://postgres:${postgres_password}@127.0.0.1:${LOAD_POSTGRES_PORT}/spanlight"
+          uv run --frozen --no-dev python load/seed_alerts.py
+
+      # Three passes in the worker container (it has the app role and the image's `spanlight`).
+      # A pass that fails (exit status 1: a rule or a project errored) is kept in the results and
+      # fails the job below, after the summary is written.
+      - name: Evaluate three times
+        run: |
+          bash backend/load/settle.sh
+          status=0
+          for run in 1 2 3; do
+            docker compose --env-file "$LOAD_ENV_FILE" exec -T worker \
+              spanlight alerts evaluate --json > "$RESULTS_DIR/alerts-eval-$run.json" || status=1
+            cat "$RESULTS_DIR/alerts-eval-$run.json"  # logs are on stderr: this is the result
+          done
+          exit "$status"
+
+      # Each file holds the output of one pass. Logs go to stderr, so a file should be one JSON
+      # object, but a stray line must not hide the result: only the last line that parses as an
+      # object with `seconds` is used. Every jq call is guarded, so a missing or malformed file
+      # still gets a summary and a clear error, and the job then fails.
+      - name: Publish the result and check the limit
+        if: always()
+        run: |
+          set +e
+          status=0
+          fail() { echo "::error::$1"; echo "- $1" >> "$GITHUB_STEP_SUMMARY"; status=1; }
+          echo "### Alert evaluation" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          passes=()
+          for run in 1 2 3; do
+            raw="$RESULTS_DIR/alerts-eval-$run.json"
+            result="$RESULTS_DIR/pass-$run.json"
+            if [ -s "$raw" ] \
+              && jq -R -c 'fromjson? | select(type == "object" and (.seconds | type) == "number")' "$raw" \
+                | tail -n 1 > "$result" && [ -s "$result" ]; then
+              passes+=("$result")
+            else
+              fail "pass $run wrote no usable result (see alerts-eval-$run.json in the artifact)"
+            fi
+          done
+          if [ "${#passes[@]}" -gt 0 ]; then
+            median=$(jq -s 'map(.seconds) | sort | .[length / 2 | floor]' "${passes[@]}")
+            rules=$(jq -s 'map(.rules) | min' "${passes[@]}")
+            errors=$(jq -s 'map(.errors + .projects_failed) | add' "${passes[@]}")
+            seconds=$(jq -s -r 'map(.seconds * 100 | round / 100 | tostring) | join(", ")' "${passes[@]}")
+            postgres_version=$(docker compose --env-file "$LOAD_ENV_FILE" exec -T postgres \
+              psql -U postgres -d spanlight -tAc 'SHOW server_version')
+            memory=$(awk '/MemTotal/ {printf "%.1f GiB", $2 / 1048576}' /proc/meminfo)
+            {
+              echo "| | |"
+              echo "|---|---|"
+              echo "| Date (UTC) | $(date -u +%Y-%m-%dT%H:%M:%SZ) |"
+              echo "| Commit | \`$GITHUB_SHA\` |"
+              echo "| Runner | ubuntu-latest, $(nproc) vCPU, $memory RAM (image ${ImageOS:-unknown} ${ImageVersion:-unknown}) |"
+              echo "| Postgres | $postgres_version |"
+              echo "| Rules evaluated per pass | $rules (expected $EXPECTED_RULES) |"
+              echo "| Passes | ${#passes[@]} of 3 |"
+              echo "| Seconds per pass | $seconds |"
+              echo "| **Median** | **$median s** (limit $LIMIT_SECONDS s) |"
+              echo "| Rule or project errors | $errors |"
+            } >> "$GITHUB_STEP_SUMMARY"
+            if [ "$rules" -lt "$EXPECTED_RULES" ]; then
+              fail "only $rules rules were evaluated, expected $EXPECTED_RULES"
+            fi
+            if [ "$errors" -ne 0 ]; then
+              fail "$errors rule or project errors; see the worker log"
+            fi
+            if ! jq -n -e --argjson m "$median" --argjson l "$LIMIT_SECONDS" '$m <= $l' > /dev/null; then
+              fail "the median pass took $median s, over the $LIMIT_SECONDS s limit"
+            fi
+          fi
+          exit "$status"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: alerts-eval-results
+          path: ${{ runner.temp }}/alerts-results/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Worker log
+        if: always()
+        run: docker compose --env-file "$LOAD_ENV_FILE" logs --no-color --no-log-prefix --tail 200 worker

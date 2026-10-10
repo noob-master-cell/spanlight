@@ -119,6 +119,20 @@ GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ),
     ),
     (
+        "Alerts",
+        "Alert rules notify channels: email recipients, a Slack incoming webhook, a signed HTTP "
+        "webhook or a PagerDuty service. Slack, webhook and PagerDuty channels keep their secret "
+        "sealed with `CREDENTIALS_KEYS`; without it, saving one answers `409 NOT_CONFIGURED`. "
+        "Email channels send through the email provider above.",
+        (
+            "alerts_evaluation_enabled",
+            "weekly_digest_enabled",
+            "webhook_allow_private_targets",
+            "alert_email_any_recipient",
+            "pagerduty_events_url",
+        ),
+    ),
+    (
         "API request limits",
         "A request that would otherwise wait on a busy database fails fast with `503` and "
         "`Retry-After` instead of queueing behind slow work. The worker, exports and deleting an "
@@ -272,6 +286,21 @@ DESCRIPTIONS: dict[str, str] = {
         "Most gateway spans waiting or being written. Past it a span is dropped and counted in "
         "`spanlight_gateway_record_failures_total`; the call itself is never affected."
     ),
+    "alerts_evaluation_enabled": (
+        "Schedule the alert evaluation job, which checks every enabled rule once a minute. Off, "
+        "no alert fires."
+    ),
+    "weekly_digest_enabled": "Schedule the weekly digest email sent on Monday mornings.",
+    "webhook_allow_private_targets": (
+        "Allow webhook channels to use `http://` URLs and private, loopback or link-local "
+        "addresses, for a receiver inside your network. Off, a webhook URL must be `https://` and "
+        "resolve only to public addresses. Keep it off on a shared deployment."
+    ),
+    "alert_email_any_recipient": (
+        "Allow email channels to send to any address. Off, every recipient must be a member of "
+        "the organization with a verified email. Keep it off on a shared deployment."
+    ),
+    "pagerduty_events_url": "Where PagerDuty channels send events (Events API v2).",
     "api_pool_timeout_seconds": (
         "Seconds an API request waits for a connection from the main pool. Past it the request "
         "answers `503 SERVICE_UNAVAILABLE` with `Retry-After: 5`. Blank keeps the default."

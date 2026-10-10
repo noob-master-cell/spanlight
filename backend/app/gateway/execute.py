@@ -123,11 +123,19 @@ def upstream_body(request: GatewayRequest) -> dict[str, Any]:
 async def _check_budget(call: Call, plan: RoutePlan) -> BudgetDecision:
     """Step 2, in a short transaction of its own under the project binding."""
     context = call.context
-    model = resolve_model(context.route.targets[plan.order[0]], plan.model)
+    target_models = [
+        resolve_model(context.route.targets[index], plan.model) for index in plan.order
+    ]
     async with context.sessions() as db, db.begin():
         await bind_project(db, context.project_id)
         return await context.budget_guard.check(
-            db, context.project_id, context.key_id, model, call.request.trace.user_id, call.now
+            db,
+            context.project_id,
+            context.key_id,
+            plan.model,
+            call.request.trace.user_id,
+            call.now,
+            target_models=target_models,
         )
 
 

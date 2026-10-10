@@ -106,6 +106,18 @@ The gateway serves `/gw/v1/*` for OpenAI- and Anthropic-compatible clients. Prov
 | `GATEWAY_RECORD_CONCURRENCY` | integer (min 1, max 256) | `16` | Most gateway spans written to the database at once. Spans are written after the answer has been sent, and each write holds a connection. |
 | `GATEWAY_RECORD_BACKLOG` | integer (min 1, max 100000) | `1000` | Most gateway spans waiting or being written. Past it a span is dropped and counted in `spanlight_gateway_record_failures_total`; the call itself is never affected. |
 
+### Alerts
+
+Alert rules notify channels: email recipients, a Slack incoming webhook, a signed HTTP webhook or a PagerDuty service. Slack, webhook and PagerDuty channels keep their secret sealed with `CREDENTIALS_KEYS`; without it, saving one answers `409 NOT_CONFIGURED`. Email channels send through the email provider above.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ALERTS_EVALUATION_ENABLED` | boolean | `true` | Schedule the alert evaluation job, which checks every enabled rule once a minute. Off, no alert fires. |
+| `WEEKLY_DIGEST_ENABLED` | boolean | `true` | Schedule the weekly digest email sent on Monday mornings. |
+| `WEBHOOK_ALLOW_PRIVATE_TARGETS` | boolean | `false` | Allow webhook channels to use `http://` URLs and private, loopback or link-local addresses, for a receiver inside your network. Off, a webhook URL must be `https://` and resolve only to public addresses. Keep it off on a shared deployment. |
+| `ALERT_EMAIL_ANY_RECIPIENT` | boolean | `false` | Allow email channels to send to any address. Off, every recipient must be a member of the organization with a verified email. Keep it off on a shared deployment. |
+| `PAGERDUTY_EVENTS_URL` | string | `https://events.pagerduty.com/v2/enqueue` | Where PagerDuty channels send events (Events API v2). |
+
 ### API request limits
 
 A request that would otherwise wait on a busy database fails fast with `503` and `Retry-After` instead of queueing behind slow work. The worker, exports and deleting an organization or project are not subject to the statement limit.

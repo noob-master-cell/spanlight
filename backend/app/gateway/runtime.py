@@ -19,9 +19,10 @@ from typing import Protocol
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.budgets.guard import get_budget_guard
 from app.config import Settings
 from app.gateway import recorder
-from app.gateway.budget import BudgetGuard, NoOpBudgetGuard
+from app.gateway.budget import BudgetGuard
 from app.gateway.cache import GatewayCache, PostgresGatewayCache
 from app.gateway.key_limits import GatewayLimiter
 
@@ -63,12 +64,12 @@ def build_runtime(
     """The runtime over an already built client and session factories.
 
     `rate_limit_sessions` is the rate-limit pool (`app.core.ratelimit`), so a burst of limited
-    calls cannot take the connections the calls themselves need. Phase 2 has no budgets yet,
-    so the guard never blocks.
+    calls cannot take the connections the calls themselves need. The guard reads the evaluated
+    state of the project's `block` budgets (`app.budgets.guard`).
     """
     return GatewayRuntime(
         http=http,
-        budget_guard=NoOpBudgetGuard(),
+        budget_guard=get_budget_guard(settings),
         limiter=GatewayLimiter(rate_limit_sessions),
         cache=PostgresGatewayCache(),
         sessions=sessions,

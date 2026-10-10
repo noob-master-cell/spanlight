@@ -8,6 +8,7 @@ and never from a domain module. Importing the package registers every table on
 `Base.metadata`, which Alembic autogenerate relies on.
 """
 
+from app.db.models.alerts import AlertChannel, AlertChannelKind, AlertEvent, AlertRule, AlertState
 from app.db.models.auth import (
     EmailToken,
     EmailTokenKind,
@@ -18,6 +19,7 @@ from app.db.models.auth import (
     TokenScope,
 )
 from app.db.models.base import Base
+from app.db.models.budgets import Budget
 from app.db.models.exports import Export, ExportFormat, ExportKind, ExportStatus
 from app.db.models.gateway import (
     FaultProfile,
@@ -55,10 +57,16 @@ from app.db.models.rollups import SpanRollupHourly, TraceRollupHourly
 from app.db.models.telemetry import Span, SpanKind, SpanStatus, Trace
 
 __all__ = [
+    "AlertChannel",
+    "AlertChannelKind",
+    "AlertEvent",
+    "AlertRule",
+    "AlertState",
     "ApiKey",
     "AuditAction",
     "AuditEvent",
     "Base",
+    "Budget",
     "EmailToken",
     "EmailTokenKind",
     "Export",

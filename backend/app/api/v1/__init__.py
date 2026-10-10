@@ -8,7 +8,12 @@ keep their paths.
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    alert_deliveries,
+    alert_events,
+    alert_rules,
+    alerts,
     auth,
+    budgets,
     demo,
     exports,
     gateway,
@@ -48,6 +53,11 @@ DOMAIN_ROUTERS = (
     gateway_routes.router,
     gateway_keys.router,
     gateway_lab.router,
+    alerts.router,
+    alert_deliveries.router,
+    alert_rules.router,
+    alert_events.router,
+    budgets.router,
     demo.router,
 )
 

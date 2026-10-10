@@ -7,6 +7,7 @@ is resolved and before the cache and the attempt loop. A blocked decision become
 only the no-op guard; Phase 3 supplies the real ``budgets`` implementation.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -33,7 +34,9 @@ class BudgetGuard(Protocol):
     """Decides whether one gateway request may reach a provider.
 
     ``external_user_id`` is the request's end-user id (``x-spanlight-user``, or the trace user
-    id), None when absent. Phase 3 enforces ``scope=user`` budgets by it.
+    id), None when absent. Phase 3 enforces ``scope=user`` budgets by it. ``model`` is the model
+    the client asked for; ``target_models`` are the names the route's targets would send upstream
+    (after their aliases), so a ``scope=model`` budget can match either.
     """
 
     async def check(
@@ -44,6 +47,7 @@ class BudgetGuard(Protocol):
         model: str,
         external_user_id: str | None,
         now: datetime,
+        target_models: Sequence[str] = (),
     ) -> BudgetDecision: ...
 
 
@@ -58,6 +62,7 @@ class NoOpBudgetGuard:
         model: str,
         external_user_id: str | None,
         now: datetime,
+        target_models: Sequence[str] = (),
     ) -> BudgetDecision:
         return BudgetDecision(allowed=True)
 

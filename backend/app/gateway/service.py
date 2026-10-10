@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
 from app.core.crypto import CryptoNotConfigured, DecryptionFailed, UnknownKeyId
+from app.core.egress import Resolver
 from app.db.errors import violated_constraint
 from app.db.models import AuditAction, ProviderCredential
 from app.gateway import queries
@@ -32,7 +33,6 @@ from app.gateway.credentials import (
     seal_api_key,
     validate_base_url,
 )
-from app.gateway.egress import Resolver
 from app.gateway.schemas import CredentialCheck, CredentialCreate
 from app.services.audit import record_audit
 from app.services.deletion import lock_org_for_write

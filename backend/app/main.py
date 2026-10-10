@@ -9,11 +9,13 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.alerts.channels import register_channel_deliverers
 from app.api import gw, health, ingest, v1
 from app.api.deps import Clock, utcnow
 from app.api.gw_errors import install_gateway_error_handlers
 from app.config import Settings, get_settings
 from app.core.body_limit import BodyLimitMiddleware
+from app.core.egress import Resolver
 from app.core.errors import install_error_handlers
 from app.core.idempotency import install_idempotency
 from app.core.logging import configure_logging
@@ -25,9 +27,9 @@ from app.core.middleware import (
 from app.core.sentry import init_sentry
 from app.core.tracing import configure_tracing, shutdown_tracing
 from app.db.session import create_engine, create_session_factory
-from app.gateway.egress import Resolver
 from app.gateway.http import build_http_client
 from app.gateway.runtime import GatewayRuntime, build_runtime, close_runtime
+from app.notifications.defaults import register_default_deliverers
 from app.pricing.cost import sync_seed_prices
 
 logger = structlog.get_logger(__name__)
@@ -45,16 +47,20 @@ def create_app(
 
     The keyword arguments exist for tests: `oauth_transport` replaces the network for sign-in
     provider calls, `gateway_transport` for calls to LLM providers (gateway traffic and
-    credential checks), `gateway_resolver` the DNS that those calls are vetted against, and
-    `clock` replaces the time that one-time codes and login challenges are judged against, so a
-    test decides which code is valid.
+    credential checks), `gateway_resolver` the DNS that those calls (and alert webhook URLs, when
+    saved) are vetted against, and `clock` replaces the time that one-time codes and login
+    challenges are judged against, so a test decides which code is valid.
     """
     settings = settings or get_settings()
     configure_logging(settings.log_level, json=settings.log_json)
     init_sentry(settings)
+    # The api delivers too: a channel's test-send claims its outbox rows and sends them in the
+    # request. Registering again replaces the earlier deliverers, so building a second app is safe.
+    register_default_deliverers(settings)
 
     engine = _request_engine(settings)
     session_factory = create_session_factory(engine)
+    alert_http = register_channel_deliverers(session_factory, settings)
     # Idempotency keys get a pool of their own: they take a second connection while the request
     # still holds one from the main pool. No overflow, and a short wait before giving up.
     idempotency_engine = create_engine(
@@ -83,6 +89,7 @@ def create_app(
         # The server has stopped taking requests and let in-flight ones finish (each stream's
         # `aclose()` queues its span), so the spans are drained while the engine is still open.
         await close_runtime(runtime)
+        await alert_http.aclose()
         await engine.dispose()
         await idempotency_engine.dispose()
         await rate_limit_engine.dispose()
@@ -102,6 +109,8 @@ def create_app(
     app.state.idempotency_engine = idempotency_engine
     app.state.idempotency_session_factory = create_session_factory(idempotency_engine)
     app.state.oauth_transport = oauth_transport
+    # The DNS that alert webhook URLs are vetted against when saved; None is the system resolver.
+    app.state.egress_resolver = gateway_resolver
     app.state.clock = clock or utcnow
     app.state.rate_limit_engine = rate_limit_engine
     app.state.rate_limit_session_factory = rate_limit_session_factory

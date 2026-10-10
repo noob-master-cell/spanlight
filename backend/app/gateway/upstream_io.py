@@ -17,9 +17,9 @@ from typing import Literal
 
 import httpx
 
+from app.core.egress import BlockedAddress, InsecureUrl
 from app.gateway.adapters import UpstreamResponse
 from app.gateway.context import UPSTREAM_ERROR_CODE
-from app.gateway.egress import BlockedAddress, InsecureUrl
 from app.gateway.errors import ErrorKind, GatewayError, upstream_blocked, upstream_timeout
 from app.gateway.fault_apply import MAX_BUFFERED_BYTES
 from app.gateway.response_summary import upstream_error_detail

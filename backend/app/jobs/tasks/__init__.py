@@ -1,5 +1,7 @@
 """Registry of background task handlers, keyed by job kind."""
 
+from app.alerts.digest_job import run_weekly_digest
+from app.alerts.jobs import run_evaluate_alerts
 from app.backups.jobs import run_backup_database
 from app.exports.jobs import run_create_export
 from app.exports.purge import PURGE_JOB, run_purge_project_objects
@@ -20,5 +22,7 @@ TASKS: dict[str, TaskHandler] = {
     "rollup_hourly": run_rollup_hourly,
     "backup_database": run_backup_database,
     "create_export": run_create_export,
+    "evaluate_alerts": run_evaluate_alerts,
+    "weekly_digest": run_weekly_digest,
     PURGE_JOB: run_purge_project_objects,
 }

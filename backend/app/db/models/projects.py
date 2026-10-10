@@ -20,6 +20,8 @@ class Project(Base):
     slug: Mapped[str] = mapped_column(Text)
     retention_days: Mapped[int] = mapped_column(Integer, server_default=text("30"))
     capture_payloads: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    # Whether org members get the Monday summary email for this project (`weekly_digest` job).
+    weekly_digest_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

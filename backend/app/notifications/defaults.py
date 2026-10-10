@@ -15,8 +15,9 @@ def register_default_deliverers(
 ) -> None:
     """Register a deliverer for every notification kind `settings` can really send.
 
-    The worker calls this once at startup; it is the only process that delivers. Tests pass a
-    registry of their own so nothing is registered process-wide.
+    The worker calls this at startup, and so does the api (`create_app`), which delivers an alert
+    channel's test-send in the request. Tests pass a registry of their own so nothing is
+    registered process-wide.
 
     A kind that is not configured is left out on purpose. The outbox then fails its rows with
     "no deliverer registered" instead of marking them sent after a deliverer that delivers

@@ -38,7 +38,7 @@ from app.rollups.buckets import BUCKET_COUNT, approx_percentile, merge
 from app.rollups.compute import floor_hour
 
 
-def _summed_histogram(column: str) -> str:
+def summed_histogram(column: str) -> str:
     """A ``bigint[]`` adding the llm rows' ``column`` histograms element-wise.
 
     SQL arrays are 1-based.
@@ -67,7 +67,7 @@ _SPAN_HOURS = text(
            sum(cost_usd)                                                 AS cost_usd,
            coalesce(sum(input_tokens), 0)                                AS input_tokens,
            coalesce(sum(output_tokens), 0)                               AS output_tokens,
-           {_summed_histogram("latency_buckets")}                        AS latency_buckets
+           {summed_histogram("latency_buckets")}                        AS latency_buckets
     FROM span_rollups_hourly
     {_ROLLUP_FILTER}
     GROUP BY bucket_start
@@ -95,7 +95,7 @@ _MODELS = text(
            coalesce(sum(input_tokens), 0)           AS input_tokens,
            coalesce(sum(output_tokens), 0)          AS output_tokens,
            sum(cost_usd)                            AS cost_usd,
-           {_summed_histogram("latency_buckets")}   AS latency_buckets
+           {summed_histogram("latency_buckets")}   AS latency_buckets
     FROM span_rollups_hourly
     {_ROLLUP_FILTER}
       AND kind = 'llm'

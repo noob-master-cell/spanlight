@@ -56,6 +56,19 @@ class AuditAction(enum.StrEnum):
     PRICE_OVERRIDE_CREATE = "price_override.create"
     PRICE_OVERRIDE_DELETE = "price_override.delete"
     GATEWAY_CACHE_PURGE = "gateway_cache.purge"
+    ALERT_CHANNEL_CREATE = "alert_channel.create"
+    ALERT_CHANNEL_UPDATE = "alert_channel.update"
+    ALERT_CHANNEL_DELETE = "alert_channel.delete"
+    ALERT_CHANNEL_TEST = "alert_channel.test"
+    ALERT_CHANNEL_RETRY_DELIVERY = "alert_channel.retry_delivery"
+    ALERT_RULE_CREATE = "alert_rule.create"
+    ALERT_RULE_UPDATE = "alert_rule.update"
+    ALERT_RULE_DELETE = "alert_rule.delete"
+    ALERT_RULE_MUTE = "alert_rule.mute"
+    ALERT_EVENT_ACKNOWLEDGE = "alert_event.acknowledge"
+    BUDGET_CREATE = "budget.create"
+    BUDGET_UPDATE = "budget.update"
+    BUDGET_DELETE = "budget.delete"
 
 
 class User(Base):

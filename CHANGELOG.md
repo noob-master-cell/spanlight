@@ -2,6 +2,52 @@
 
 All notable changes to Spanlight are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project is pre-1.0, so minor versions may change behaviour; breaking changes are called out.
 
+## [0.4.0] - Unreleased
+
+Alerts and budgets: get told when error rate, latency, volume or cost crosses a line, and stop runaway spend at the gateway.
+
+### Added
+
+- **Alert channels.** Organization-wide channels for email, Slack incoming webhooks, signed webhooks and PagerDuty (Events API v2). Email goes only to verified members of the organization. A channel can be tested, and its delivery log shows every send with its status, attempts and last error; a failed delivery can be retried by hand. Slack URLs, PagerDuty routing keys and webhook signing secrets are encrypted with `CREDENTIALS_KEYS`, never returned, and a webhook's secret is shown once, when it is created or rotated.
+- **Signed webhooks.** Each request carries `X-Spanlight-Event`, `X-Spanlight-Delivery`, `X-Spanlight-Timestamp` and an HMAC-SHA256 `X-Spanlight-Signature`, with a documented verification procedure and test vector. Failures are retried with backoff for up to 8 attempts.
+- **Alert rules.** Threshold rules and anomaly rules (a band of a chosen number of standard deviations around the average of the previous windows) on error rate, p95 latency, p95 time to first token, LLM calls, tokens and cost, filtered by environment, provider or model, with a 7-day preview before you save. Rules are evaluated every 60 seconds with a cooldown after each resolve, can be muted for up to 30 days, and their events can be acknowledged. A metric with no data never fires or resolves a rule.
+- **Budgets.** Daily or monthly (UTC) spend caps per project, gateway key, end user or model, each set to notify or to block. A budget notifies its channels when its spend passes the amount and again when it recovers.
+- **Blocking budgets.** The gateway answers `402 BUDGET_EXCEEDED`, in the OpenAI or Anthropic error shape, to calls in the scope of a blocking budget that is exceeded. Ingestion is never blocked. Blocking lags spend by up to one evaluation, about a minute.
+- **Weekly digest.** Every Monday at 08:00 UTC, members with a verified email get one summary per project of spend, LLM calls, error rate, p95 latency, top models by cost and alerts fired. It can be turned off per project in project settings and needs an email provider.
+- **Dashboard screens.** Alerts (Rules and Channels) and Budgets, with the rule editor and preview, mute and acknowledge, the event timeline, and the delivery log.
+- **Grafana alert panels.** Rules evaluated by outcome, transitions by kind, evaluation duration, outbox backlog, deliveries by kind and outcome, and budget blocks. `/health/ready` reports `alert_evaluation_lag_s`.
+- **`spanlight alerts evaluate`.** Runs one evaluation pass by hand, with `--dry-run` to roll it back and `--json` for scripts, which is also how the evaluation load test is timed.
+- **Documentation.** Guides for alerts and channels, budgets and the weekly digest, plus a runbook for stuck and failed deliveries, a rotated webhook secret and late evaluation.
+
+### Changed
+
+- **Outbox leases and fencing.** A worker now claims an outbox row with a 60 second lease and a fencing token and sends outside any database transaction. A worker whose lease expired can no longer settle the row, and a crashed worker's rows are claimed again by the next run. Delivery is at least once.
+- **Failed alert payloads are kept.** Payload reduction after a delivery settles now keeps the payload of a failed alert delivery so it can be retried; sent rows and failed transactional mail (verification, reset, invite) are reduced as before.
+- **Egress protection is a shared module.** The check that refuses private, loopback, link-local and reserved addresses on every connection moved from the gateway into `app/core/egress.py` and now also guards webhook, Slack and PagerDuty deliveries.
+- **Outbound URLs stay out of logs.** `httpx` and `httpcore` log at WARNING and Sentry's `httpx` integration is off, so a Slack or webhook URL can never reach a log line or an error report.
+- **Model filters match snapshot names.** An alert or budget filter on `gpt-4o` also matches `gpt-4o-2024-08-06` and `gpt-4o-latest`, but not `gpt-4o-mini`, the same rule the price table uses.
+- **The gateway budget guard is real.** The hook added in 0.3.0 now reads the evaluated state of blocking budgets instead of allowing every call.
+
+### Security
+
+- Alert email cannot be used to write to strangers: recipients must be verified members, checked when the channel is saved and again when the message is queued (`ALERT_EMAIL_ANY_RECIPIENT` lifts it for a closed deployment).
+- Webhook URLs must be `https://` and resolve only to public addresses, checked when the channel is saved and on every connection, so a DNS change after the check does not get around it. Redirects are never followed, and response bodies are capped before they reach `last_error`. `WEBHOOK_ALLOW_PRIVATE_TARGETS` lifts both rules for a receiver inside a private network.
+- Channel secrets are never written to a log, the audit log or `last_error`.
+
+### Settings
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `ALERTS_EVALUATION_ENABLED` | `true` | Schedule the once-a-minute alert and budget evaluation. |
+| `WEEKLY_DIGEST_ENABLED` | `true` | Schedule the Monday digest email. |
+| `WEBHOOK_ALLOW_PRIVATE_TARGETS` | `false` | Allow `http://` and private addresses for webhook channels. |
+| `ALERT_EMAIL_ANY_RECIPIENT` | `false` | Allow email channels to send to addresses that are not verified members. |
+| `PAGERDUTY_EVENTS_URL` | `https://events.pagerduty.com/v2/enqueue` | Where PagerDuty channels send events. |
+
+### Migrations
+
+Run `spanlight migrate` (or restart the stack) after upgrading. Migrations 0300 to 0307 add the outbox lease columns, the alert channel, rule, state, event and budget tables, the weekly digest switch on projects, and three indexes. Migrations 0302 (end-user traces), 0306 (a channel's deliveries) and 0307 (weekly digest lookups) build their indexes `CONCURRENTLY`: writes continue, and on a large table the build takes a few minutes and extra disk.
+
 ## [0.3.0] - Unreleased
 
 The LLM gateway and the Integration Lab: point the official OpenAI or Anthropic client at Spanlight with one base URL and every call is traced, priced, limited and, if you configure it, routed, retried, cached and fault-injected.

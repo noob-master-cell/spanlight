@@ -187,7 +187,7 @@ async def send_upstream(
 
     `timeout_s` bounds each phase (connect including DNS, each write, each read, waiting for a
     pooled connection); the caller owns the total budget. A redirect comes back as it is.
-    Raises the httpx transport errors and `app.gateway.egress.BlockedAddress` (which is not one:
+    Raises the httpx transport errors and `app.core.egress.BlockedAddress` (which is not one:
     a blocked destination is a configuration error, not a network failure).
     """
     request = http.build_request(

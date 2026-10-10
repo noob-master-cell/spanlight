@@ -30,6 +30,7 @@ export default defineConfig({
           label: 'Guides',
           items: ['guides/accounts', 'guides/access', 'guides/data'],
         },
+        { label: 'Alerts', items: ['alerts', 'budgets', 'webhooks'] },
         {
           label: 'Gateway',
           items: [

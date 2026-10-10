@@ -198,29 +198,37 @@ def _trace_sizes(rng: random.Random, count: int) -> list[int]:
     return sizes
 
 
-def _slice_bounds(index: int, batches: int, now: datetime) -> tuple[datetime, datetime]:
+def _slice_bounds(
+    index: int, batches: int, now: datetime, spread: timedelta = SPREAD
+) -> tuple[datetime, datetime]:
     """When the traces of batch `index` (of `batches`) start: one slice of the spread.
 
     The slices tile the spread from the oldest start to the newest, and the oldest one begins
     `MAX_LATE` after the oldest start the data may have, so a late trace still starts inside it.
     """
     newest = now - MIN_AGE
-    oldest = newest - SPREAD + MAX_LATE
+    oldest = newest - spread + MAX_LATE
     width = (newest - oldest) / batches
     return oldest + width * index, oldest + width * (index + 1)
 
 
 def build_batch(
-    seed: int, index: int, count: int, now: datetime, batches: int
+    seed: int,
+    index: int,
+    count: int,
+    now: datetime,
+    batches: int,
+    spread: timedelta = SPREAD,
 ) -> list[dict[str, Any]]:
     """`count` spans in whole traces (the last one is cut short), the same for the same inputs.
 
     Batch `index` of `batches` holds the traces that start in its slice of the spread, in the
-    order they start, apart from the late ones (see `LATE_SHARE`).
+    order they start, apart from the late ones (see `LATE_SHARE`). `spread` is how far back the
+    traces start; the default is the 28 days of the span load test.
     """
     rng = random.Random(f"{seed}:{index}")  # noqa: S311 - reproducible test data, not a secret
     sizes = _trace_sizes(rng, count)
-    slice_start, slice_end = _slice_bounds(index, batches, now)
+    slice_start, slice_end = _slice_bounds(index, batches, now, spread)
     window_seconds = (slice_end - slice_start).total_seconds()
     arrivals = sorted(rng.uniform(0, window_seconds) for _ in sizes)
     spans: list[dict[str, Any]] = []

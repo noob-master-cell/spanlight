@@ -2,6 +2,7 @@
 
 import logging
 import sys
+from typing import TextIO
 
 import structlog
 from structlog.typing import EventDict, WrappedLogger
@@ -16,7 +17,13 @@ def _add_request_id(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDi
     return event_dict
 
 
-def configure_logging(level: str = "INFO", *, json: bool = True) -> None:
+def configure_logging(
+    level: str = "INFO", *, json: bool = True, stream: TextIO | None = None
+) -> None:
+    """Route structlog and stdlib logging to `stream` (stdout by default).
+
+    A command that prints a result on stdout passes `sys.stderr`, so the result stays parseable.
+    """
     shared_processors: list[structlog.typing.Processor] = [
         structlog.contextvars.merge_contextvars,
         _add_request_id,
@@ -47,7 +54,7 @@ def configure_logging(level: str = "INFO", *, json: bool = True) -> None:
             renderer,
         ],
     )
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler(sys.stdout if stream is None else stream)
     handler.setFormatter(formatter)
 
     root = logging.getLogger()
@@ -55,3 +62,7 @@ def configure_logging(level: str = "INFO", *, json: bool = True) -> None:
     root.setLevel(level.upper())
     # Our middleware emits one access line per request; uvicorn's would duplicate it.
     logging.getLogger("uvicorn.access").disabled = True
+    # httpx logs "HTTP Request: POST <full url>" at INFO after every call. An alert channel's
+    # Slack webhook URL is a secret, so neither library may log requests.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)

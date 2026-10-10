@@ -30,6 +30,7 @@ class WorkspaceError(Exception):
 class Workspace:
     project_id: uuid.UUID
     org_id: uuid.UUID
+    owner_id: uuid.UUID
     ingest_key: str
     read_keys: list[str]
 
@@ -88,5 +89,9 @@ async def create_workspace(session_factory: async_sessionmaker[AsyncSession]) ->
         await sync_seed_prices(session)  # without prices every cost would be unknown
         await session.commit()
         return Workspace(
-            project_id=project.id, org_id=org.id, ingest_key=ingest_key, read_keys=read_keys
+            project_id=project.id,
+            org_id=org.id,
+            owner_id=user.id,
+            ingest_key=ingest_key,
+            read_keys=read_keys,
         )

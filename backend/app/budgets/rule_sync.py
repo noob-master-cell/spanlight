@@ -1,0 +1,86 @@
+"""The hidden alert rule a budget owns, kept in step with the budget.
+
+A budget is evaluated by an `alert_rules` row of kind `budget`: metric `spend`, comparator `gt`,
+the budget's amount as the threshold, no window (the evaluation job reads the budget's period
+instead), no cooldown, the budget's scope as the filter, and the budget's name, channels and
+enabled flag. People never edit it directly: the rules API treats it as missing. The budget
+service writes the budget and its rule in one transaction, through these helpers.
+"""
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.alerts.types import AlertRuleKind, Comparator, Metric
+from app.budgets.schemas import BudgetSpec
+from app.budgets.types import BudgetScope
+from app.db.models import AlertRule
+
+# The filter key each scope sets on the rule (`app.alerts.rules.metric_filters` reads them).
+_SCOPE_FILTER = {
+    BudgetScope.GATEWAY_KEY: "source_key_id",
+    BudgetScope.USER: "external_user_id",
+    BudgetScope.MODEL: "model",
+}
+
+
+def scope_filters(scope: BudgetScope, scope_id: str | None) -> dict[str, str]:
+    """The rule's `filters` for a budget scope: none for the whole project."""
+    key = _SCOPE_FILTER.get(scope)
+    if key is None or scope_id is None:
+        return {}
+    return {key: scope_id}
+
+
+def budget_rule_values(spec: BudgetSpec) -> dict[str, Any]:
+    """The `alert_rules` columns a budget decides."""
+    return {
+        "name": spec.name,
+        "threshold": spec.amount_usd,
+        "filters": scope_filters(spec.scope, spec.scope_id),
+        "channel_ids": list(spec.channel_ids),
+        "enabled": spec.enabled,
+    }
+
+
+async def create_budget_rule(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    spec: BudgetSpec,
+    *,
+    now: datetime,
+) -> AlertRule:
+    """Insert the hidden rule for a new budget and flush it, so the budget can point at it."""
+    rule = AlertRule(
+        project_id=project_id,
+        kind=AlertRuleKind.BUDGET,
+        metric=Metric.SPEND,
+        comparator=Comparator.GT,
+        window_minutes=None,
+        baseline_windows=None,
+        sensitivity=None,
+        cooldown_minutes=0,
+        muted_until=None,
+        created_by=actor_id,
+        created_at=now,
+        updated_at=now,
+        **budget_rule_values(spec),
+    )
+    db.add(rule)
+    await db.flush()
+    return rule
+
+
+def sync_budget_rule(rule: AlertRule, spec: BudgetSpec, *, now: datetime) -> bool:
+    """Copy what the budget decides onto its rule; returns whether anything changed."""
+    changed = False
+    for column, value in budget_rule_values(spec).items():
+        if getattr(rule, column) != value:
+            setattr(rule, column, value)
+            changed = True
+    if changed:
+        rule.updated_at = now
+    return changed

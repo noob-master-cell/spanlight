@@ -99,6 +99,7 @@ One Docker image runs all three roles. Ingestion is synchronous and idempotent, 
 - [Encryption with an application master key](docs/decisions/0009-application-master-key-encryption.md): stored secrets such as two-factor seeds and provider API keys are sealed at rest.
 - [Exact-match gateway cache](docs/decisions/0010-exact-match-gateway-cache.md): identical non-streaming requests are answered from Postgres, opt-in per key.
 - [Transactional outbox](docs/decisions/0011-transactional-outbox.md): email and other notifications are sent once, after the change that caused them commits.
+- [Budget blocking reads the evaluated state](docs/decisions/0012-budget-block-reads-evaluated-state.md): the gateway refuses calls while a blocking budget's alert rule is firing, with no per-call spend sums.
 
 ## Documentation
 

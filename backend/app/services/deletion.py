@@ -64,12 +64,19 @@ async def lock_project(db: AsyncSession, project_id: uuid.UUID) -> Project | Non
 
 
 async def lock_org_for_write(db: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Key-share lock the organization for a write under it that is not a deletion.
+    """Lock the organization row `FOR NO KEY UPDATE` for a write under it that is not a deletion.
 
     Returns False when it is already gone (a concurrent deletion won), and the caller answers
     404. Take it before the row the write changes and before the audit event, so the write
     follows the lock order above: the lock conflicts with the exclusive one an organization
     deletion takes, so either waits for the other instead of deadlocking.
+
+    `with_for_update(key_share=True)` renders `FOR NO KEY UPDATE` (only `read=True` as well would
+    make it `FOR KEY SHARE`). That lock conflicts with itself, so the writers of one organization
+    run one after the other, while inserts that merely reference the row (an audit event's
+    foreign key) are not blocked. Count limits rely on that: the alert channel limit
+    (`app.alerts.service`) counts after taking this lock, so two creates cannot both pass it.
+    Weakening it to `FOR KEY SHARE` would make such limits racy.
     """
     org = await db.scalar(
         select(Organization.id).where(Organization.id == org_id).with_for_update(key_share=True)
@@ -80,10 +87,10 @@ async def lock_org_for_write(db: AsyncSession, org_id: uuid.UUID) -> bool:
 async def lock_project_for_write(
     db: AsyncSession, org_id: uuid.UUID, project_id: uuid.UUID
 ) -> bool:
-    """Share-lock the organization, then the project, for a write that is not a deletion.
+    """Lock the organization, then the project, `FOR NO KEY UPDATE` for a non-deleting write.
 
     Returns False when either is already gone (a concurrent deletion won), and the caller answers
-    404. The shared locks conflict with the exclusive ones the deleters take, so a deletion waits
+    404. These locks conflict with the exclusive ones the deleters take, so a deletion waits
     for this transaction, and this one waits for a deletion that is already running; taking the
     organization first keeps both in the order described in the module docstring.
     """

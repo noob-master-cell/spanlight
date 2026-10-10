@@ -3,6 +3,7 @@
 from urllib.parse import urlsplit
 
 import sentry_sdk
+from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.types import Event, Hint
 
 from app.config import Settings
@@ -59,5 +60,9 @@ def init_sentry(settings: Settings) -> bool:
         max_request_body_size="never",
         include_local_variables=False,
         before_send=before_send,
+        # Its breadcrumbs keep the full URL of every outgoing call (an alert channel's Slack
+        # webhook URL is a secret) and it adds `sentry-trace` and `baggage` headers to requests
+        # that go to customers' receivers and to LLM providers.
+        disabled_integrations=[HttpxIntegration()],
     )
     return True

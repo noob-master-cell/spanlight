@@ -33,7 +33,7 @@ OUTBOX_PENDING = Gauge(
 )
 NOTIFICATIONS_DELIVERED = Counter(
     "spanlight_notifications_delivered_total",
-    "Notification delivery attempts, by kind and outcome (sent, retry, failed).",
+    "Notification delivery attempts, by kind and outcome (sent, retry, failed, lost).",
     ["kind", "outcome"],
 )
 IDEMPOTENCY_REQUESTS = Counter(
@@ -85,4 +85,24 @@ GATEWAY_RECORD_FAILURES = Counter(
     "spanlight_gateway_record_failures_total",
     "Gateway spans not written, by reason (error, rejected, overflow); the call was answered.",
     ["reason"],
+)
+ALERT_RULES_EVALUATED = Counter(
+    "spanlight_alert_rules_evaluated_total",
+    "Alert rules evaluated, by outcome (ok, no_data, error).",
+    ["outcome"],
+)
+ALERT_TRANSITIONS = Counter(
+    "spanlight_alert_transitions_total",
+    "Alert rule state changes, by rule kind (threshold, anomaly, budget) and new state "
+    "(firing, ok).",
+    ["kind", "to_state"],
+)
+ALERT_EVALUATION_DURATION = Histogram(
+    "spanlight_alert_evaluation_duration_seconds",
+    "Time one evaluate_alerts pass took over every project.",
+    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 20.0, 30.0, 45.0, 60.0),
+)
+BUDGET_BLOCKS = Counter(
+    "spanlight_budget_blocks_total",
+    "Gateway calls refused because a blocking budget was exhausted.",
 )

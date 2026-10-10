@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.api.deps import SettingsDep
 from app.core.errors import not_found, unauthorized
 from app.db.migrations import head_revision
+from app.jobs.scheduler import EVALUATE_ALERTS
 
 router = APIRouter(tags=["health"])
 logger = structlog.get_logger(__name__)
@@ -27,6 +28,12 @@ WORKER_HEARTBEAT_MAX_AGE_SECONDS = 120.0
 OUTBOX_STALLED_LIMIT = 1000
 # `outbox_backlog` is reported exactly up to this many pending rows and as this number beyond.
 OUTBOX_BACKLOG_CAP = 10_000
+# Every alert evaluation job's dedupe key is `evaluate_alerts:<period start>`, the period start
+# being an ISO date and time. These bounds select those keys on the unique `dedupe_key` index
+# (every period starts with a digit below 9), so the newest finished pass is found by reading the
+# index backwards instead of scanning the jobs table.
+_EVALUATION_KEY_LOW = f"{EVALUATE_ALERTS.kind}:"
+_EVALUATION_KEY_HIGH = f"{EVALUATE_ALERTS.kind}:9"
 
 
 @router.get("/health/live")
@@ -39,9 +46,13 @@ async def ready(request: Request, settings: SettingsDep) -> JSONResponse:
     database, migrations, background = await _probe(request)
     healthy = database == "ok" and migrations == "ok"
     heartbeat_age: float | None = None
+    evaluation_lag: float | None = None
     outbox_backlog = 0
     if background is not None:
         heartbeat_age, outbox_backlog = background.heartbeat_age, background.pending
+        # With evaluation switched off the lag would only grow; null says "not running".
+        if settings.alerts_evaluation_enabled:
+            evaluation_lag = background.evaluation_lag
         worker_stale = settings.worker_required and (
             heartbeat_age is None or heartbeat_age > WORKER_HEARTBEAT_MAX_AGE_SECONDS
         )
@@ -49,6 +60,7 @@ async def ready(request: Request, settings: SettingsDep) -> JSONResponse:
     # Numbers and fixed words only: this endpoint is unauthenticated. `outbox_backlog` stops
     # counting at OUTBOX_BACKLOG_CAP, so a runaway backlog cannot make the probe slow.
     # `gateway_mode` says where /gw/* is served from (embedded, standalone or disabled).
+    # `alert_evaluation_lag_s` is informational: it never makes the probe fail.
     return JSONResponse(
         {
             "status": "ok" if healthy else "unavailable",
@@ -56,6 +68,7 @@ async def ready(request: Request, settings: SettingsDep) -> JSONResponse:
             "migrations": migrations,
             "worker_heartbeat_age_s": heartbeat_age,
             "outbox_backlog": outbox_backlog,
+            "alert_evaluation_lag_s": evaluation_lag,
             "gateway_mode": settings.gateway_mode,
         },
         status_code=200 if healthy else 503,
@@ -67,6 +80,9 @@ class _Background:
     heartbeat_age: float | None  # seconds since the newest worker heartbeat, None if there is none
     pending: int  # pending outbox rows, counted up to OUTBOX_BACKLOG_CAP
     overdue: int  # pending rows overdue by over ten minutes, counted up to the limit plus one
+    # Seconds since the newest finished alert evaluation pass was scheduled; None before the
+    # first one (or once the cleanup job has pruned every finished one).
+    evaluation_lag: float | None
 
 
 async def _probe(request: Request) -> tuple[str, str, _Background | None]:
@@ -90,34 +106,53 @@ async def _probe(request: Request) -> tuple[str, str, _Background | None]:
         return "unavailable", "unknown", None
 
 
+_BACKGROUND_WORK = text(
+    """
+    SELECT
+        (SELECT extract(epoch FROM now() - max(last_seen_at)) FROM worker_heartbeats),
+        (SELECT count(*) FROM (
+            SELECT 1 FROM notification_outbox WHERE status = 'pending'
+            LIMIT :backlog_cap) pending),
+        (SELECT count(*) FROM (
+            SELECT 1 FROM notification_outbox
+            WHERE status = 'pending' AND next_attempt_at < now() - interval '10 minutes'
+            LIMIT :overdue_cap) overdue),
+        (SELECT extract(epoch FROM now() - created_at) FROM jobs
+            WHERE dedupe_key >= :eval_low AND dedupe_key < :eval_high
+              AND kind = :eval_kind AND status = 'done'
+            ORDER BY dedupe_key DESC LIMIT 1)
+    """
+)
+
+
 async def _background_work(connection: AsyncConnection) -> _Background:
-    """Read the worker heartbeat age and the outbox counts in one statement.
+    """Read the worker heartbeat age, the outbox counts and the alert evaluation lag in one
+    statement.
 
     Ages are measured on the database clock. A pending row is overdue when its
     `next_attempt_at`, the time the worker should have picked it up, is more than ten minutes
     past: a row in normal retry backoff is not due yet, so only a worker that is not delivering
     makes rows overdue. Both counts read the `(status, next_attempt_at)` index and stop at a cap.
+    The evaluation lag is measured from when the newest `done` evaluation job was queued (its
+    period start), so it includes any time the pass waited in the queue.
     """
     row = (
         await connection.execute(
-            text(
-                """
-                SELECT
-                    (SELECT extract(epoch FROM now() - max(last_seen_at)) FROM worker_heartbeats),
-                    (SELECT count(*) FROM (
-                        SELECT 1 FROM notification_outbox WHERE status = 'pending'
-                        LIMIT :backlog_cap) pending),
-                    (SELECT count(*) FROM (
-                        SELECT 1 FROM notification_outbox
-                        WHERE status = 'pending' AND next_attempt_at < now() - interval '10 minutes'
-                        LIMIT :overdue_cap) overdue)
-                """
-            ),
-            {"backlog_cap": OUTBOX_BACKLOG_CAP, "overdue_cap": OUTBOX_STALLED_LIMIT + 1},
+            _BACKGROUND_WORK,
+            {
+                "backlog_cap": OUTBOX_BACKLOG_CAP,
+                "overdue_cap": OUTBOX_STALLED_LIMIT + 1,
+                "eval_low": _EVALUATION_KEY_LOW,
+                "eval_high": _EVALUATION_KEY_HIGH,
+                "eval_kind": EVALUATE_ALERTS.kind,
+            },
         )
     ).one()
     age = None if row[0] is None else round(float(row[0]), 1)
-    return _Background(heartbeat_age=age, pending=int(row[1]), overdue=int(row[2]))
+    lag = None if row[3] is None else round(float(row[3]), 1)
+    return _Background(
+        heartbeat_age=age, pending=int(row[1]), overdue=int(row[2]), evaluation_lag=lag
+    )
 
 
 @router.get("/metrics", include_in_schema=False)

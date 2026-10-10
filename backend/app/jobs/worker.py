@@ -19,6 +19,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.alerts.channels import register_channel_deliverers
 from app.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.core.observability import JOBS_FINISHED
@@ -198,11 +199,12 @@ async def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level, json=settings.log_json)
     init_sentry(settings)
-    # The worker is the only process that sends notifications, so it alone registers deliverers.
+    # The worker delivers every queued notification (the api only delivers a channel's test-send).
     register_default_deliverers(settings)
     engine = create_engine(settings.database_url, pool_size=2)
     tracer_provider = configure_worker_tracing(settings, engine)
     session_factory = create_session_factory(engine)
+    alert_http = register_channel_deliverers(session_factory, settings)
 
     async with session_factory() as db:
         await sync_seed_prices(db)
@@ -217,6 +219,7 @@ async def main() -> None:
         async with serve_metrics(settings.worker_metrics_port, settings.metrics_token):
             await Worker(session_factory, settings).run_forever(stop)
     finally:
+        await alert_http.aclose()
         await engine.dispose()
         await shutdown_tracing(tracer_provider)
 

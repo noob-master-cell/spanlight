@@ -14,6 +14,7 @@ Step-by-step procedures for running a self-hosted Spanlight: Docker Compose (`de
 | Requests are slow, connections run out, you want more replicas | [scale.md](scale.md) |
 | Clients get 429, a burst of traffic, or charts are missing late spans | [ingestion-spike.md](ingestion-spike.md) |
 | What "healthy" means, and the alerts that tell you it is not | [slo.md](slo.md) |
+| Alerts do not arrive, deliveries are stuck or failed, evaluation is late, a webhook secret must change | [alerts.md](alerts.md) |
 | Running the LLM gateway: embedded or standalone, key rotation, cache purge, the overhead panel | [gateway.md](gateway.md) |
 
 ## Services at a glance

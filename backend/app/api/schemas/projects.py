@@ -16,6 +16,7 @@ class ProjectOut(ApiModel):
     slug: str
     retention_days: int
     capture_payloads: bool
+    weekly_digest_enabled: bool
     created_at: datetime
 
 
@@ -27,6 +28,7 @@ class ProjectUpdateIn(BaseModel):
     name: Name | None = None
     retention_days: Annotated[int, Field(ge=1, le=90)] | None = None
     capture_payloads: bool | None = None
+    weekly_digest_enabled: bool | None = None
 
 
 class ProjectDeleteIn(BaseModel):

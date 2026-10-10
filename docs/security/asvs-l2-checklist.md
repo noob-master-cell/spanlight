@@ -216,7 +216,7 @@ Assessed in October 2026 against the code before the first `1.0` release.
 
 | ID | Requirement | Status | Note | Reference |
 |---|---|---|---|---|
-| 7.1.1 | No credentials or session tokens in logs | Met | Logged by id only; query strings are not logged; database URLs never reach a log line | `core/middleware.py`, `api/v1/tokens.py`, `backups/service.py` |
+| 7.1.1 | No credentials or session tokens in logs | Met | Logged by id only; query strings are not logged; database URLs never reach a log line; `httpx` request lines (which hold alert channel URLs) are not logged | `core/middleware.py`, `api/v1/tokens.py`, `backups/service.py`, `core/logging.py` |
 | 7.1.2 | No other sensitive data in logs | Met | Request bodies are not logged; ingestion logs counts and the project id | `api/ingest.py`, `core/sentry.py` |
 | 7.1.3 | Security events logged | Partial | Every request is logged with status; failed sign-ins are recorded in `login_attempts` (kept 1 day); there is no dedicated security event stream | `core/middleware.py`, `auth/login_throttle.py` |
 | 7.1.4 | Enough context for an investigation | Met | UTC timestamp, request id, route, status and duration on every line | `core/logging.py`, `core/middleware.py` |
@@ -246,7 +246,7 @@ Assessed in October 2026 against the code before the first `1.0` release.
 | 8.3.4 | Sensitive data identified with a handling policy | Met | | [threat model](threat-model.md) §2 |
 | 8.3.5 | Access to sensitive data audited | Not met | Reading traces is not audited | |
 | 8.3.6 | Sensitive data cleared from memory | Not met | Not controllable in Python | |
-| 8.3.7 | Encryption with confidentiality and integrity | Met | Sealed values use AES-256-GCM | `core/crypto.py` |
+| 8.3.7 | Encryption with confidentiality and integrity | Met | Sealed values (two-factor seeds, provider credentials, alert channel secrets) use AES-256-GCM | `core/crypto.py` |
 | 8.3.8 | Retention and automatic deletion | Met | Per-project retention; cleanup of sessions, tokens, attempts and jobs; backup pruning | `jobs/tasks/retention.py`, `jobs/tasks/cleanup.py`, `backups/retention.py` |
 
 ## V9 Communication
@@ -303,7 +303,7 @@ Assessed in October 2026 against the code before the first `1.0` release.
 | 12.4.2 | Untrusted files scanned | N/A | No uploads | |
 | 12.5.1 | Web tier serves only expected files | Met | Caddy serves the built dashboard bundle and the built documentation site only | `deploy/Caddyfile`, `deploy/Dockerfile` |
 | 12.5.2 | Uploaded files never executed as HTML | Met | Export files are served from the object store's origin with a CSV or NDJSON content type | `exports/service.py` (`CONTENT_TYPES`) |
-| 12.6.1 | Outbound destinations allow-listed | Partial | Destinations are fixed in code or set by the operator; no network egress policy is shipped | [threat model](threat-model.md) TB6 |
+| 12.6.1 | Outbound destinations allow-listed | Partial | Destinations are fixed in code or set by the operator, except gateway base URLs and alert webhook URLs, which users supply and which pass the vetted-egress check (public addresses only, checked again on every connection, no redirects); no network egress policy is shipped | [threat model](threat-model.md) TB6 |
 
 ## V13 API and web services
 

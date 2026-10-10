@@ -65,8 +65,13 @@ def _histogram(index_column: str) -> str:
 # Negating a float is exact, so the negated bounds are the same numbers. NaN would land in bucket
 # 0 here (Postgres sorts it above every number), but it cannot reach this query: ingest validates
 # durations as non-negative and `duration_ms` is derived from two timestamps.
-_NEGATED_BOUNDS = tuple(-bound for bound in reversed(BOUNDS_MS))
-_BUCKET_INDEX = (
+#
+# Both are public because alert metrics bucket raw spans the same way (`app.alerts.metrics_queries`)
+# and must agree with the stored histograms. A statement that uses `BUCKET_INDEX_SQL` binds
+# `neg_bounds` to `list(NEGATED_BOUNDS)`. `least` ignores NULL arguments, so the index of a NULL
+# value is the last bucket: callers exclude NULLs themselves.
+NEGATED_BOUNDS = tuple(-bound for bound in reversed(BOUNDS_MS))
+BUCKET_INDEX_SQL = (
     "least(" + str(BUCKET_COUNT - 1) + ", " + str(BUCKET_COUNT) + " - "
     "width_bucket(-({value}), CAST(:neg_bounds AS double precision[])))"
 )
@@ -127,9 +132,9 @@ _INSERT_SPAN_ROLLUPS = text(
                s.output_tokens,
                s.cached_tokens,
                s.cost_usd,
-               {_BUCKET_INDEX.format(value="s.duration_ms")}                   AS latency_index,
+               {BUCKET_INDEX_SQL.format(value="s.duration_ms")}                   AS latency_index,
                CASE WHEN s.time_to_first_token_ms IS NOT NULL
-                    THEN {_BUCKET_INDEX.format(value="s.time_to_first_token_ms")}
+                    THEN {BUCKET_INDEX_SQL.format(value="s.time_to_first_token_ms")}
                END                                                             AS ttft_index
         FROM spans AS s
         JOIN traces AS t ON t.project_id = s.project_id AND t.trace_id = s.trace_id
@@ -217,7 +222,7 @@ async def compute_rollups(
     await db.execute(_DELETE_SPAN_ROLLUPS, params)
     await db.execute(_DELETE_TRACE_ROLLUPS, params)
     span_result = await db.execute(
-        _INSERT_SPAN_ROLLUPS, {**params, "neg_bounds": list(_NEGATED_BOUNDS)}
+        _INSERT_SPAN_ROLLUPS, {**params, "neg_bounds": list(NEGATED_BOUNDS)}
     )
     trace_result = await db.execute(_INSERT_TRACE_ROLLUPS, params)
     return int(getattr(span_result, "rowcount", 0)) + int(getattr(trace_result, "rowcount", 0))

@@ -24,13 +24,13 @@ from app.api.schemas import (
     UserOut,
 )
 from app.core.crypto import CryptoNotConfigured
+from app.core.egress import BlockedAddress, EgressError
 from app.core.errors import FieldError, ProblemError, conflict, not_configured, not_found
 from app.core.permissions import Permission
 from app.core.security import mark_uncacheable
 from app.db.models import ProviderCredential, User
 from app.gateway import queries, service
 from app.gateway.credentials import InvalidBaseUrl
-from app.gateway.egress import BlockedAddress, EgressError
 
 logger = structlog.get_logger(__name__)
 

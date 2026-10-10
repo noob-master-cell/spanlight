@@ -19,7 +19,6 @@ time and both input and output token counts are present. Otherwise it is
 NULL: unknown is never reported as zero.
 """
 
-import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -32,6 +31,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import new_id
+from app.core.model_match import matches_model
 from app.db.models import ModelPrice, PriceOverride
 from app.pricing.prices import EFFECTIVE_FROM, PRICING_VERSION, SEED_PRICES
 
@@ -40,9 +40,8 @@ _COST_QUANTUM = Decimal("0.00000001")  # numeric(14, 8)
 
 # Provider snapshots append a release date (`gpt-4o-2024-08-06`,
 # `claude-haiku-4-5-20251001`) or an alias suffix. A pattern matches the model
-# exactly or followed by one of these, and the longest matching pattern wins.
-# Plain prefix matching would wrongly price e.g. `gpt-4.1-nano` as `gpt-4.1`.
-_SNAPSHOT_SUFFIX = re.compile(r"^-(?:\d{8}|\d{4}-\d{2}-\d{2}|latest)$")
+# exactly or followed by one of these (`app.core.model_match`), and the longest matching
+# pattern wins. Plain prefix matching would wrongly price e.g. `gpt-4.1-nano` as `gpt-4.1`.
 
 OVERRIDE_VERSION_PREFIX = "override:"
 
@@ -59,11 +58,7 @@ class Price:
     source: Literal["seed", "override"] = "seed"
 
     def matches(self, model: str) -> bool:
-        if model == self.model_pattern:
-            return True
-        if not model.startswith(self.model_pattern):
-            return False
-        return _SNAPSHOT_SUFFIX.match(model[len(self.model_pattern) :]) is not None
+        return matches_model(self.model_pattern, model)
 
 
 @dataclass(frozen=True)
